@@ -1,0 +1,6 @@
+nimcache/
+*.swp
+*~
+*.html
+metar
+test_metar
