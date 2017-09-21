@@ -1,11 +1,15 @@
+## Image metadata reader
+
 from parseopt2 import getopt, CmdLineKind, OptParser, initOptParser
 import macros, strutils
 
 type
-  Args* = tuple[files: seq[string], json: bool, help: bool, version: bool]
+  Args* = tuple[files: seq[string], json: bool, help: bool, version: bool] ## \
+  ## Command line arguments.  A list of filenames, and booleans for
+  ## json, help and version output.
 
 type
-  MData* = seq[string]
+  Metadata* = seq[string] ## Image metadata
 
 macro buildVersionNumber(filename: string): typed =
   ## Read a file containing a version number and create a version
@@ -29,7 +33,18 @@ macro buildVersionNumber(filename: string): typed =
 # Read the version.txt file and create the code: const versionNumber = "xxx"
 buildVersionNumber("version.txt")
 
-proc showHelp() =
+proc showHelp*() =
+  ## Show the following command line options.
+  ##
+  ## ::
+  ##
+  ## Show metadata information for the given image(s).
+  ## Usage: metar [-j] [-v] file [file...]
+  ## -j --json     Output JSON data.
+  ## -v --version  Show the version number.
+  ## -h --help     Show this help.
+  ## file          Image file to analyze.
+
   echo """Show metadata information for the given image(s).
 Usage: metar [-j] [-v] file [file...]
 -j --json     Output JSON data.
@@ -41,13 +56,11 @@ file          Image file to analyze.
 proc parseCommandLine*(optParser: var OptParser): Args =
   ## Return the command line parameters.
   ##
-  ## Return a tuple: ([file, file2,...], json, help, version)
   ## .. code-block:: nim
-  ## Example:
-  ##
-  ## from parseopt2 import initOptParser
-  ## var optParser = initOptParser()
-  ## var args = parseCommandLine(optParser)
+  ##   from parseopt2 import initOptParser
+  ##   var optParser = initOptParser()
+  ##   var args = parseCommandLine(optParser)
+  ##   echo args
 
   var files: seq[string] = @[]
   var json = false
@@ -79,21 +92,21 @@ proc parseCommandLine*(optParser: var OptParser): Args =
 
   result = (files, json, help, version)
 
-proc readMetadata*(filename: string): MData =
+proc readMetadata*(filename: string): Metadata =
   ## Return metadata for the given image.
   return nil
 
-proc printResultJson*(mdata: MData) =
-  ## Print metadata as JSON.
-  echo "printing json"
-
-proc printResult*(mdata: MData) =
-  ## Print metadata.
+proc printMetadata*(metadata: Metadata) =
+  ## Print human readable metadata.
   echo "printing metadata"
 
+proc printMetadataJson*(metadata: Metadata) =
+  ## Print metadata as JSON.
+  echo "printing metadata as json"
 
-proc main() =
-  ## Print the metadata image information for the given image file(s).
+proc main*() =
+  ## Print the metadata image information for the given image file(s)
+  ## specified on the command line. See showHelp for the options.
 
   var optParser = initOptParser()
   var args = parseCommandLine(optParser)
@@ -106,13 +119,13 @@ proc main() =
   for filename in args.files:
     if args.files.len > 1:
       echo "file: ", filename
-    let mdata = readMetadata(filename)
-    if mdata != nil:
+    let metadata = readMetadata(filename)
+    if metadata != nil:
       echo "Unable to read the image."
       continue
     if args.json:
-      printResultJson(mdata)
+      printMetadataJson(metadata)
     else:
-      printResult(mdata)
+      printMetadata(metadata)
 
 main()
