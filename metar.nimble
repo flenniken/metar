@@ -6,7 +6,8 @@ license       = "MIT"
 
 requires "nim >= 0.17.0"
 
-skipDirs = @["tests", "private"]
+skipExt = @["nim"]
+# skipDirs = @["tests", "private"]
 
 task m, "Build and run metar":
   exec "nim c -r --out:bin/metar metar/metar"
