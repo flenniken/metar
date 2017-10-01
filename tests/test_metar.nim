@@ -1,10 +1,11 @@
 
 import unittest
-from parseopt2 import initOptParser
-from metar import parseCommandLine
+import parseopt2
+import metar
 
 suite "Test metar.nim":
-  # echo "suite setup: run once before the tests"
+  # suite setup: 
+  #   echo "run once before the tests"
 
   # setup:
   #   echo "run before each test"

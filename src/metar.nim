@@ -1,37 +1,16 @@
 ## Image metadata reader
 
-from parseopt2 import getopt, CmdLineKind, OptParser, initOptParser
-import macros, strutils
+import macros
+import strutils
+import parseopt2
+import metar/readMetadata
+import metar/version
 
 type
   Args* = tuple[files: seq[string], json: bool, help: bool, version: bool] ## \
   ## Command line arguments.  A list of filenames, and booleans for
   ## json, help and version output.
 
-type
-  Metadata* = seq[string] ## Image metadata
-
-macro buildVersionNumber(filename: string): typed =
-  ## Read a file containing a version number and create a version
-  ## number const.
-  ## const versionNumber = "n.n"
-  
-  let
-    inputString = slurp(filename.strVal)
-  
-  if inputString.len < 1:
-    error("file is empty")
-
-  var firstLine = inputString.splitLines[0]
-  if firstLine.len < 1:
-    error("first line is empty")
-
-  var source = "const versionNumber = \"" & firstLine & "\"\n"
-
-  result = parseStmt(source)
-
-# Read the version.txt file and create the code: const versionNumber = "xxx"
-buildVersionNumber("version.txt")
 
 proc showHelp*() =
   ## Show the following command line options.
@@ -58,6 +37,7 @@ proc parseCommandLine*(optParser: var OptParser): Args =
   ##
   ## .. code-block:: nim
   ##   from parseopt2 import initOptParser
+  ##   from metar import parseCommandLine
   ##   var optParser = initOptParser()
   ##   var args = parseCommandLine(optParser)
   ##   echo args
@@ -91,18 +71,6 @@ proc parseCommandLine*(optParser: var OptParser): Args =
       help = true
 
   result = (files, json, help, version)
-
-proc readMetadata*(filename: string): Metadata =
-  ## Return metadata for the given image.
-  return nil
-
-proc printMetadata*(metadata: Metadata) =
-  ## Print human readable metadata.
-  echo "printing metadata"
-
-proc printMetadataJson*(metadata: Metadata) =
-  ## Print metadata as JSON.
-  echo "printing metadata as json"
 
 proc main*() =
   ## Print the metadata image information for the given image file(s)

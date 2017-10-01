@@ -2,5 +2,6 @@ nimcache/
 *.swp
 *~
 *.html
+bin/
+src/private/
 metar
-test_metar
