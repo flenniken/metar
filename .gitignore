@@ -3,5 +3,4 @@ nimcache/
 *~
 *.html
 bin/
-src/private/
-metar
+metar/private/
