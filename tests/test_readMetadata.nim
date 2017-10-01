@@ -1,6 +1,6 @@
 
 import unittest
-import metar/readMetadata
+import readMetadata
 
 suite "Test readMetadata.nim":
 
