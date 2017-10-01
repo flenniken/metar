@@ -1,16 +1,13 @@
-# Package
 
 version       = "0.1.0"
 author        = "Steve Flenniken"
 description   = "Metadata Reader for Images"
 license       = "MIT"
 
-# Dependencies
-
 requires "nim >= 0.17.0"
 
 srcDir = "src"
-binDir = "bin"
+# binDir = "bin"
 skipDirs = @["tests", "docs", "private"]
 
 task build_metar, "Build and run metar":
@@ -28,6 +25,9 @@ task docs, "Build all the docs":
 
 task tree, "Show the directory tree":
   exec "tree -I '*~|nimcache'"
+
+task runt, "Build and run t.nim":
+  exec "nim c -r --out:bin/t src/private/t"
 
 task hello, "This is a hello task":
   echo("Hello World!")
