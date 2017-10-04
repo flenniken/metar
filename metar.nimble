@@ -1,3 +1,4 @@
+import strutils
 
 # https://github.com/nim-lang/nimble#nimble-reference
 
@@ -19,20 +20,27 @@ task m, "Build and run metar":
 
 # Run all the tests with "nimble test" but it puts binaries in the wrong place.
 
+proc test_module(name: string) =
+  const cmd = "nim c --verbosity:0 --hints:off -r --out:bin/$1 tests/$1"
+  let source = (cmd % [name])
+  exec source
+
 task test_all, "test all":
-  exec "nim c -r --out:bin/test_metar tests/test_metar"
-  exec "nim c -r --out:bin/test_readMetadata tests/test_readMetadata"
-  exec "nim c -r --out:bin/version.nim metar/version.nim"
+  test_module("test_metar")
+  test_module("test_readMetadata")
 
-# task test_readMetadata, "test readMetadata":
-#   exec "nim c -r --out:bin/test_readMetadata tests/test_readMetadata"
-
-# task test_version, "test version":
-#   exec "nim c -r --out:bin/version.nim metar/version.nim"
+proc doc_module(name: string) =
+  const cmd = "nim doc --out:docs/$1.html metar/$1.nim"
+  let source = cmd % name
+  exec source
 
 task docs, "Build all the docs":
-  exec "nim doc --out:docs/metar.html metar/metar.nim"
-  exec "nim doc --out:docs/readMetadata.html metar/readMetadata.nim"
+  doc_module("metar")
+  doc_module("readMetadata")
+  doc_module("readerJpeg")
+  doc_module("readerDng")
+  doc_module("readerTiff")
+  doc_module("metadata")
 
 task tree, "Show the directory tree":
   exec "tree -I '*~|nimcache'"

@@ -1,4 +1,4 @@
-## Image metadata reader
+## Module to handle the metar command line program.
 
 import macros
 import strutils
@@ -22,14 +22,14 @@ proc showHelp*() =
   ## -j --json     Output JSON data.
   ## -v --version  Show the version number.
   ## -h --help     Show this help.
-  ## file          Image file to analyze.
+  ## file          Image filename to analyze.
 
   echo """Show metadata information for the given image(s).
 Usage: metar [-j] [-v] file [file...]
 -j --json     Output JSON data.
 -v --version  Show the version number.
 -h --help     Show this help.
-file          Image file to analyze.
+file          Image filename to analyze.
 """
 
 proc parseCommandLine*(optParser: var OptParser): Args =
@@ -96,4 +96,5 @@ proc main*() =
     else:
       printMetadata(metadata)
 
-main()
+when isMainModule:
+  main()
