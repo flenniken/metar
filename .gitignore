@@ -1,6 +1,6 @@
 nimcache/
 *.swp
 *~
-*.html
 bin/
 metar/private/
+docs/

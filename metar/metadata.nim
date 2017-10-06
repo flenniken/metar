@@ -16,10 +16,10 @@ type
   ## Json representation of the metadata.
 
   Reader* = proc (file: File): Metadata ## \
-  ## A procedure to read the given file and return its metadata.
-  ## Return nil when the file format is unknown.  Readers can also
-  ## generate UnknownFormat and NotSupported exceptions.
+  ## Read the given file and return its metadata.  Return nil when the
+  ## file format is unknown. It may generate UnknownFormat and
+  ## NotSupported exceptions.
 
   KeyName* = proc (section: string, key: string): string ## \
-  ## A procedure to return the name of the key for the given section
-  ## of metadata or nil when not known.
+  ## Return the name of the key for the given section of metadata or
+  ## nil when not known.

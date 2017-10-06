@@ -1,4 +1,4 @@
-## Read an image file and return metadata information.
+## Read an image file and return its metadata.
 
 import json
 import tables
@@ -8,8 +8,8 @@ import readerJpeg
 import readerDng
 import readerTiff
 
-#var item = tuple[name: string, readm: Reader, keyn: KeyName]
 var readers = {
+  # name: (name, Reader method, KeyName method)
   "jpeg": ("jpeg", readJpeg, jpegKeyName),
   "dng": ("dng", readDng, dngKeyName),
   "tiff": ("tiff", readTiff, tiffKeyName),
@@ -36,13 +36,12 @@ proc getMetaInfo(filename: string, readerName: string, fileSize: int64):
   result["os"] = %* hostOS
   result["cpu"] = %* hostCPU
 
-
 proc readMetadata*(filename: string): Metadata =
   ## Read the given file and return its metadata.  When the file
   ## format is unknown, return nil.
-
-  # Open the file and loop through the readers until one returns some
-  # results.
+  ##
+  ## Open the file and loop through the readers until one returns some
+  ## results.
 
   result = nil
   var f: File
@@ -75,6 +74,11 @@ proc keyName*(readerName: string, section: string, key: string): string =
   ## get this from the 'meta' section's reader key. Section is a top
   ## level key, 'xmp', 'iptc', etc. Key is a key in the section
   ## dictionary.
+  ##
+  ## .. code-block:: nim
+  ##   import metar
+  ##   echo keyName("dng", "exif", "40961")
+  ##   ColorSpace
 
   let (_, _, keyNameMethod) = readers.getOrDefault(readerName)
   if keyNameMethod == nil:

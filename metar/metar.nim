@@ -36,11 +36,10 @@ proc parseCommandLine*(optParser: var OptParser): Args =
   ## Return the command line parameters.
   ##
   ## .. code-block:: nim
-  ##   from parseopt2 import initOptParser
-  ##   from metar import parseCommandLine
+  ##   import parseopt2
+  ##   import metar
   ##   var optParser = initOptParser()
-  ##   var args = parseCommandLine(optParser)
-  ##   echo args
+  ##   echo parseCommandLine(optParser)
 
   var files: seq[string] = @[]
   var json = false
