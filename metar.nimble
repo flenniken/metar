@@ -50,3 +50,11 @@ task runt, "Build and run t.nim":
 
 task hello, "This is a hello task":
   echo("Hello World!")
+
+task dot, "Show dependencies":
+  exec "nim genDepend metar/metar.nim"
+  exec "dot -Tpng metar/metar.dot -o bin/dependencies.png"
+  exec "rm metar/metar.deps"
+  exec "rm metar/metar.dot"
+  exec "rm metar/metar.png"
+  exec "open bin/dependencies.png"
