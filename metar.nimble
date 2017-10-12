@@ -28,6 +28,7 @@ proc test_module(name: string) =
 task test_all, "test all":
   test_module("test_metar")
   test_module("test_readMetadata")
+  test_module("test_readBytes")
 
 proc doc_module(name: string) =
   const cmd = "nim doc --out:docs/$1.html metar/$1.nim"
@@ -41,11 +42,12 @@ task docs, "Build all the docs":
   doc_module("readerDng")
   doc_module("readerTiff")
   doc_module("metadata")
+  doc_module("readBytes")
 
 task tree, "Show the directory tree":
   exec "tree -I '*~|nimcache'"
 
-task runt, "Build and run t.nim":
+task t, "Build and run t.nim":
   exec "nim c -r --out:bin/t metar/private/t"
 
 task hello, "This is a hello task":
