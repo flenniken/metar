@@ -1,125 +1,198 @@
-import unittest
-import strutils
 import os
+import strutils
+import unittest
 import readBytes
 
-var filename = "/tmp/test.bin"
+let filename = "/tmp/test.bin"
+var testFile: File
+var buffer = [0x01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
 
-proc test() =
-  # Create a test file.
-  var f: File
-  if open(f, filename, fmWrite):
-    var bytes = [01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
-    discard f.writeBytes(bytes, 0, bytes.len)
-    var d: float = 1.234
-    discard f.writeBuffer(addr(d), sizeof(d))
-    var d32: float32 = 67.34
-    discard f.writeBuffer(addr(d32), sizeof(d32))
-    var i16: int16 = -42
-    discard f.writeBuffer(addr(i16), sizeof(i16))
-    f.close()
-  else:
-    echo "Unable to create the file: ", filename
+suite "Test readBytes.nim":
 
-  defer:
+  setup:
+    # Create a test file.
+    if open(testFile, filename, fmWrite):
+      var bytes = [01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
+      discard testFile.writeBytes(bytes, 0, bytes.len)
+      var d: float = 1.234
+      discard testFile.writeBuffer(addr(d), sizeof(d))
+      var d32: float32 = 67.34
+      discard testFile.writeBuffer(addr(d32), sizeof(d32))
+      var i16: int16 = -42
+      discard testFile.writeBuffer(addr(i16), sizeof(i16))
+      testFile.close()
+    else:
+      echo "Unable to create the file: ", filename
+
+    if not open(testFile, filename, fmRead):
+      assert(false, "unable to open the file")
+
+  teardown:
+    testFile.close()
     discard tryRemoveFile(filename)
 
+  test "read int8":
+    testFile.setFilePos(0)
+    var v8 = read_number[uint8](testFile)
+    # echo "v8 = ", toHex(v8)
+    require(v8 == 0x01)
 
-  if not open(f, filename, fmRead):
-    assert(false, "unable to open the file")
-  defer:
-    f.close()
+    testFile.setFilePos(0)
+    v8 = read_number[uint8](testFile, bigEndian)
+    # echo "require(v8 == 0x", toHex(v8), ")"
+    require(v8 == 0x01)
 
-  var v8 = read_number[uint8](f)
-  # echo "v8 = ", toHex(v8)
-  assert(v8 == 0x01)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var i8 = read_number[int8](testFile, bigEndian)
+    # echo "require(i8 == 0x", toHex(i8), ")"
+    require(i8 == 0x01)
 
-  var v16 = read_number[uint16](f)
-  # echo "assert(v16 == 0x", toHex(v16), ")"
-  assert(v16 == 0x2301)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    i8 = read_number[int8](testFile)
+    # echo "require(i8 == 0x", toHex(i8), ")"
+    require(i8 == 0x01)
 
-  var v32 = read_number[uint32](f)
-  # echo "assert(v32 == 0x", toHex(v32), ")"
-  assert(v32 == 0x67452301)
-  f.setFilePos(0)
+  test "read int16":
 
-  var v64 = read_number[uint64](f)
-  # echo "assert(v64 == 0x", toHex(v64), ")"
-  assert(v64 == 0xEFCDAB8967452301'u64)
-  f.setFilePos(8)
+    testFile.setFilePos(0)
+    var v16 = read_number[uint16](testFile)
+    # echo "require(v16 == 0x", toHex(v16), ")"
+    require(v16 == 0x2301)
 
-  var f64 = read_number[float64](f, system.cpuEndian)
-  # echo "assert(f64 == ", f64, ")"
-  assert(f64 == 1.234)
-  var f32 = read_number[float32](f, system.cpuEndian)
-  # echo "assert(f32 == ", f32, ")"
-  assert(f32 == 67.33999633789062)
-  var neg = read_number[int16](f, system.cpuEndian)
-  # echo "assert(neg == ", neg, ")"
-  assert(neg == -42)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    v16 = read_number[uint16](testFile, bigEndian)
+    # echo "require(v16 == 0x", toHex(v16), ")"
+    require(v16 == 0x0123)
 
-  v8 = read_number[uint8](f, bigEndian)
-  # echo "assert(v8 == 0x", toHex(v8), ")"
-  assert(v8 == 0x01)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var i16 = read_number[int16](testFile, bigEndian)
+    # echo "require(i16 == 0x", toHex(i16), ")"
+    require(i16 == 0x0123)
 
-  v16 = read_number[uint16](f, bigEndian)
-  # echo "assert(v16 == 0x", toHex(v16), ")"
-  assert(v16 == 0x0123)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    i16 = read_number[int16](testFile)
+    # echo "require(i16 == 0x", toHex(i16), ")"
+    require(i16 == 0x2301)
 
-  v32 = read_number[uint32](f, bigEndian)
-  # echo "assert(v32 == 0x", toHex(v32), ")"
-  assert(v32 == 0x01234567)
-  f.setFilePos(0)
+  test "read int32":
 
-  v64 = read_number[uint64](f, bigEndian)
-  # echo "assert(v64 == 0x", toHex(v64), ")"
-  assert(v64 == 0x0123456789ABCDEF'u64)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var v32 = read_number[uint32](testFile)
+    # echo "require(v32 == 0x", toHex(v32), ")"
+    require(v32 == 0x67452301)
 
-  var i8 = read_number[int8](f, bigEndian)
-  # echo "assert(i8 == 0x", toHex(i8), ")"
-  assert(i8 == 0x01)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    v32 = read_number[uint32](testFile, bigEndian)
+    # echo "require(v32 == 0x", toHex(v32), ")"
+    require(v32 == 0x01234567)
 
-  var i16 = read_number[int16](f, bigEndian)
-  # echo "assert(i16 == 0x", toHex(i16), ")"
-  assert(i16 == 0x0123)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var i32 = read_number[int32](testFile, bigEndian)
+    # echo "require(i32 == 0x", toHex(i32), ")"
+    require(i32 == 0x01234567)
 
-  var i32 = read_number[int32](f, bigEndian)
-  # echo "assert(i32 == 0x", toHex(i32), ")"
-  assert(i32 == 0x01234567)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    i32 = read_number[int32](testFile)
+    # echo "require(i32 == 0x", toHex(i32), ")"
+    require(i32 == 0x67452301)
 
-  var i64 = read_number[int64](f, bigEndian)
-  # echo "assert(i64 == 0x", toHex(i64), ")"
-  assert(i64 == 0x0123456789ABCDEF'i64)
-  f.setFilePos(0)
+  test "read int64":
 
-  i8 = read_number[int8](f)
-  # echo "assert(i8 == 0x", toHex(i8), ")"
-  assert(i8 == 0x01)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var v64 = read_number[uint64](testFile)
+    # echo "require(v64 == 0x", toHex(v64), ")"
+    require(v64 == 0xEFCDAB8967452301'u64)
 
-  i16 = read_number[int16](f)
-  # echo "assert(i16 == 0x", toHex(i16), ")"
-  assert(i16 == 0x2301)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    v64 = read_number[uint64](testFile, bigEndian)
+    # echo "require(v64 == 0x", toHex(v64), ")"
+    require(v64 == 0x0123456789ABCDEF'u64)
 
-  i32 = read_number[int32](f)
-  # echo "assert(i32 == 0x", toHex(i32), ")"
-  assert(i32 == 0x67452301)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    var i64 = read_number[int64](testFile, bigEndian)
+    # echo "require(i64 == 0x", toHex(i64), ")"
+    require(i64 == 0x0123456789ABCDEF'i64)
 
-  i64 = read_number[int64](f)
-  # echo "assert(i64 == 0x", toHex(i64), ")"
-  assert(i64 == 0xEFCDAB8967452301)
-  f.setFilePos(0)
+    testFile.setFilePos(0)
+    i64 = read_number[int64](testFile)
+    # echo "require(i64 == 0x", toHex(i64), ")"
+    require(i64 == 0xEFCDAB8967452301)
 
-when isMainModule:
-  test()
+  test "read float64":
+
+    testFile.setFilePos(8)
+    var f64 = read_number[float64](testFile, system.cpuEndian)
+    # echo "require(f64 == ", f64, ")"
+    require(f64 == 1.234)
+
+  test "read float32":
+
+    testFile.setFilePos(16)
+    var f32 = read_number[float32](testFile, system.cpuEndian)
+    # echo "require(f32 == ", f32, ")"
+    require(f32 == 67.33999633789062)
+
+  test "read negative int":
+
+    testFile.setFilePos(20)
+    var neg = read_number[int16](testFile, system.cpuEndian)
+    # echo "require(neg == ", neg, ")"
+    require(neg == -42)
+
+  test "length 16":
+
+    var num16: uint16
+
+    let expected = ["2301", "4523", "6745", "8967", "AB89", "CDAB",
+                    "EFCD", "0123", "2345", "4567", "6789", "89AB",
+                    "ABCD", "CDEF"]
+
+    for index in 0..6:
+      num16 = length[uint16](buffer, index)
+      # echo toHex(num16)
+      require(expected[index] == toHex(num16))
+
+    let ex2 = ["0123", "2345", "4567", "6789", "89AB", "ABCD", "CDEF"]
+    for index in 0..6:
+      num16 = length[uint16](buffer, index, bigEndian)
+      # echo toHex(num16)
+      require(ex2[index] == toHex(num16))
+
+  test "length 8":
+
+    let ex3 = ["01", "23", "45", "67", "89", "AB", "CD", "EF", "01",
+               "23", "45", "67", "89", "AB", "CD", "EF"]        
+    for index in 0..7:
+      var num8 = length[uint8](buffer, index)
+      # echo toHex(num8)
+      require(ex3[index] == toHex(num8))
+
+    let ex4 = ["01", "23", "45", "67", "89", "AB", "CD", "EF"]
+    for index in 0..7:
+      var num8 = length[uint8](buffer, index, bigEndian)
+      # echo toHex(num8)
+      require(ex4[index] == toHex(num8))
+
+  test "length 32":
+
+    let ex5 = ["67452301", "89674523", "AB896745", "CDAB8967", "EFCDAB89"]
+    for index in 0..4:
+      var num32 = length[uint32](buffer, index)
+      # echo toHex(num32)
+      require(ex5[index] == toHex(num32))
+
+    let ex6 = ["01234567", "23456789", "456789AB", "6789ABCD", "89ABCDEF"]
+    for index in 0..4:
+      var num8 = length[uint32](buffer, index, bigEndian)
+      # echo toHex(num8)
+      require(ex6[index] == toHex(num8))
+
+  test "length 64":
+
+    var num64 = length[uint64](buffer)
+    # echo toHex(num64)
+    require("EFCDAB8967452301" == toHex(num64))
+
+    num64 = length[uint64](buffer, 0, bigEndian)
+    # echo toHex(num64)
+    require("0123456789ABCDEF" == toHex(num64))

@@ -25,7 +25,7 @@ proc test_module(name: string) =
   let source = (cmd % [name])
   exec source
 
-task test_all, "test all":
+task test, "test":
   test_module("test_metar")
   test_module("test_readMetadata")
   test_module("test_readBytes")

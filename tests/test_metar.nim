@@ -4,7 +4,7 @@ import parseopt2
 import metar
 
 suite "Test metar.nim":
-  # suite setup: 
+  # setup: 
   #   echo "run once before the tests"
 
   # setup:
