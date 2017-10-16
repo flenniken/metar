@@ -39,7 +39,7 @@ proc length*[T](buffer: var openArray[uint8], index=0, endian: Endianness=little
     else:
       assert(false, "Invalid type")
 
-proc read_number*[T](file: File, endian: Endianness=littleEndian): T =
+proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
   ## Read a number from the current file position.
   ##
   ## You can specify the endianness of the number being read with
@@ -47,9 +47,9 @@ proc read_number*[T](file: File, endian: Endianness=littleEndian): T =
   ##
   ## .. code-block:: nim
   ##   import readBytes
-  ##   var num16 = read_number[uint16](file)
-  ##   var num32 = read_number[uint32](file, bigEndian)
-  ##   var num32 = read_number[uint32](file, system.cpuEndian)
+  ##   var num16 = readNumber[uint16](file)
+  ##   var num32 = readNumber[uint32](file, bigEndian)
+  ##   var num32 = readNumber[uint32](file, system.cpuEndian)
 
   var buffer: array[sizeof(T), uint8]
   if file.readBytes(buffer, 0, sizeof(T)) != sizeof(T):
