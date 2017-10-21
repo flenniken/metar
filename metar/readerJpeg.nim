@@ -1,3 +1,4 @@
+import tables
 import metadata
 
 ## Read jpeg images and return its metadata.
@@ -8,10 +9,35 @@ import metadata
 # from .XmpParser import parse_xmp_xml
 # from .read_bytes import readOne, readTwo, length1, length2
 
-proc jpegKeyName*(section: string, key: string): string =
-  ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
-  return nil
+# see http://exiv2.org/iptc.html
+let known_iptc = {
+  "5": "Title",
+  "10": "Urgency",
+  "15": "Category",
+  "20": "Other Categories",
+  "25": "Keywords",
+  "40": "Instructions",
+  "55": "Date Created",
+  "80": "Photographer",
+  "85": "Photographer's Job Title",
+  "90": "City",
+  "92": "Location",
+  "95": "State",
+  "101": "Country",
+  "103": "Reference",
+  "105": "Headline",
+  "110": "Credit",
+  "115": "Source",
+  "116": "Copyright",
+  "120": "Description",
+  "122": "Description Writer",
+}.toOrderedTable
+
+
+proc iptc_key*(key: string): string =
+  ## Return the iptc name for the given key number or nil when not
+  ## known.
+  result = known_iptc.getOrDefault(key)
 
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
@@ -127,17 +153,19 @@ def read_metadata(fh):
 
   result['offsets'] = offsets
   return result
+]#
+  
+proc jpegKeyName*(section: string, key: string): string =
+  ## Return the name of the key for the given section of metadata or
+  ## nil when not known.
 
-def key_name(kind, key):
-  """Return the name of the key for the given kind of metadata or return
-  None when not known. Kind is a key from read_metadata dictionary.
-  """
-  if kind == 'iptc':
-    return iptc_key(key)
-  elif kind == 'exif':
+  if section == "iptc":
+    result = iptc_key(key)
+#[
+  elif section == 'exif':
     from .tiff import tag_name
     return tag_name(key)
-  elif kind == 'offsets':
+  elif section == 'offsets':
     try:
       # Strip off the leading 'range_' and trailing _xx.
       parts = key.split('_')
@@ -145,8 +173,11 @@ def key_name(kind, key):
         return section_key(int(parts[1]))
     except:
       pass
-  return None
+]#
+  else:
+    result = nil
 
+#[
 #todo: change 'offset' to section? or range?
 
 def section_key(key):
@@ -235,16 +266,6 @@ var standAlone = {
     0xd8,
     0xd9,
 }
-
-proc readOne(file: File): uint8 =
-  ## Read one byte from the current position of the file.
-  var buffer = [0'u8]
-  if file.readBytes(buffer, 0, 1) != 1:
-    raise newException(UnknownFormat, "Unable to read a byte.")
-  result = buffer[0]
-
-type:
-  Section = tuple(key: byte, start: uint64, finish: uint64)
 
 proc readSections(file: file): seg[Section] =
   ## Read the Jpeg file and return a list of sections.
@@ -424,39 +445,11 @@ def get_iptc_records(block):
     if start >= finish:
       break  # done
   return records
+]#
 
 
-def iptc_key(data_set):
-  """
-  Return the iptc name for the given data_set number or None when not known.
-  """
-  return known_iptc.get(data_set)
 
-# see http://exiv2.org/iptc.html
-known_iptc = {
-  5: 'Title',
-  10: 'Urgency',
-  15: 'Category',
-  20: 'Other Categories',
-  25: 'Keywords',
-  40: 'Instructions',
-  55: 'Date Created',
-  80: 'Photographer',
-  85: "Photographer's Job Title",
-  90: 'City',
-  92: 'Location',
-  95: 'State',
-  101: 'Country',
-  103: 'Reference',
-  105: 'Headline',
-  110: 'Credit',
-  115: 'Source',
-  116: 'Copyright',
-  120: 'Description',
-  122: 'Description Writer',
-}
-
-
+#[
 def get_iptc_info(records):
   """
   Extract the metadata from the iptc records.
