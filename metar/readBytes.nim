@@ -2,7 +2,8 @@ import endians
 
 ## Read numbers from a file or byte buffer.
 
-proc length*[T](buffer: var openArray[uint8], index=0, endian: Endianness=littleEndian): T =
+proc length*[T](buffer: var openArray[uint8], index=0,
+                endian: Endianness=littleEndian): T =
   ## Return a number from the buffer at the given index with the
   ## specified endianness.
   ##
@@ -16,7 +17,7 @@ proc length*[T](buffer: var openArray[uint8], index=0, endian: Endianness=little
   ##   echo toHex(num16)
   ##   6789
 
-  var pointer = addr(buffer[index])
+  let pointer = addr(buffer[index])
   when sizeof(T) == 1:
     copyMem(addr(result), pointer, 1)
     return

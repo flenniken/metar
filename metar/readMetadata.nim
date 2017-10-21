@@ -8,7 +8,7 @@ import readerJpeg
 import readerDng
 import readerTiff
 
-var readers = {
+let readers = {
   # name: (name, Reader method, KeyName method)
   "jpeg": ("jpeg", readJpeg, jpegKeyName),
   "dng": ("dng", readDng, dngKeyName),

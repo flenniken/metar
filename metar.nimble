@@ -30,6 +30,11 @@ task test, "test":
   test_module("test_readMetadata")
   test_module("test_readBytes")
 
+task clean, "clean":
+  # Delete binary files in the test dir (files with no extension).
+  exec "find tests -type f ! -name \"*.*\" | xargs rm"
+
+
 proc doc_module(name: string) =
   const cmd = "nim doc --out:docs/$1.html metar/$1.nim"
   let source = cmd % name

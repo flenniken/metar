@@ -22,7 +22,7 @@ macro buildVersionNumber(filename: string): typed =
   let finish = line.find('"', start+1)
   assert(finish >= 0, "Invalid line, missing ending quote.")
 
-  var source = "const versionNumber* = " & line[start..finish]
+  let source = "const versionNumber* = " & line[start..finish]
   # echo source
 
   result = parseStmt(source)
