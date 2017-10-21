@@ -1,4 +1,5 @@
 import tables
+import strutils
 import metadata
 
 ## Read jpeg images and return its metadata.
@@ -10,34 +11,122 @@ import metadata
 # from .read_bytes import readOne, readTwo, length1, length2
 
 # see http://exiv2.org/iptc.html
-let known_iptc = {
-  "5": "Title",
-  "10": "Urgency",
-  "15": "Category",
-  "20": "Other Categories",
-  "25": "Keywords",
-  "40": "Instructions",
-  "55": "Date Created",
-  "80": "Photographer",
-  "85": "Photographer's Job Title",
-  "90": "City",
-  "92": "Location",
-  "95": "State",
-  "101": "Country",
-  "103": "Reference",
-  "105": "Headline",
-  "110": "Credit",
-  "115": "Source",
-  "116": "Copyright",
-  "120": "Description",
-  "122": "Description Writer",
+let known_iptc_names = {
+  5'u8: "Title",
+  10'u8: "Urgency",
+  15'u8: "Category",
+  20'u8: "Other Categories",
+  25'u8: "Keywords",
+  40'u8: "Instructions",
+  55'u8: "Date Created",
+  80'u8: "Photographer",
+  85'u8: "Photographer's Job Title",
+  90'u8: "City",
+  92'u8: "Location",
+  95'u8: "State",
+  101'u8: "Country",
+  103'u8: "Reference",
+  105'u8: "Headline",
+  110'u8: "Credit",
+  115'u8: "Source",
+  116'u8: "Copyright",
+  120'u8: "Description",
+  122'u8: "Description Writer",
 }.toOrderedTable
 
+let known_jpeg_section_names = {
+  0x01'u8: "TEM",
+  # 02 - BF Reserved
+  0xc0'u8: "SOF0",
+  0xc1'u8: "SOF1",
+  0xc2'u8: "SOF2",
+  0xc3'u8: "SOF3",
+  0xc5'u8: "SOF5",
+  0xc6'u8: "SOF6",
+  0xc7'u8: "SOF7",
+  0xc8'u8: "JPG",
+  0xc9'u8: "SOF9",
+  0xca'u8: "SOF10",
+  0xcb'u8: "SOF11",
+  0xcd'u8: "SOF13",
+  0xce'u8: "SOF14",
+  0xcf'u8: "SOF15",
+  0xc4'u8: "DHT",
+  0xcc'u8: "DAC",
+  0xd0'u8: "RST0",
+  0xd1'u8: "RST1",
+  0xd2'u8: "RST2",
+  0xd3'u8: "RST3",
+  0xd4'u8: "RST4",
+  0xd5'u8: "RST5",
+  0xd6'u8: "RST6",
+  0xd7'u8: "RST7",
+  0xd8'u8: "SOI",
+  0xd9'u8: "EOI",
+  0xda'u8: "SOS",
+  0xdb'u8: "DQT",
+  0xdc'u8: "DNL",
+  0xdd'u8: "DRI",
+  0xde'u8: "DHP",
+  0xdf'u8: "EXP",
+  0xe0'u8: "APP0",
+  0xe1'u8: "APP1",
+  0xe2'u8: "APP2",
+  0xe3'u8: "APP3",
+  0xe4'u8: "APP4",
+  0xe5'u8: "APP5",
+  0xe6'u8: "APP6",
+  0xe7'u8: "APP7",
+  0xe8'u8: "APP8",
+  0xe9'u8: "APP9",
+  0xea'u8: "APPA",
+  0xeb'u8: "APPB",
+  0xec'u8: "APPC",
+  0xed'u8: "APPD",
+  0xee'u8: "APPE",
+  0xef'u8: "APPF",
+  0xf0'u8: "JPG0",
+  0xf1'u8: "JPG1",
+  0xf2'u8: "JPG2",
+  0xf3'u8: "JPG3",
+  0xf4'u8: "JPG4",
+  0xf5'u8: "JPG5",
+  0xf6'u8: "JPG6",
+  0xf7'u8: "JPG7",
+  0xf8'u8: "JPG8",
+  0xf9'u8: "JPG9",
+  0xfa'u8: "JPGA",
+  0xfb'u8: "JPGB",
+  0xfc'u8: "JPGC",
+  0xfd'u8: "JPGD",
+  0xfe'u8: "COM",
+}.toOrderedTable
 
-proc iptc_key*(key: string): string =
-  ## Return the iptc name for the given key number or nil when not
+# http://www.w3.org/Graphics/JPEG/itu-t81.pdf
+
+# let standAlone = {
+#     0x01,
+#     0xd0,
+#     0xd1,
+#     0xd2,
+#     0xd3,
+#     0xd4,
+#     0xd5,
+#     0xd6,
+#     0xd7,
+#     0xd8,
+#     0xd9,
+# }.toOrderedTable
+
+proc jpeg_section_name*(value: uint8): string =
+  ## Return the name for the given jpeg section value or nil when not
   ## known.
-  result = known_iptc.getOrDefault(key)
+  result = known_jpeg_section_names.getOrDefault(value)
+
+proc iptc_name*(value: uint8): string =
+  ## Return the iptc name for the given value or nil when not
+  ## known.
+  result = known_iptc_names.getOrDefault(value)
 
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
@@ -154,13 +243,17 @@ def read_metadata(fh):
   result['offsets'] = offsets
   return result
 ]#
-  
+
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## nil when not known.
 
   if section == "iptc":
-    result = iptc_key(key)
+    # Convert the key to a uint8 value
+    try:
+      return iptc_name(cast[uint8](parseUInt(key)))
+    finally:
+      return nil
 #[
   elif section == 'exif':
     from .tiff import tag_name
@@ -170,7 +263,7 @@ proc jpegKeyName*(section: string, key: string): string =
       # Strip off the leading 'range_' and trailing _xx.
       parts = key.split('_')
       if len(parts) >= 2:
-        return section_key(int(parts[1]))
+        return jpeg_section_name(int(parts[1]))
     except:
       pass
 ]#
@@ -180,92 +273,6 @@ proc jpegKeyName*(section: string, key: string): string =
 #[
 #todo: change 'offset' to section? or range?
 
-def section_key(key):
-  return known_sections.get(key)
-
-known_sections = {
-    0xc0: 'SOF0',
-    0xc1: 'SOF1',
-    0xc2: 'SOF2',
-    0xc3: 'SOF3',
-    0xc5: 'SOF5',
-    0xc6: 'SOF6',
-    0xc7: 'SOF7',
-    0xc8: 'JPG',
-    0xc9: 'SOF9',
-    0xca: 'SOF10',
-    0xcb: 'SOF11',
-    0xcd: 'SOF13',
-    0xce: 'SOF14',
-    0xcf: 'SOF15',
-    0xc4: 'DHT',
-    0xcc: 'DAC',
-    0xd0: 'RST0',
-    0xd1: 'RST1',
-    0xd2: 'RST2',
-    0xd3: 'RST3',
-    0xd4: 'RST4',
-    0xd5: 'RST5',
-    0xd6: 'RST6',
-    0xd7: 'RST7',
-    0xd8: 'SOI',
-    0xd9: 'EOI',
-    0xda: 'SOS',
-    0xdb: 'DQT',
-    0xdc: 'DNL',
-    0xdd: 'DRI',
-    0xde: 'DHP',
-    0xdf: 'EXP',
-    0xe0: 'APP0',
-    0xe1: 'APP1',
-    0xe2: 'APP2',
-    0xe3: 'APP3',
-    0xe4: 'APP4',
-    0xe5: 'APP5',
-    0xe6: 'APP6',
-    0xe7: 'APP7',
-    0xe8: 'APP8',
-    0xe9: 'APP9',
-    0xea: 'APPA',
-    0xeb: 'APPB',
-    0xec: 'APPC',
-    0xed: 'APPD',
-    0xee: 'APPE',
-    0xef: 'APPF',
-    0xf0: 'JPG0',
-    0xf1: 'JPG1',
-    0xf2: 'JPG2',
-    0xf3: 'JPG3',
-    0xf4: 'JPG4',
-    0xf5: 'JPG5',
-    0xf6: 'JPG6',
-    0xf7: 'JPG7',
-    0xf8: 'JPG8',
-    0xf9: 'JPG9',
-    0xfa: 'JPGA',
-    0xfb: 'JPGB',
-    0xfc: 'JPGC',
-    0xfd: 'JPGD',
-    0xfe: 'COM',
-    0x01: 'TEM',
-    # 02 - BF Reserved
-  }
-
-# http://www.w3.org/Graphics/JPEG/itu-t81.pdf
-
-var standAlone = {
-    0x01,
-    0xd0,
-    0xd1,
-    0xd2,
-    0xd3,
-    0xd4,
-    0xd5,
-    0xd6,
-    0xd7,
-    0xd8,
-    0xd9,
-}
 
 proc readSections(file: file): seg[Section] =
   ## Read the Jpeg file and return a list of sections.

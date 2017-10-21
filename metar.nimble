@@ -47,7 +47,7 @@ task clean, "clean":
 
 
 proc doc_module(name: string) =
-  const cmd = "nim doc --out:docs/$1.html metar/$1.nim"
+  const cmd = "nim doc --index:on --out:docs/$1.html metar/$1.nim"
   let source = cmd % name
   exec source
 
@@ -59,6 +59,8 @@ task docs, "Build all the docs":
   doc_module("readerTiff")
   doc_module("metadata")
   doc_module("readBytes")
+  exec "nim buildIndex --out:docs/theindex.html docs/"
+  exec "open docs/theindex.html"
 
 task tree, "Show the directory tree":
   exec "tree -I '*~|nimcache'"
