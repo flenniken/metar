@@ -1,4 +1,14 @@
-## Read an image file and return its metadata.
+##[
+`Home <index.html>`_
+
+readMetadata
+==========
+
+The readMetadata module reads an image file and returns its
+metadata. It calls the reader modules and generates the "meta"
+information section supported by all image types.
+
+]##
 
 import json
 import tables

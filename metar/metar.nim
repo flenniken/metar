@@ -1,4 +1,12 @@
-## Module to handle the metar command line program.
+##[
+`Home <index.html>`_
+
+metar
+=====
+
+The metar module implements the metar command line program.
+
+]##
 
 import macros
 import strutils

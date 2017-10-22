@@ -1,6 +1,15 @@
-import metadata
+##[
+`Home <index.html>`_
 
-## Read dng images and return its metadata.
+readerDng
+==========
+
+The readerDng module reads DNG images and returns its metadata. It
+implements the reader interface.
+
+]##
+
+import metadata
 
 proc readDng*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the

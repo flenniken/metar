@@ -1,8 +1,17 @@
+##[
+`Home <index.html>`_
+
+readerJpeg
+==========
+
+The readerJpeg module reads JPEG images and returns its metadata. It
+implements the reader interface.
+
+]##
+
 import tables
 import strutils
 import metadata
-
-## Read jpeg images and return its metadata.
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm

@@ -60,7 +60,8 @@ task docs, "Build all the docs":
   doc_module("metadata")
   doc_module("readBytes")
   exec "nim buildIndex --out:docs/theindex.html docs/"
-  exec "open docs/theindex.html"
+  exec "nim rst2html --out:docs/index.html docs/index.rst"
+  exec "open docs/index.html"
 
 task tree, "Show the directory tree":
   exec "tree -I '*~|nimcache'"

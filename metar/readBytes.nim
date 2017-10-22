@@ -1,6 +1,15 @@
-import endians
+##[
+`Home <index.html>`_
 
-## Read numbers from a file or byte buffer.
+readBytes
+========
+
+The readBytes module implements procedures to read numbers from a file
+or buffer.
+
+]##
+
+import endians
 
 proc length*[T](buffer: var openArray[uint8], index=0,
                 endian: Endianness=littleEndian): T =

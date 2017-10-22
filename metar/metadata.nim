@@ -1,3 +1,14 @@
+##[
+`Home <index.html>`_
+
+metadata
+=====
+
+The metadata module implements types used by the metadata reader
+modules. It defines the interface required to be a reader.
+
+]##
+
 import json
 
 type

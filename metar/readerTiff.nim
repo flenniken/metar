@@ -1,6 +1,15 @@
-import metadata
+##[
+`Home <index.html>`_
 
-## Read Tiff images and return its metadata.
+readerTiff
+==========
+
+The readerTiff module reads TIFF images and returns its metadata. It
+implements the reader interface.
+
+]##
+
+import metadata
 
 proc readTiff*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the

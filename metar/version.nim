@@ -1,3 +1,14 @@
+##[
+`Home <index.html>`_
+
+version
+=======
+
+The version module reads the version number from ver.txt and creates
+the versionNumber variable at compile time.
+
+]##
+
 import macros
 import strutils
 
