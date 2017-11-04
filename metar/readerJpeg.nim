@@ -12,12 +12,16 @@ implements the reader interface.
 import tables
 import strutils
 import metadata
+import tpub
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
 
 # from .XmpParser import parse_xmp_xml
 # from .read_bytes import readOne, readTwo, length1, length2
+
+
+
 
 # see http://exiv2.org/iptc.html
 let known_iptc_names = {
@@ -127,15 +131,35 @@ let known_jpeg_section_names = {
 #     0xd9,
 # }.toOrderedTable
 
-proc jpeg_section_name*(value: uint8): string =
+proc jpeg_section_name(value: uint8): string {.tpub.} =
   ## Return the name for the given jpeg section value or nil when not
   ## known.
   result = known_jpeg_section_names.getOrDefault(value)
-
-proc iptc_name*(value: uint8): string =
+  
+proc iptc_name(value: uint8): string {.tpub.} =
   ## Return the iptc name for the given value or nil when not
   ## known.
   result = known_iptc_names.getOrDefault(value)
+
+proc jpegKeyName*(section: string, key: string): string =
+  ## Return the name of the key for the given section of metadata or
+  ## nil when not known.
+
+  try:
+    if section == "iptc":
+      return iptc_name(cast[uint8](parseUInt(key)))
+    elif section == "offsets":
+      # Strip off the leading range_ and trailing _xx.
+      let parts = key.split({'_'})
+      # let sectionKey = cast[uint8](parseUInt(parts[1]))
+      let value = parseHexInt(parts[1])
+      return jpeg_section_name(cast[uint8](value))
+    # elif section == 'exif':
+    #   from .tiff import tag_name
+    #   return tag_name(key)
+  except:
+    discard
+  result = nil
 
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
@@ -253,31 +277,6 @@ def read_metadata(fh):
   return result
 ]#
 
-proc jpegKeyName*(section: string, key: string): string =
-  ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
-
-  if section == "iptc":
-    # Convert the key to a uint8 value
-    try:
-      return iptc_name(cast[uint8](parseUInt(key)))
-    finally:
-      return nil
-#[
-  elif section == 'exif':
-    from .tiff import tag_name
-    return tag_name(key)
-  elif section == 'offsets':
-    try:
-      # Strip off the leading 'range_' and trailing _xx.
-      parts = key.split('_')
-      if len(parts) >= 2:
-        return jpeg_section_name(int(parts[1]))
-    except:
-      pass
-]#
-  else:
-    result = nil
 
 #[
 #todo: change 'offset' to section? or range?
