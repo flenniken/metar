@@ -47,6 +47,7 @@ task clean, "clean":
   exec "rm -f metar/my.dot"
   exec "rm -f metar/metar.png"
   exec "rm -f testfiles.txt"
+  exec "rm -f docfiles.txt"
 
 
 proc doc_module(name: string) =
@@ -55,13 +56,13 @@ proc doc_module(name: string) =
   exec source
 
 task docs, "Build all the docs":
-  doc_module("metar")
-  doc_module("readMetadata")
-  doc_module("readerJpeg")
-  doc_module("readerDng")
-  doc_module("readerTiff")
-  doc_module("metadata")
-  doc_module("readBytes")
+  exec "find metar -type f -name \\*.nim | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
+  let fileLines = slurp("docfiles.txt")
+  for filename in fileLines.splitLines():
+    if filename.len > 0:
+      # echo filename
+      doc_module(filename)
+
   exec "nim buildIndex --out:docs/theindex.html docs/"
   exec "nim rst2html --out:docs/index.html docs/index.rst"
   exec "open docs/index.html"
@@ -77,6 +78,9 @@ task hello, "This is a hello task":
 
 task dot, "Show dependency graph":
   exec "nim genDepend metar/metar.nim"
+  # Create my.dot file with the contents of metar.dot plus lines to
+  # make the project files red and lines to add the dotted lines for
+  # ver.nim.
   exec "echo \"digraph metar {\" >metar/my.dot"
   exec "find metar -name \\*.nim -depth 1 | sed \"s/metar\\///\" | sed 's/.nim/ [color = red]/' >>metar/my.dot"
   exec "echo \"version -> ver [style = dotted]\" >>metar/my.dot"

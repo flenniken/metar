@@ -21,8 +21,6 @@ import tpub
 # from .read_bytes import readOne, readTwo, length1, length2
 
 
-
-
 # see http://exiv2.org/iptc.html
 let known_iptc_names = {
   5'u8: "Title",
