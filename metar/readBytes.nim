@@ -14,7 +14,7 @@ import endians
 proc length*[T](buffer: var openArray[uint8], index=0,
                 endian: Endianness=littleEndian): T =
   ## Return a number from the buffer at the given index with the
-  ## specified endianness.
+  ## specified endianness. Specify the number type with T.
   ##
   ## .. code-block:: nim
   ##   import readBytes, os
@@ -25,7 +25,11 @@ proc length*[T](buffer: var openArray[uint8], index=0,
   ##   num16 = length[uint16](buffer, 3, bigEndian)
   ##   echo toHex(num16)
   ##   6789
-
+  when not (T is uint8 or T is int8 or T is uint16 or T is int16 or
+        T is uint32 or T is int32 or T is uint64 or T is int64 or
+        T is float or T is float32 or T is float64):
+    assert(false, "T is not a number type.")
+    
   let pointer = addr(buffer[index])
   when sizeof(T) == 1:
     copyMem(addr(result), pointer, 1)
@@ -35,19 +39,15 @@ proc length*[T](buffer: var openArray[uint8], index=0,
       littleEndian16(addr(result), pointer)
     elif sizeof(T) == 4:
       littleEndian32(addr(result), pointer)
-    elif sizeof(T) == 8:
+    else: #sizeof(T) == 8:
       littleEndian64(addr(result), pointer)
-    else:
-      assert(false, "Invalid type")
   else:
     when sizeof(T) == 2:
       bigEndian16(addr(result), pointer)
     elif sizeof(T) == 4:
       bigEndian32(addr(result), pointer)
-    elif sizeof(T) == 8:
+    else: # sizeof(T) == 8:
       bigEndian64(addr(result), pointer)
-    else:
-      assert(false, "Invalid type")
 
 proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
   ## Read a number from the current file position.

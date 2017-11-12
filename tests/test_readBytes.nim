@@ -139,6 +139,13 @@ suite "Test readBytes.nim":
     # echo "require(neg == ", neg, ")"
     require(neg == -42)
 
+  test "read invalid file position":
+    expect IOError:
+      testFile.setFilePos(300)
+      var v8 = read_number[uint8](testFile)
+      # echo "v8 = ", toHex(v8)
+      require(v8 == 0x01)
+
   test "length 16":
 
     var num16: uint16
@@ -161,7 +168,7 @@ suite "Test readBytes.nim":
   test "length 8":
 
     let ex3 = ["01", "23", "45", "67", "89", "AB", "CD", "EF", "01",
-               "23", "45", "67", "89", "AB", "CD", "EF"]        
+               "23", "45", "67", "89", "AB", "CD", "EF"]
     for index in 0..7:
       var num8 = length[uint8](buffer, index)
       # echo toHex(num8)
@@ -196,3 +203,11 @@ suite "Test readBytes.nim":
     num64 = length[uint64](buffer, 0, bigEndian)
     # echo toHex(num64)
     require("0123456789ABCDEF" == toHex(num64))
+
+  test "length invalid number, string":
+    expect AssertionError:
+      var value = length[string](buffer)
+
+  test "length invalid number, char":
+    expect AssertionError:
+      var value = length[char](buffer)
