@@ -52,6 +52,13 @@ proc readMetadata*(filename: string): Metadata =
   ##
   ## Open the file and loop through the readers until one returns some
   ## results.
+  ##
+  ## .. code-block:: nim
+  ##   import metar
+  ##   md = readMetadata("filename.jpg")
+  ##   meta = md["meta"]
+  ##   echo "reader = " & meta["reader"]
+  ##   reader = jepg
 
   result = nil
   var f: File
