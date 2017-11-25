@@ -4,3 +4,4 @@ nimcache/
 bin/
 metar/private/
 docs/
+testfiles/

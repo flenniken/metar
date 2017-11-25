@@ -18,15 +18,14 @@ skipExt = @["nim"]
 task m, "Build and run metar":
   exec "nim c -r --out:bin/metar metar/metar"
 
-# Run all the tests with "nimble test" but it puts binaries in the wrong place.
-
-proc test_module(name: string) =
+proc test_module(filename: string) =
+  ## Test one module.
   const cmd = "nim c --verbosity:0 --hints:off -r --out:bin/$1 tests/$1"
-  let source = (cmd % [name])
+  let source = (cmd % [filename])
   exec source
 
 proc get_test_filenames(): seq[string] =
-  # Return each nim file in the tests folder.
+  ## Return each nim file in the tests folder.
   exec "find tests -type f -name \\*.nim -depth 1 | sed 's/tests\\///' | sed 's/.nim//' >testfiles.txt"
   let text = slurp("testfiles.txt")
   result = @[]
@@ -35,7 +34,7 @@ proc get_test_filenames(): seq[string] =
       result.add(filename)
 
 proc runTests() =
-  # Test each nim file in the tests folder.
+  ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     test_module(filename)
 
@@ -43,11 +42,11 @@ task test, "Run all the tests":
   runTests()
 
 # Is there a way to pass a filename?
-task one, "Test the test_readBytes file.":
-  test_module("test_readBytes")
+task one, "Test the test_readerJpeg file.":
+  test_module("test_readerJpeg")
 
 task clean, "Delete unneed files":
-  # Delete binary files in the test dir (files with no extension).
+  ## Delete binary files in the test dir (files with no extension).
   exec "find tests -type f ! -name \"*.*\" | xargs rm"
 
   # # Delete binary files in the metar dir (files with no extension).
@@ -90,7 +89,7 @@ task tree, "Show the project directory tree":
 task t, "Build and run t.nim":
   exec "nim c -r --out:bin/t metar/private/t"
 
-task coverage, "Run code coverage on t":
+task coverage, "Run code coverage of tests":
 
 
   # Compile code with coverage support.
