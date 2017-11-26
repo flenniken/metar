@@ -217,6 +217,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
 
       
 proc toString(str: seq[char]): string =
+  # Convert a sequence of char to a string.
   result = newStringOfCap(len(str))
   for ch in str:
     add(result, ch)
@@ -236,6 +237,7 @@ proc kindOfSection(file: File, key: uint8, start: int64, finish: int64):
     return
 
   # ff, e1, length, string+0, data
+  # length + 2 is the total section length.
   file.setFilePos(start)
   if read2(file) != 0xffe1:
     result.data = "not ffe1"

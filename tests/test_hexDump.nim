@@ -9,8 +9,8 @@ suite "Test hexDump.nim":
   test "hex dump 1":
     var hex = hexDump(@bytes)
     echo hex
-    echo hexDump(@bytes[0..<17])
-    echo hexDump(@bytes[0..<16])
+    echo hexDump(@bytes[0..<17], 2)
+    echo hexDump(@bytes[0..<16], 0x1234)
     echo hexDump(@bytes[0..<15])
     echo hexDump(@bytes[0..<1])
 
