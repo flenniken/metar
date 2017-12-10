@@ -255,4 +255,21 @@ suite "Test readerJpeg.nim":
       var (name, data) = kindOfSection(testFile, 0xe1, 0, bytes.len)
       check(name == "")
       check(data == "section length < 4")
-      
+
+    test "test compareBytes":
+      var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
+              (uint8)'i', (uint8)'f', 0x00, (uint8)'t',
+              (uint8)'e', (uint8)'s', (uint8)'t']
+      check(compareBytes(buffer, 9, "test") == true)
+      check(compareBytes(buffer, 4, "Exif") == true)
+      check(compareBytes(buffer, 0, "asdf") == false)
+      check(compareBytes(buffer, 4, "Exig") == false)
+
+    test "test bytesToString":
+      var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
+              (uint8)'i', (uint8)'f', 0x00, (uint8)'t',
+              (uint8)'e', (uint8)'s', (uint8)'t']
+      check(bytesToString(buffer, 9, 0) == "")
+      check(bytesToString(buffer, 9, 1) == "t")
+      check(bytesToString(buffer, 9, 4) == "test")
+      check(bytesToString(buffer, 4, 4) == "Exif")

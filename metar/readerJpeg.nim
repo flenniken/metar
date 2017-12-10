@@ -132,6 +132,33 @@ const standAlone = {
     0xd9'u8,
 }
 
+proc compareBytes*(buffer: openArray[uint8|char], start: Natural,
+                   str: string): bool =
+  ## Compare a section of the buffer with the given string. Return
+  ## true when they match.
+  try:
+    for ix, ch in str:
+      if ch != (char)buffer[start+ix]:
+        return false
+  except:
+    return false
+  return true
+
+proc bytesToString*(buffer: openArray[uint8|char], index: Natural,
+                   length: Natural): string =
+  # Convert bytes in a buffer to a string. Start at the given index
+  # and use length bytes.
+  result = newStringOfCap(length)
+  for ix in index..length-1:
+    result.add((char)buffer[ix])
+
+# proc toString(str: seq[char|uint8]): string =
+#   # Convert a sequence of char to a string.
+#   result = newStringOfCap(len(str))
+#   for ch in str:
+#     add(result, ch)
+
+
 proc jpeg_section_name(value: uint8): string {.tpub.} =
   ## Return the name for the given jpeg section value or nil when not
   ## known.
@@ -161,6 +188,98 @@ proc jpegKeyName*(section: string, key: string): string =
   except:
     discard
   result = nil
+
+
+type
+  IptcRecord = tuple[number: uint8, data_set: uint8, str: string] ## \
+  ## Identifies an IPTC record. A number, byte identifier and a utf8 string
+
+proc toString(self: IptcRecord): string =
+  result = "number: $1, data_set: $2, string: $3" % [
+    $self.number, $self.data_set, self.str]
+
+proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
+  ## Return a list of all iptc records for the given iptc block.  See
+  ## http://www.iptc.org/IIM/ and
+  ## https://www.iptc.org/std/IIM/4.1/specification/IIMV4.1.pdf
+
+  result = @[]
+  let size = len(buffer)
+  if size == 0:
+    return
+  if size < 30:
+    return  # Too small for a valid iptc header.
+  if size > 65502:
+    return  # Too much metadata for a jpg.
+
+  # ff, ed, length, ...
+  if buffer[0] != 0xff:
+    return  # Bad format.
+  if buffer[1] != 0xed:
+    return  # Bad format.
+
+  let first_size = (int)length2(buffer)  # index 2, 3
+  if first_size + 2 != size:
+    return  # Bad format.
+  if not compareBytes(buffer, 4, "Photoshop 3.0"):
+    return  # Bad format.
+  if buffer[17] != 0:
+    return  # Bad format.
+  if not compareBytes(buffer, 18, "8BIM"):
+    return  # Bad format.
+  # let type = length2(buffer, 22)  # index 22, 23
+
+  # one = buffer[24]
+  # two = buffer[25]
+  # three = buffer[26]
+  # four = buffer[27]
+  let all_size = (int)length2(buffer, 28)  # index 28, 29
+  if all_size == 0:
+    return  # Bad format.
+  if all_size + 30 > size:
+    return  # Bad format.
+
+  # 5FD0  FF ED 22 BC 50 68 6F 74 6F 73 68 6F 70 20 33 2E  ..".Photoshop 3.
+  # 5FE0  30 00 38 42 49 4D 04 04 00 00 00 00 04 8A 1C 02  0.8BIM..........
+  # 5FF0  00 00 02 00 02 1C 02 05 00 0B 64 72 70 32 30 39  ..........drp209
+  # 6000  31 31 36 39 64 1C 02 0A 00 01 31 1C 02 19 00 0D  1169d.....1.....
+  # 6010  4E 6F 72 74 68 20 41 6D 65 72 69 63 61 1C 02 19  North America...
+  # 6020  00 18 55 6E 69 74 65 64 20 53 74 61 74 65 73 20  ..United States
+  # 6030  6F 66 20 41 6D 65 72 69 63 61 1C 02 19 00 07 41  of America.....A
+
+  # 1C number(1) data_set(1) value_len(2)  value
+  # 1c 2         0           2              0002
+  # 1c 2         5           000B           drp2091169d
+  # 1c 2         5           000B           drp2091169d
+  # 1C 02        0A          0001           31
+  # 1C 02        19          000D           North America
+  # 1C 02        19          0018           United States of America
+
+  var start = 30
+  let finish = 30 + all_size
+  while true:
+    let marker = buffer[start + 0]
+    if marker != 0x1c:
+      break  # done
+    let number = buffer[start + 1]
+    let data_set = buffer[start + 2]
+    # index start+3, start+4
+    let string_len = (int)length2(buffer, start + 3)
+    if string_len > 0x7fff:
+      # The length is over 32k. The next length bytes (removing high bit)
+      # are the count. But we don't support this.
+      return # Bad format.
+    if start + string_len > finish:
+      return # Bad format.
+    let str = bytesToString(buffer, start + 5, string_len)
+
+    # let record: IptcRecord = (number, data_set, str)
+    result.add((number, data_set, str))
+    start += string_len + 5
+    if start >= finish:
+      break  # done
+
+
 
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
@@ -215,17 +334,12 @@ proc readSections(file: File): seq[Section] {.tpub.} =
       result.add((marker, start, finish))
       file.setFilePos(finish)
 
-      
-proc toString(str: seq[char]): string =
-  # Convert a sequence of char to a string.
-  result = newStringOfCap(len(str))
-  for ch in str:
-    add(result, ch)
 
-      
+
+
 type
   SectionKind = tuple[name: string, data: string] ## The section name and data.
-     
+
 proc kindOfSection(file: File, key: uint8, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
@@ -242,7 +356,7 @@ proc kindOfSection(file: File, key: uint8, start: int64, finish: int64):
   if read2(file) != 0xffe1:
     result.data = "not ffe1"
     return
-  
+
   # Read the block length.
   let sectionLen = finish - start
   if sectionLen < 4:
@@ -268,220 +382,118 @@ proc kindOfSection(file: File, key: uint8, start: int64, finish: int64):
 
   for key, value in sections:
     if buffer.len > value.len+2:
-      if buffer[0..value.len-1] == toSeq(value.items):
-        let data = buffer[value.len+1 .. buffer.len-1]
-        return (key, toString(data))
+      if compareBytes(buffer, 0, value):
+        let str = bytesToString(buffer, value.len+1, buffer.len - value.len - 1)
+        return (key, str)
 
   result.data = "section not xmp or exif"
 
-  
-# proc readMetadata*(file: File): Metadata =
-#   ## Read the file metadata. Return nil when the file is not
-#   ## understood. Fail quickly when the file is not the correct format.
+#[
+proc readMetadata*(file: File): Metadata =
+  ## Read and return the file metadata.
 
-#   var sections = readSections(file)
+  var sections = readSections(file)
 
-#   file.setFilePos(0)
-#   # file_size = file.getFileSize()
+  file.setFilePos(0)
+  # file_size = file.getFileSize()
 
-#   offsets = OrderedDict()
-#   dups = {}
+  offsets = OrderedDict()
+  dups = {}.toTable
 
-#   for key, start, finish in sections:
-#     name = nil
-#     if key == 0xe0:
-#       # todo: read the JFIF.
-#       # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
-#       # density 2, thumbnail width 1, thumbnail height 1, 3 * width * height thumbnail pixels.
-#       pass
+  for key, start, finish in sections:
+    name = nil
+    if key == 0xe0:
+      # todo: read the JFIF.
+      # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
+      # density 2, thumbnail width 1, thumbnail height 1, 3 * width * height thumbnail pixels.
+      discard
 
-#     elif key == 0xed:
-#       # IPTC
-#       file.setFilePos(start)
-#       buffer = file.read(finish - start)
-#       iptc_records = get_iptc_records(buffer)
-#       if iptc_records:
-#         result["iptc"] = get_iptc_info(iptc_records)
-#         name = "APPD({})(range_iptc)".format(key)
+    elif key == 0xed:
+      # IPTC
+      file.setFilePos(start)
+      buffer = file.read(finish - start)
+      iptc_records = getIptcRecords(buffer)
+      if iptc_records:
+        result["iptc"] = get_iptc_info(iptc_records)
+        name = "APPD({})(range_iptc)".format(key)
 
-#     elif key == 0xe1:
-#       # Could be xmp or iptc.
-#       data = kindOfSection(file, key, start, finish)
-#       if not data:
-#         continue
-#       kind, metadata_bytearray = data
-#       if kind == "xmp":
-#         xmp_bytearray = bytearray(metadata_bytearray)
-#         result["xmp"] = parse_xmp_xml(xmp_bytearray)
-#         name = "APP1({})(range_xmp)".format(key)
-#       elif kind == "exif":
-#         # Parse th exif, it is stored as a tiff file.
-#         from .tiff import read_header, read_ifd, print_ifd
-#         header_offset = start+4+len("exif\x00")+1
-#         ifd_offset, endian = read_header(file, header_offset)
-#         if ifd_offset is not nil:
-#           # print("ifd_offset = {}".format(ifd_offset))
-#           # print("endian = {}".format(endian))
-#           ifd = read_ifd(file, header_offset, endian, ifd_offset)
-#           # print_ifd("exif", ifd)
-#           process_exif(ifd)
+    elif key == 0xe1:
+      # Could be xmp or iptc.
+      data = kindOfSection(file, key, start, finish)
+      if not data:
+        continue
+      kind, metadata_bytearray = data
+      if kind == "xmp":
+        xmp_bytearray = bytearray(metadata_bytearray)
+        result["xmp"] = parse_xmp_xml(xmp_bytearray)
+        name = "APP1({})(range_xmp)".format(key)
+      elif kind == "exif":
+        # Parse th exif, it is stored as a tiff file.
+        from .tiff import read_header, read_ifd, print_ifd
+        header_offset = start+4+len("exif\x00")+1
+        ifd_offset, endian = read_header(file, header_offset)
+        if ifd_offset is not nil:
+          # print("ifd_offset = {}".format(ifd_offset))
+          # print("endian = {}".format(endian))
+          ifd = read_ifd(file, header_offset, endian, ifd_offset)
+          # print_ifd("exif", ifd)
+          process_exif(ifd)
 
-#           # Move the range_ keys to the offsets dictionary.
-#           delete_keys = []
-#           for key, value in ifd.items():
-#             if isinstance(key, str) and key.startswith("range_"):
-#               offsets[key] = value
-#               delete_keys.add(key)
-#           for key in delete_keys:
-#             del ifd[key]
+          # Move the range_ keys to the offsets dictionary.
+          delete_keys = []
+          for key, value in ifd.items():
+            if isinstance(key, str) and key.startswith("range_"):
+              offsets[key] = value
+              delete_keys.add(key)
+          for key in delete_keys:
+            del ifd[key]
 
-#           result["exif"] = ifd
-#           name = "APP1({})(range_exif)".format(key)
+          result["exif"] = ifd
+          name = "APP1({})(range_exif)".format(key)
 
-#     # sof0 - sof15
-#     elif key >= 0xc0 and key < 0xc0 + 16: # 192, 192 + 16
+    # sof0 - sof15
+    elif key >= 0xc0 and key < 0xc0 + 16: # 192, 192 + 16
 
-# # SOF0 (Start Of Frame 0) marker:
-# # Field                 Size       Description
-# # Marker Identifier     2 bytes    0xff, 0xc0 to identify SOF0 marker
-# # Length                2 bytes    This value equals to 8 + components*3 value
-# # Data precision        1 byte     This is in bits/sample, usually 8 (12 and 16 not supported by most software).
-# # Image height          2 bytes    This must be > 0
-# # Image Width           2 bytes    This must be > 0
-# # Number of components  1 byte     Usually 1 = grey scaled, 3 = color YcbCr or YIQ 4 = color CMYK
-# # Each component        3 bytes    Read each component data of 3 bytes. It contains, (component Id(1byte)(1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q), sampling factors (1byte) (bit 0-3 vertical., 4-7 horizontal.), quantization table number (1 byte)).
+# SOF0 (Start Of Frame 0) marker:
+# Field                 Size       Description
+# Marker Identifier     2 bytes    0xff, 0xc0 to identify SOF0 marker
+# Length                2 bytes    This value equals to 8 + components*3 value
+# Data precision        1 byte     This is in bits/sample, usually 8 (12 and 16 not supported by most software).
+# Image height          2 bytes    This must be > 0
+# Image Width           2 bytes    This must be > 0
+# Number of components  1 byte     Usually 1 = grey scaled, 3 = color YcbCr or YIQ 4 = color CMYK
+# Each component        3 bytes    Read each component data of 3 bytes. It contains, (component Id(1byte)(1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q), sampling factors (1byte) (bit 0-3 vertical., 4-7 horizontal.), quantization table number (1 byte)).
 
-# # Remarks:     JFIF uses either 1 component (Y, greyscaled) or 3 components (YCbCr, sometimes called YUV, colour).
+# Remarks:     JFIF uses either 1 component (Y, greyscaled) or 3 components (YCbCr, sometimes called YUV, colour).
 
 
-#       file.setFilePos(start)
-#       buffer = file.read(finish - start)
-#       sofx = get_sof0_info(key, buffer)
-#       if sofx:
-#         sofname = "sof{}".format(key-192)
-#         result[sofname] = sofx
-#         name = "{}({})(range_{})".format(sofname, key, key)
+      file.setFilePos(start)
+      buffer = file.read(finish - start)
+      sofx = get_sof0_info(key, buffer)
+      if sofx:
+        sofname = "sof{}".format(key-192)
+        result[sofname] = sofx
+        name = "{}({})(range_{})".format(sofname, key, key)
 
-#     if not name:
-#       name = "range_{}".format(key)
-#     if name in offsets:
-#       # We have more than one section with the same key. Create a
-#       # unigue name for it, by appending a number to the normal name,
-#       # i.e., range_d0_2.
-#       count = dups.get(name)
-#       if count:
-#         count += 1
-#       else:
-#         count = 2
-#       dups[name] = count
-#       name = "{}_{}".format(name, count)
-#     offsets[name] = (start, finish)
+    if not name:
+      name = "range_{}".format(key)
+    if name in offsets:
+      # We have more than one section with the same key. Create a
+      # unigue name for it, by appending a number to the normal name,
+      # i.e., range_d0_2.
+      count = dups.get(name)
+      if count:
+        count += 1
+      else:
+        count = 2
+      dups[name] = count
+      name = "{}_{}".format(name, count)
+    offsets[name] = (start, finish)
 
-#   result["offsets"] = offsets
-
+  result["offsets"] = offsets
+]#
 
 # #todo: change "offset" to section? or range?
-
-
-# class IptcRecord:
-#   """
-#   Identifies an IPTC record.
-#   """
-
-#   proc__init__(self, number, data_set, string):
-#     self.number = number
-#     self.data_set = data_set  # byte identifier
-#     self.string = string      # utf8 string
-
-#   proc__str__(self):
-#     return "number: {0}, data_set: {1}, string: {2}".format(
-#         self.number, self.data_set, self.string)
-
-# procget_iptc_records(block):
-#   """Create a list of all iptc records for the given iptc block.
-#   A list is returned containing all the records from the block.
-#   See iimv4.1.pdf at http://www.iptc.org/IIM/
-#   """
-#   records = []
-#   size = len(block)
-#   if size == 0:
-#     return records
-#   if size < 30:
-#     return records  # Too small for a valid iptc header.
-#   if size > 65502:
-#     return records  # Too much metadata for a jpg.
-
-#   # ff, ed, length, ...
-#   if block[0] != 0xff and block[0] != "\xff":
-#     return records  # Bad format.
-#   if block[1] != 0xed and block[1] != "\xed":
-#     return records  # Bad format.
-
-#   first_size = length2(block, 2)  # index 2, 3
-#   if first_size + 2 != size:
-#     return records  # Bad format.
-#   photoshop = block[4:17]
-#   if photoshop != b"Photoshop 3.0":
-#     return records  # Bad format.
-#   if block[17] != 0 and block[17] != "\x00":
-#     return records  # Bad format.
-#   eightBIM = block[18:22]
-#   if eightBIM != b"8BIM":
-#     return records  # Bad format.
-#   type = length2(block, 22)  # index 22, 23
-
-#   # one = block[24]
-#   # two = block[25]
-#   # three = block[26]
-#   # four = block[27]
-#   all_size = length2(block, 28)  # index 28, 29
-#   if all_size == 0:
-#     return records  # Bad format.
-#   if all_size + 30 > size:
-#     return records  # Bad format.
-
-# # 5FD0   FF ED 22 BC 50 68 6F 74 6F 73 68 6F 70 20 33 2E    ..".Photoshop 3.
-# # 5FE0   30 00 38 42 49 4D 04 04 00 00 00 00 04 8A 1C 02    0.8BIM..........
-# # 5FF0   00 00 02 00 02 1C 02 05 00 0B 64 72 70 32 30 39    ..........drp209
-# # 6000   31 31 36 39 64 1C 02 0A 00 01 31 1C 02 19 00 0D    1169d.....1.....
-# # 6010   4E 6F 72 74 68 20 41 6D 65 72 69 63 61 1C 02 19    North America...
-# # 6020   00 18 55 6E 69 74 65 64 20 53 74 61 74 65 73 20    ..United States
-# # 6030   6F 66 20 41 6D 65 72 69 63 61 1C 02 19 00 07 41    of America.....A
-
-#   # 1C number(1) data_set(1) value_len(2)  value
-#   # 1c 2         0           2              0002
-#   # 1c 2         5           000B           drp2091169d
-#   # 1c 2         5           000B           drp2091169d
-#   # 1C 02        0A          0001           31
-#   # 1C 02        19          000D           North America
-#   # 1C 02        19          0018           United States of America
-
-#   start = 30
-#   finish = 30 + all_size
-#   while 1:
-#     marker = length1(block, start + 0)
-#     if marker != 0x1c and marker != "\x1c":
-#       break  # done
-#     number = length1(block, start + 1)
-#     data_set = length1(block, start + 2)
-#     # index start+3, start+4
-#     string_len = length2(block, start + 3)
-#     if string_len > 0x7fff:
-#       # The length is over 32k. The next length bytes (removing high bit)
-#       # are the count. But we don't support this.
-#       return records  # Bad format.
-#     if start + string_len > finish:
-#       return records  # Bad format.
-#     bytes = block[start + 5: start + 5 + string_len]
-#     # strict, ignore, replace, backslashreplace, xmlcharrefreplace,
-#     string = bytes.decode("utf-8", "ignore")
-#     # string = unicode(bytes, "utf-8", "ignore")
-
-#     records.add(IptcRecord(number, data_set, string))
-#     start += string_len + 5
-#     if start >= finish:
-#       break  # done
-#   return records
 
 
 
