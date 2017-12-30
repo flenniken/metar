@@ -75,7 +75,7 @@ proc read2*(file: File): uint16 =
   ## Read two bytes from the current file position in big-endian.
   return readNumber[uint16](file, bigEndian)
 
-proc length2*(buffer: var openArray[uint8], index: Natural=0): uint16 =
+proc length2*(buffer: var openArray[uint8], index: Natural=0): int =
   ## Read two bytes from the buffer in big-endian starting at the
   ## given index.
-  return length[uint16](buffer, index, bigEndian)
+  return (int)length[uint16](buffer, index, bigEndian)

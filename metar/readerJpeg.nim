@@ -16,6 +16,8 @@ import tpub
 import readBytes
 import endians
 import sequtils
+import hexDump
+import unicode
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -132,10 +134,10 @@ const standAlone = {
     0xd9'u8,
 }
 
-proc compareBytes*(buffer: openArray[uint8|char], start: Natural,
-                   str: string): bool =
-  ## Compare a section of the buffer with the given string. Return
-  ## true when they match.
+proc compareBytes(buffer: openArray[uint8|char], start: Natural,
+                   str: string): bool {.tpub.} =
+  ## Compare a section of the buffer with the given string. Start at
+  ## the given index. Return true when they match.
   try:
     for ix, ch in str:
       if ch != (char)buffer[start+ix]:
@@ -144,19 +146,19 @@ proc compareBytes*(buffer: openArray[uint8|char], start: Natural,
     return false
   return true
 
-proc bytesToString*(buffer: openArray[uint8|char], index: Natural,
-                   length: Natural): string =
+proc bytesToString(buffer: openArray[uint8|char], index: Natural,
+                   length: Natural): string {.tpub.}=
   # Convert bytes in a buffer to a string. Start at the given index
   # and use length bytes.
   result = newStringOfCap(length)
-  for ix in index..length-1:
+  for ix in index..index+length-1:
     result.add((char)buffer[ix])
 
-# proc toString(str: seq[char|uint8]): string =
-#   # Convert a sequence of char to a string.
-#   result = newStringOfCap(len(str))
-#   for ch in str:
-#     add(result, ch)
+# proc stringToBytes(str: string): seq[char] {.tpub.} =
+#   # Convert a string to a list of bytes.
+#   result = newSeq[char]()
+#   for ch in string:
+#     result.add(str[ch])
 
 
 proc jpeg_section_name(value: uint8): string {.tpub.} =
@@ -192,52 +194,45 @@ proc jpegKeyName*(section: string, key: string): string =
 
 type
   IptcRecord = tuple[number: uint8, data_set: uint8, str: string] ## \
-  ## Identifies an IPTC record. A number, byte identifier and a utf8 string
+  ## Identifies an IPTC record. A number, byte identifier and a utf8 string.
 
-proc toString(self: IptcRecord): string =
-  result = "number: $1, data_set: $2, string: $3" % [
-    $self.number, $self.data_set, self.str]
+# todo: rename to $ all toString procs.
+proc toString(self: IptcRecord): string {.tpub.} =
+  result = "$1, $2, \"$3\"" % [
+    toHex(self.number), toHex(self.data_set), self.str]
 
 proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
-  ## Return a list of all iptc records for the given iptc block.  See
-  ## http://www.iptc.org/IIM/ and
-  ## https://www.iptc.org/std/IIM/4.1/specification/IIMV4.1.pdf
+  ## Return a list of all iptc records for the given iptc block.
 
-  result = @[]
-  let size = len(buffer)
-  if size == 0:
-    return
-  if size < 30:
-    return  # Too small for a valid iptc header.
-  if size > 65502:
-    return  # Too much metadata for a jpg.
+  # See: http://www.iptc.org/IIM/ and
+  # https://www.iptc.org/std/IIM/4.1/specification/IIMV4.1.pdf
+
+  let size = buffer.len
+  if size < 30 or size > 65502:
+    # todo: rename NotSupported to NotSupportedError everywhere.
+    # todo: rename all exception objects to end with "Error".
+    raise newException(NotSupported, "Invalid iptc buffer size.")
 
   # ff, ed, length, ...
-  if buffer[0] != 0xff:
-    return  # Bad format.
-  if buffer[1] != 0xed:
-    return  # Bad format.
+  if length2(buffer) != 0xffed:  # index 0, 1
+    raise newException(NotSupported, "Invalid iptc header.")
 
-  let first_size = (int)length2(buffer)  # index 2, 3
-  if first_size + 2 != size:
-    return  # Bad format.
+  if length2(buffer, 2) + 2 > size: # index 2, 3
+    raise newException(NotSupported, "Invalid iptc header length.")
+
   if not compareBytes(buffer, 4, "Photoshop 3.0"):
-    return  # Bad format.
-  if buffer[17] != 0:
-    return  # Bad format.
-  if not compareBytes(buffer, 18, "8BIM"):
-    return  # Bad format.
+    raise newException(NotSupported, "Not photoshop 3.")
+  if buffer[17] != 0 or not compareBytes(buffer, 18, "8BIM"):
+    raise newException(NotSupported, "Not 0 8BIM.")
   # let type = length2(buffer, 22)  # index 22, 23
 
   # one = buffer[24]
   # two = buffer[25]
   # three = buffer[26]
   # four = buffer[27]
-  let all_size = (int)length2(buffer, 28)  # index 28, 29
-  if all_size == 0:
-    return  # Bad format.
-  if all_size + 30 > size:
-    return  # Bad format.
+  let all_size = length2(buffer, 28)  # index 28, 29
+  if all_size == 0 or all_size + 30 > size:
+    raise newException(NotSupported, "Inconsistent size.")
 
   # 5FD0  FF ED 22 BC 50 68 6F 74 6F 73 68 6F 70 20 33 2E  ..".Photoshop 3.
   # 5FE0  30 00 38 42 49 4D 04 04 00 00 00 00 04 8A 1C 02  0.8BIM..........
@@ -257,6 +252,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
   var start = 30
   let finish = 30 + all_size
+  result = newSeq[IptcRecord]()
   while true:
     let marker = buffer[start + 0]
     if marker != 0x1c:
@@ -264,14 +260,19 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
     let number = buffer[start + 1]
     let data_set = buffer[start + 2]
     # index start+3, start+4
-    let string_len = (int)length2(buffer, start + 3)
+    let string_len = length2(buffer, start + 3)
     if string_len > 0x7fff:
       # The length is over 32k. The next length bytes (removing high bit)
       # are the count. But we don't support this.
-      return # Bad format.
+      raise newException(NotSupported, "Over 32k.")
     if start + string_len > finish:
       return # Bad format.
-    let str = bytesToString(buffer, start + 5, string_len)
+    var str = bytesToString(buffer, start + 5, string_len)
+    if validateUtf8(str) != -1:
+      str = ""
+    else:
+      # Remove 0 bytes.
+      str = str.replace("\0")
 
     # let record: IptcRecord = (number, data_set, str)
     result.add((number, data_set, str))
@@ -292,6 +293,12 @@ type
   Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
   ## section of a file. A section contains a byte identifier, the
   ## start offset and one past the ending offset.
+
+proc toString(section: Section): string {.tpub.} =
+  # Return a string representation of a section.
+  return "section = $1 ($2, $3) $4" % [toHex(section.marker),
+    toHex0(section.start), toHex0(section.finish),
+    toHex0(section.finish-section.start)]
 
 
 proc readSections(file: File): seq[Section] {.tpub.} =
@@ -335,12 +342,10 @@ proc readSections(file: File): seq[Section] {.tpub.} =
       file.setFilePos(finish)
 
 
-
-
 type
   SectionKind = tuple[name: string, data: string] ## The section name and data.
 
-proc kindOfSection(file: File, key: uint8, start: int64, finish: int64):
+proc xmpOrExifSection(file: File, key: uint8, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
   ## and associated string. Return an empty name when not xmp or exif.
@@ -414,12 +419,12 @@ proc readMetadata*(file: File): Metadata =
       buffer = file.read(finish - start)
       iptc_records = getIptcRecords(buffer)
       if iptc_records:
-        result["iptc"] = get_iptc_info(iptc_records)
+        result["iptc"] = getIptcInfo(iptc_records)
         name = "APPD({})(range_iptc)".format(key)
 
     elif key == 0xe1:
       # Could be xmp or iptc.
-      data = kindOfSection(file, key, start, finish)
+      data = xmpOrExifSection(file, key, start, finish)
       if not data:
         continue
       kind, metadata_bytearray = data
@@ -469,7 +474,7 @@ proc readMetadata*(file: File): Metadata =
 
       file.setFilePos(start)
       buffer = file.read(finish - start)
-      sofx = get_sof0_info(key, buffer)
+      sofx = getSOF0Info(buffer)
       if sofx:
         sofname = "sof{}".format(key-192)
         result[sofname] = sofx
@@ -496,39 +501,34 @@ proc readMetadata*(file: File): Metadata =
 # #todo: change "offset" to section? or range?
 
 
+proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
+  ## Extract the metadata from the iptc records.
+  ## Return a dictionary.
 
+  result = initOrderedTable[string, string]()
+  var keywords = newSeq[string]()
+  const keyword_key = 0x19
+  for record in records:
+    if record.number != 2:
+      continue
+    if record.data_set == 0:
+      continue
+      # result["ModelVersion"] = length2(record, 2)
+    elif record.data_set == keyword_key:
+      # Make a list of keywords.
+      if record.str != nil:
+        keywords.add(record.str)
+    else:
+      # The key is the data_set number.
+      result[$record.data_set] = record.str
 
-# procget_iptc_info(records):
-#   """
-#   Extract the metadata from the iptc records.
-#   Return a dictionary.
-#   """
-#   info = {}
-#   keywords = []
-#   keyword_key = 0x19
-#   for record in records:
-#     if record.number != 2:
-#       continue
-#     if record.data_set == 0x00:
-#       continue
-#       # info["ModelVersion"] = length2(record, 2)
-#     elif record.data_set == keyword_key:
-#       # keywords
-#       if not record.string:
-#         break
-#       keywords.add(record.string)
-#     else:
-#       # The key is the data_set number.
-#       info[record.data_set] = record.string
-#       # print record
-
-#   if keywords:
-#     info[keyword_key] = ",".join(keywords)
-#   return info
+  if keywords.len > 0:
+    result[$keyword_key] = keywords.join(",")
+  return result
 
 # procprocess_exif(exif):
 #   """
-#   Convert xp keys from 16 bit unicode to strings.
+#   Convert xp keys from 16 bit unicode to utf8 strings.
 #   """
 # # XPTitle(40091)
 # # XPComment(40092)
@@ -545,68 +545,83 @@ proc readMetadata*(file: File): Metadata =
 #       string = ba.decode("utf-16LE")
 #       exif[key] = string
 
-# # Baseline
-# # JPEGs with an SOF0 segment are known as Baseline JPEGs. They are always lossy, not progressive, use Huffman coding, and have a bit depth of 8. Every application that supports JPEG is supposed to at least support Baseline JPEG.
+# # JPEGs with an SOF0 segment are known as Baseline JPEGs. They are
+# # always lossy, not progressive, use Huffman coding, and have a bit
+# # depth of 8. Every application that supports JPEG is supposed to at
+# # least support Baseline JPEG.
 
-# # Progressive
-# # Progressive JPEG rearranges the image data, so that the the first part of it represents a very low quality version of the entire image, rather than a high quality version of a small part of the image.
+# # Progressive JPEG rearranges the image data, so that the the first
+# # part of it represents a very low quality version of the entire
+# # image, rather than a high quality version of a small part of the
+# # image. A progressive JPEG is identified by the presence of an
+# # SOF2, SOF6, SOF10, or SOF14 segment.
 
-# # A progressive JPEG is identified by the presence of an SOF2, SOF6, SOF10, or SOF14 segment.
+
+# SOF0 (Start Of Frame 0) marker:
+# Field                 Size       Description
+# Marker Identifier     2 bytes    0xff, 0xc0 to identify SOF0 marker
+# Length                2 bytes    This value equals to 8 + components*3 value
+# Data precision        1 byte     This is in bits/sample, usually 8 (12 and 16 not supported by most software).
+# Image height          2 bytes    This must be > 0
+# Image Width           2 bytes    This must be > 0
+# Number of components  1 byte     Usually 1 = grey scaled, 3 = color YcbCr or YIQ 4 = color CMYK
+# Each component        3 bytes    Read each component data of 3 bytes.
+# It contains, (component Id(1byte)(1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q),
+# sampling factors (1byte) (bit 0-3 vertical., 4-7 horizontal.),
+# quantization table number (1 byte)).
+
+# Remarks:     JFIF uses either 1 component (Y, greyscaled) or 3 components (YCbCr, sometimes called YUV, colour).
+
+#  11932-11951 	     19 range_192
+# 0000   FF C0 00 11 08 08 AB 0D 01 03 01 11 00 02 11 01    ................
+# 0010   03 11 01                                           ...
 
 
-# proc get_sof0_info(key: uint8, block: seq[uint8]):
-#   ## Return a dictionary given the SOF0 data.
+type
+  Sof0Info = ref object of RootObj
+    precision*: uint8
+    height*: uint16
+    width*: uint16
+    components*: seq[tuple[x: uint8, y:uint8, z:uint8]]
 
-# # SOF0 (Start Of Frame 0) marker:
-# # Field                 Size       Description
-# # Marker Identifier     2 bytes    0xff, 0xc0 to identify SOF0 marker
-# # Length                2 bytes    This value equals to 8 + components*3 value
-# # Data precision        1 byte     This is in bits/sample, usually 8 (12 and 16 not supported by most software).
-# # Image height          2 bytes    This must be > 0
-# # Image Width           2 bytes    This must be > 0
-# # Number of components  1 byte     Usually 1 = grey scaled, 3 = color YcbCr or YIQ 4 = color CMYK
-# # Each component        3 bytes    Read each component data of 3 bytes.
+proc toString(self: Sof0Info): string {.tpub.} =
+  var lines = newSeq[string]()
+  lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
+    $self.precision, $self.width, $self.height, $self.components.len])
+  for c in self.components:
+    lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
+  result = lines.join("\n")
 
-# # It contains, (component Id(1byte)(1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q),
-# # sampling factors (1byte) (bit 0-3 vertical., 4-7 horizontal.),
-# # quantization table number (1 byte)).
+proc getSof0Info(buffer: var openArray[uint8]): Sof0Info {.tpub.} =
+  ## Return the SOF0 information from the given buffer. Raise
+  ## NotSupported when the buffer cannot be decoded.
 
-# # Remarks:     JFIF uses either 1 component (Y, greyscaled) or 3 components (YCbCr, sometimes called YUV, colour).
+  if buffer.len < 13:
+    raise newException(NotSupported, "Invalid SOF0, not enough bytes.")
 
-# #  11932-11951 	     19 range_192
-# # 0000   FF C0 00 11 08 08 AB 0D 01 03 01 11 00 02 11 01    ................
-# # 0010   03 11 01                                           ...
+  if length2(buffer) != 0xffc0:  # index 0, 1
+    raise newException(NotSupported, "Invalid SOF0, not 0xffc0.")
 
-#   size = block.length
-#   if size < 13:
-#     return nil  # Bad format.
+  let size = length2(buffer, 2)  # index 2, 3
+  if size + 2 != buffer.len:
+    raise newException(NotSupported, "Invalid SOF0, wrong size.")
 
-#   # ff, c0, length, ...
-#   if block[0] != 0xff:
-#     return nil  # Bad format.
-#   # if block[1] != key:
-#   #   return nil  # Bad format.
+  let precision = buffer[4]  # index 4
+  let height = (uint16)length2(buffer, 5)  # index 5, 6
+  let width = (uint16)length2(buffer, 7)  # index 7, 8
+  let number_components = (int)buffer[9]  # index 9
 
-#   first_size = length2(block, 2)  # index 2, 3
-#   if first_size + 2 != size:
-#     return nil  # Bad format.
+  if number_components < 1 or
+     10 + 3 * number_components > buffer.len:
+    raise newException(NotSupported, "Invalid SOF0, number of components.")
 
-#   d = {}
-#   d["precision"] = length1(block, 4)  # index 4
-#   d["height"] = length2(block, 5)  # index 5, 6
-#   d["width"] = length2(block, 7)  # index 7, 8
+  var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
+  for ix in 0..number_components-1:
+    let start = 10 + 3 * ix
+    let x = buffer[start + 0]
+    let y = buffer[start + 1]
+    let z = buffer[start + 2]
+    components.add((x, y, z))
 
-#   number_components = length1(block, 9)  # index 9
-#   d["number_components"] = number_components
-
-#   if number_components < 1:
-#     return nil  # Bad format.
-#   if 10 + 3 * number_components > size:
-#     return nil  # Bad format.
-
-#   for ix in range(0, number_components):
-#     start = 10 + 3 * ix
-#     a = [length1(block, start + pos) for pos in (0, 1, 2)]
-#     d["component{}".format(ix)] = a
-
-#   return d
+  result = Sof0Info(precision: precision, width: width, height: height,
+                    components: components)

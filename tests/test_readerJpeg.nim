@@ -4,38 +4,54 @@ import unittest
 import metadata
 import readerJpeg
 import hexDump
+import tables
 
-proc toHex0[T](number: T): string =
-  ## Remove the leading 0's from toHex output.
-
-  let str = toHex(number)
-
-  # Count the leading zeros.
-  var count = 0
-  for char in str:
-    if char == '0':
-      count += 1
-    else:
-      break;
-
-  result = str[count..str.len-1]
-  if result == "":
-     return "0"
-
-# Section is only needed when testing.
-type
-  Section = tuple[marker: uint8, start: int64, finish: int64]
-
-proc toString(section: Section): string =
-  # Return a string representation of a section.
-  return "section = $1 ($2, $3) $4" % [toHex(section.marker),
-    toHex0(section.start), toHex0(section.finish),
-    $(section.finish-section.start)]
 
 proc openTestFile(filename: string): File =
   ## Open the given test file and return the file object.
   if not open(result, filename, fmRead):
     assert(false, "test file missing: " & filename)
+
+
+proc readSection(filename: string, marker: uint8): seq[uint8] =
+  ## Read and return a section from the given file.
+
+  var file = openTestFile(filename)
+  defer: file.close()
+  # Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
+  var sections = readSections(file)
+  var foundSection = false
+  for section in sections:
+    if section.marker == marker:
+      # echo section.toString()
+      let length = section.finish-section.start
+      result.newSeq(length)
+      file.setFilePos(section.start)
+      discard file.readBytes(result, 0, length)
+      foundSection = true
+      break
+  if not foundSection:
+    raise newException(ValueError, "The section was not found.")
+
+proc showSections(filename: string) =
+  ## Show the sections for the given file.
+
+  var file = openTestFile(filename)
+  defer: file.close()
+  var sections = readSections(file)
+  for section in sections:
+    echo section.toString()
+
+proc showSectionsFolder(folder: string) =
+  ## Show the sections for all the jpeg files in the given folder.
+
+  for x in walkDir(folder, false):
+    if x.kind == pcFile:
+      if x.path.endswith(".jpg"):
+        echo x.path
+        showSections(x.path)
+
+
 
 suite "Test readerJpeg.nim":
 
@@ -53,17 +69,6 @@ suite "Test readerJpeg.nim":
 
   test "jpegKeyName offsets invalid":
     check(jpegKeyName("offsets", "xxyzj") == nil)
-
-  test "test toHex0":
-    check(toHex0(0) == "0")
-    check(toHex0(0x10'u8) == "10")
-    check(toHex0(0x12'u8) == "12")
-    check(toHex0(0x1'u8) == "1")
-    check(toHex0(0x1234'u16) == "1234")
-    check(toHex0(0x0004'u16) == "4")
-    check(toHex0(0x0104'u16) == "104")
-    check(toHex0(0x12345678'u32) == "12345678")
-    check(toHex0(0x00000008'u32) == "8")
 
   when not defined(release):
 
@@ -125,19 +130,6 @@ suite "Test readerJpeg.nim":
       check(sections[10].start == 0x894)
       check(sections[10].finish == 0x896)
 
-    # Show the sections for all the test files in a dir.
-    # test "test readSections all":
-    #   let dir = "/Users/steve/code/thumbnailstest/"
-    #   for x in walkDir(dir, false):
-    #     if x.kind == pcFile:
-    #       if x.path.endswith(".jpg"):
-    #         echo x.path
-    #         var file = openTestFile(x.path)
-    #         defer: file.close()
-    #         var sections = readSections(file)
-    #         for section in sections:
-    #           echo section.toString()
-
     test "test readSections not jpeg":
       var file = openTestFile("testfiles/image.tif")
       defer: file.close()
@@ -148,7 +140,7 @@ suite "Test readerJpeg.nim":
         gotException = true
       check(gotException)
 
-    test "test kindOfSection exif":
+    test "test xmpOrExifSection exif":
       let filename = "testfiles/agency-photographer-example.jpg"
       var file = openTestFile(filename)
       defer: file.close()
@@ -170,7 +162,7 @@ suite "Test readerJpeg.nim":
       # discard file.readBytes(buffer, 0, length)
       # echo hexDump(buffer, (uint16)xstart)
 
-      var (name, data) = kindOfSection(file, 0xe1, xstart, xend)
+      var (name, data) = xmpOrExifSection(file, 0xe1, xstart, xend)
       check(name == "exif")
       let expectedLen = xend-xstart-4
       # data.len is the data without the "Exif0".
@@ -179,7 +171,7 @@ suite "Test readerJpeg.nim":
         echo "data.len = " & $data.len
         fail()
 
-    test "test kindOfSection xmp":
+    test "test xmpOrExifSection xmp":
       let filename = "testfiles/agency-photographer-example.jpg"
       var file = openTestFile(filename)
       defer: file.close()
@@ -191,19 +183,19 @@ suite "Test readerJpeg.nim":
       file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = kindOfSection(file, 0xe1, 0x2B2E, 0x5FD0)
+      var (name, data) = xmpOrExifSection(file, 0xe1, 0x2B2E, 0x5FD0)
       check(name == "xmp")
       check(data.len < 0x5FD0 - 0x2B2E - 4)
 
-    test "test kindOfSection key not e1":
+    test "test xmpOrExifSection key not e1":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
 
-      var (name, data) = kindOfSection(file, 0xe2, 0, 100)
+      var (name, data) = xmpOrExifSection(file, 0xe2, 0, 100)
       check(name == "")
       check(data == "key not e1")
 
-    test "test kindOfSection check return data":
+    test "test xmpOrExifSection check return data":
       var filename = "testKindOfSection.bin"
       var testFile: File
       # ff, e1, length, string+0, data
@@ -218,11 +210,11 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = kindOfSection(testFile, 0xe1, 0, bytes.len)
+      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
       check(name == "exif")
       check(data == "test")
 
-    test "test kindOfSection not ffe1":
+    test "test xmpOrExifSection not ffe1":
       var filename = "testKindOfSection.bin"
       var testFile: File
       # ff, e1, length, string+0, data
@@ -235,11 +227,11 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = kindOfSection(testFile, 0xe1, 0, bytes.len)
+      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
       check(name == "")
       check(data == "not ffe1")
 
-    test "test kindOfSection section length < 4":
+    test "test xmpOrExifSection section length < 4":
       var filename = "testKindOfSection.bin"
       var testFile: File
       # ff, e1, length, string+0, data
@@ -252,7 +244,7 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = kindOfSection(testFile, 0xe1, 0, bytes.len)
+      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
       check(name == "")
       check(data == "section length < 4")
 
@@ -273,3 +265,64 @@ suite "Test readerJpeg.nim":
       check(bytesToString(buffer, 9, 1) == "t")
       check(bytesToString(buffer, 9, 4) == "test")
       check(bytesToString(buffer, 4, 4) == "Exif")
+
+    test "test getSof0Info":
+      var buffer = [0xff'u8, 0xc0, 0, 0x11, 0x08, 0x00, 0x64,
+                    0x00, 0x96, 0x03, 0x01, 0x22, 0x00, 0x02,
+                    0x11, 0x01, 0x03, 0x11, 0x01]
+      let info = getSof0Info(buffer)
+      # echo info.toString()
+      check(info.precision == 8)
+      check(info.width == 150)
+      check(info.height == 100)
+      check(info.components.len == 3)
+      check(info.components[0] == (1u8, 34u8, 0u8))
+      check(info.components[1] == (2u8, 17u8, 1u8))
+      check(info.components[2] == (3u8, 17u8, 1u8))
+
+    test "test getSof0Info e1":
+      var buffer = [0xff'u8, 0xc0]
+      try:
+        discard getSof0Info(buffer)
+      except NotSupported:
+        var msg = "Invalid SOF0, not enough bytes."
+        check(msg == getCurrentExceptionMsg())
+      except:
+        check(false == true)
+
+    test "test getSof0Info happy path":
+      var buffer = readSection("testfiles/image.jpg", 0xc0)
+      # echo hexDump(buffer)
+
+      var info = getSof0Info(buffer)
+      # echo info.toString()
+      check(info.width == 150)
+      check(info.height == 100)
+
+    test "test getIptcRecords":
+      # let folder = "/Users/steve/code/metarnim/testfiles"
+      const folder = "."
+      showSectionsFolder(folder)
+
+      let filename = "testfiles/agency-photographer-example.jpg"
+      # showSections(filename)
+
+      var buffer = readSection(filename, 0xed)
+      # echo hexDump(buffer[0..<16])
+
+      var records = getIptcRecords(buffer)
+      check(records.len == 52)
+
+      for record in records:
+        # echo record.toString()
+        check(record.number == 2)
+        check(record.data_set >= 0u8)
+        check(record.str.len >= 0)
+
+      let info = getIptcInfo(records)
+      check(info.len == 18)
+      # for k, v in info:
+      #   echo k & "=" & v
+      var keywords = info["25"].split(',')
+      check(keywords.len == 34)
+      check(keywords[0] == "North America")
