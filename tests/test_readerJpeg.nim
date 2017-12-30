@@ -23,7 +23,7 @@ proc readSection(filename: string, marker: uint8): seq[uint8] =
   var foundSection = false
   for section in sections:
     if section.marker == marker:
-      # echo section.toString()
+      # echo $section
       let length = section.finish-section.start
       result.newSeq(length)
       file.setFilePos(section.start)
@@ -40,7 +40,7 @@ proc showSections(filename: string) =
   defer: file.close()
   var sections = readSections(file)
   for section in sections:
-    echo section.toString()
+    echo $section
 
 proc showSectionsFolder(folder: string) =
   ## Show the sections for all the jpeg files in the given folder.
@@ -120,7 +120,7 @@ suite "Test readerJpeg.nim":
 
       var sections = readSections(file)
       # for section in sections:
-      #   echo section.toString()
+      #   echo $section
 
       check(sections.len == 11)
       check(sections[0].marker == 0xd8)
@@ -136,7 +136,7 @@ suite "Test readerJpeg.nim":
       var gotException = false
       try:
         discard readSections(file)
-      except UnknownFormat:
+      except UnknownFormatError:
         gotException = true
       check(gotException)
 
@@ -147,7 +147,7 @@ suite "Test readerJpeg.nim":
 
       # var sections = readSections(file)
       # for section in sections:
-      #   echo section.toString()
+      #   echo $section
 
       file = openTestFile(filename)
       defer: file.close()
@@ -178,7 +178,7 @@ suite "Test readerJpeg.nim":
 
       # var sections = readSections(file)
       # for section in sections:
-      #   echo section.toString()
+      #   echo $section
 
       file = openTestFile(filename)
       defer: file.close()
@@ -271,7 +271,7 @@ suite "Test readerJpeg.nim":
                     0x00, 0x96, 0x03, 0x01, 0x22, 0x00, 0x02,
                     0x11, 0x01, 0x03, 0x11, 0x01]
       let info = getSof0Info(buffer)
-      # echo info.toString()
+      # echo $info
       check(info.precision == 8)
       check(info.width == 150)
       check(info.height == 100)
@@ -284,7 +284,7 @@ suite "Test readerJpeg.nim":
       var buffer = [0xff'u8, 0xc0]
       try:
         discard getSof0Info(buffer)
-      except NotSupported:
+      except NotSupportedError:
         var msg = "Invalid SOF0, not enough bytes."
         check(msg == getCurrentExceptionMsg())
       except:
@@ -295,7 +295,7 @@ suite "Test readerJpeg.nim":
       # echo hexDump(buffer)
 
       var info = getSof0Info(buffer)
-      # echo info.toString()
+      # echo $info
       check(info.width == 150)
       check(info.height == 100)
 
@@ -312,9 +312,10 @@ suite "Test readerJpeg.nim":
 
       var records = getIptcRecords(buffer)
       check(records.len == 52)
-
+      check($records[1] == """02, 05, "drp2091169d"""")
+      
       for record in records:
-        # echo record.toString()
+        # echo $record
         check(record.number == 2)
         check(record.data_set >= 0u8)
         check(record.str.len >= 0)

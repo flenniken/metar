@@ -13,8 +13,8 @@ import metadata
 
 proc readDng*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
-  ## file format is unknown. It may generate UnknownFormat and
-  ## NotSupported exceptions.
+  ## file format is unknown. It may generate UnknownFormatError and
+  ## NotSupportedError exceptions.
   return nil
 
 proc dngKeyName*(section: string, key: string): string =

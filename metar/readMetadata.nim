@@ -72,9 +72,9 @@ proc readMetadata*(filename: string): Metadata =
       result = reader(f)
       if result != nil:
         break
-    except UnknownFormat:
+    except UnknownFormatError:
       continue
-    except NotSupported:
+    except NotSupportedError:
       echo "Not supported: " & getCurrentExceptionMsg()
       continue
 
