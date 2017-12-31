@@ -5,6 +5,7 @@ import metadata
 import readerJpeg
 import hexDump
 import tables
+import json
 
 
 proc openTestFile(filename: string): File =
@@ -265,11 +266,11 @@ suite "Test readerJpeg.nim":
       check(bytesToString(buffer, 9, 4) == "test")
       check(bytesToString(buffer, 4, 4) == "Exif")
 
-    test "test getSof0Info":
+    test "test getSofInfo":
       var buffer = [0xff'u8, 0xc0, 0, 0x11, 0x08, 0x00, 0x64,
                     0x00, 0x96, 0x03, 0x01, 0x22, 0x00, 0x02,
                     0x11, 0x01, 0x03, 0x11, 0x01]
-      let info = getSof0Info(buffer)
+      let info = getSofInfo(buffer)
 
       let expected = """
 precision: 8, width: 150, height: 100, num components: 3
@@ -285,21 +286,21 @@ precision: 8, width: 150, height: 100, num components: 3
       check(info.components[1] == (2u8, 17u8, 1u8))
       check(info.components[2] == (3u8, 17u8, 1u8))
 
-    test "test getSof0Info e1":
+    test "test getSofInfo e1":
       var buffer = [0xff'u8, 0xc0]
       try:
-        discard getSof0Info(buffer)
+        discard getSofInfo(buffer)
       except NotSupportedError:
         var msg = "Invalid SOF0, not enough bytes."
         check(msg == getCurrentExceptionMsg())
       except:
         check(false == true)
 
-    test "test getSof0Info happy path":
+    test "test getSofInfo happy path":
       var buffer = readSection("testfiles/image.jpg", 0xc0)
       # echo hexDump(buffer)
 
-      var info = getSof0Info(buffer)
+      var info = getSofInfo(buffer)
       # echo $info
       check(info.width == 150)
       check(info.height == 100)
@@ -318,7 +319,7 @@ precision: 8, width: 150, height: 100, num components: 3
       var records = getIptcRecords(buffer)
       check(records.len == 52)
       check($records[1] == """02, 05, "drp2091169d"""")
-      
+
       for record in records:
         # echo $record
         check(record.number == 2)
@@ -332,3 +333,14 @@ precision: 8, width: 150, height: 100, num components: 3
       var keywords = info["25"].split(',')
       check(keywords.len == 34)
       check(keywords[0] == "North America")
+
+    test "test SofInfoToMeta":
+
+      var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
+      components.add((1u8, 2u8, 3u8))
+      components.add((4u8, 5u8, 6u8))
+      var info = SofInfo(precision: 8u8, width: 200u16, height: 100u16,
+                          components: components)
+      let json = $SofInfoToMeta(info)
+      let expected = """{"precision":8,"width":200,"height":100,"components":[[1,2,3],[4,5,6]]}"""
+      check(json == expected)

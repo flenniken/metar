@@ -18,6 +18,7 @@ import endians
 import sequtils
 import hexDump
 import unicode
+import json
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -134,6 +135,7 @@ const standAlone = {
     0xd9'u8,
 }
 
+
 proc compareBytes(buffer: openArray[uint8|char], start: Natural,
                    str: string): bool {.tpub.} =
   ## Compare a section of the buffer with the given string. Start at
@@ -146,6 +148,7 @@ proc compareBytes(buffer: openArray[uint8|char], start: Natural,
     return false
   return true
 
+
 proc bytesToString(buffer: openArray[uint8|char], index: Natural,
                    length: Natural): string {.tpub.}=
   # Convert bytes in a buffer to a string. Start at the given index
@@ -153,6 +156,7 @@ proc bytesToString(buffer: openArray[uint8|char], index: Natural,
   result = newStringOfCap(length)
   for ix in index..index+length-1:
     result.add((char)buffer[ix])
+
 
 # proc stringToBytes(str: string): seq[char] {.tpub.} =
 #   # Convert a string to a list of bytes.
@@ -166,10 +170,12 @@ proc jpeg_section_name(value: uint8): string {.tpub.} =
   ## known.
   result = known_jpeg_section_names.getOrDefault(value)
 
+
 proc iptc_name(value: uint8): string {.tpub.} =
   ## Return the iptc name for the given value or nil when not
   ## known.
   result = known_iptc_names.getOrDefault(value)
+
 
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
@@ -196,9 +202,11 @@ type
   IptcRecord = tuple[number: uint8, data_set: uint8, str: string] ## \
   ## Identifies an IPTC record. A number, byte identifier and a utf8 string.
 
+
 proc `$`(self: IptcRecord): string {.tpub.} =
   result = "$1, $2, \"$3\"" % [
     toHex(self.number), toHex(self.data_set), self.str]
+
 
 proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   ## Return a list of all iptc records for the given iptc block.
@@ -280,7 +288,6 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
       break  # done
 
 
-
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
   ## file format is unknown. It may generate UnknownFormatError and
@@ -292,6 +299,7 @@ type
   Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
   ## section of a file. A section contains a byte identifier, the
   ## start offset and one past the ending offset.
+
 
 proc `$`(section: Section): string {.tpub.} =
   # Return a string representation of a section.
@@ -344,8 +352,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
 type
   SectionKind = tuple[name: string, data: string] ## The section name and data.
 
-# todo: read buffer into memory and process the buffer instead of using file.
-# buffer: var openArray[uint8]
+
 proc xmpOrExifSection(file: File, key: uint8, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
@@ -398,11 +405,11 @@ proc readMetadata*(file: File): Metadata =
   file.setFilePos(0)
   # file_size = file.getFileSize()
 
-  offsets = OrderedDict()
-  dups = {}.toTable
+  offsets = initOrderedTable[string, string]()
+  dups = initTable[string, string]()
 
   for key, start, finish in sections:
-    name = nil
+    var name = nil
     if key == 0xe0:
       # todo: read the JFIF.
       # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
@@ -416,20 +423,18 @@ proc readMetadata*(file: File): Metadata =
       iptc_records = getIptcRecords(buffer)
       if iptc_records:
         result["iptc"] = getIptcInfo(iptc_records)
-        name = "APPD({})(range_iptc)".format(key)
+        name = "APPD($1)(range_iptc)" % [key]
 
     elif key == 0xe1:
       # Could be xmp or iptc.
-      data = xmpOrExifSection(file, key, start, finish)
-      if not data:
-        continue
-      kind, metadata_bytearray = data
-      if kind == "xmp":
+      name, data = xmpOrExifSection(file, key, start, finish)
+      if name == "xmp":
         xmp_bytearray = bytearray(metadata_bytearray)
         result["xmp"] = parse_xmp_xml(xmp_bytearray)
-        name = "APP1({})(range_xmp)".format(key)
-      elif kind == "exif":
-        # Parse th exif, it is stored as a tiff file.
+        name = "APP1($1)(range_xmp)" % [key]
+
+      elif name == "exif":
+        # Parse the exif, it is stored as a tiff file.
         from .tiff import read_header, read_ifd, print_ifd
         header_offset = start+4+len("exif\x00")+1
         ifd_offset, endian = read_header(file, header_offset)
@@ -454,25 +459,11 @@ proc readMetadata*(file: File): Metadata =
 
     # sof0 - sof15
     elif key >= 0xc0 and key < 0xc0 + 16: # 192, 192 + 16
-
-# SOF0 (Start Of Frame 0) marker:
-# Field                 Size       Description
-# Marker Identifier     2 bytes    0xff, 0xc0 to identify SOF0 marker
-# Length                2 bytes    This value equals to 8 + components*3 value
-# Data precision        1 byte     This is in bits/sample, usually 8 (12 and 16 not supported by most software).
-# Image height          2 bytes    This must be > 0
-# Image Width           2 bytes    This must be > 0
-# Number of components  1 byte     Usually 1 = grey scaled, 3 = color YcbCr or YIQ 4 = color CMYK
-# Each component        3 bytes    Read each component data of 3 bytes. It contains, (component Id(1byte)(1 = Y, 2 = Cb, 3 = Cr, 4 = I, 5 = Q), sampling factors (1byte) (bit 0-3 vertical., 4-7 horizontal.), quantization table number (1 byte)).
-
-# Remarks:     JFIF uses either 1 component (Y, greyscaled) or 3 components (YCbCr, sometimes called YUV, colour).
-
-
       file.setFilePos(start)
       buffer = file.read(finish - start)
       sofx = getSOF0Info(buffer)
       if sofx:
-        sofname = "sof{}".format(key-192)
+        sofname = "sof$1" % [$(key-192)]
         result[sofname] = sofx
         name = "{}({})(range_{})".format(sofname, key, key)
 
@@ -493,9 +484,6 @@ proc readMetadata*(file: File): Metadata =
 
   result["offsets"] = offsets
 ]#
-
-# #todo: change "offset" to section? or range?
-
 
 proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
   ## Extract the metadata from the iptc records.
@@ -572,15 +560,34 @@ proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.
 # 0000   FF C0 00 11 08 08 AB 0D 01 03 01 11 00 02 11 01    ................
 # 0010   03 11 01                                           ...
 
-
+# todo: make a macro like tpub for types.
 type
-  Sof0Info = ref object of RootObj
+  SofInfo* = ref object of RootObj
     precision*: uint8
     height*: uint16
     width*: uint16
-    components*: seq[tuple[x: uint8, y:uint8, z:uint8]]
+    components*: seq[tuple[x: uint8, y:uint8, z:uint8]] ## \
+  ## SofInfo contains the information from the JPEG SOF sections.
 
-proc `$`(self: Sof0Info): string {.tpub.} =
+proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
+  ## Return metadata for the given SofInfo object.
+
+  result = newJObject()
+  result["precision"] = %* (int)self.precision
+  result["width"] = %* (int)self.width
+  result["height"] = %* (int)self.height
+  # Turn the sequence of tuples into a sequence of seq of ints so
+  # the json code and handle it.
+  var jcomp = newSeq[seq[int]]()
+  for c in self.components:
+    let cseq = @[(int)c.x, (int)c.y, (int)c.z]
+    jcomp.add(cseq)
+  result["components"] = %* jcomp
+
+
+proc `$`(self: SofInfo): string {.tpub.} =
+  ## Return a string representation of the given SofInfo object.
+
   var lines = newSeq[string]()
   lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
     $self.precision, $self.width, $self.height, $self.components.len])
@@ -588,7 +595,8 @@ proc `$`(self: Sof0Info): string {.tpub.} =
     lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
   result = lines.join("\n")
 
-proc getSof0Info(buffer: var openArray[uint8]): Sof0Info {.tpub.} =
+
+proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   ## Return the SOF0 information from the given buffer. Raise
   ## NotSupportedError when the buffer cannot be decoded.
 
@@ -619,5 +627,5 @@ proc getSof0Info(buffer: var openArray[uint8]): Sof0Info {.tpub.} =
     let z = buffer[start + 2]
     components.add((x, y, z))
 
-  result = Sof0Info(precision: precision, width: width, height: height,
+  result = SofInfo(precision: precision, width: width, height: height,
                     components: components)
