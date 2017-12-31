@@ -208,8 +208,6 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
   let size = buffer.len
   if size < 30 or size > 65502:
-    # todo: rename NotSupported to NotSupportedError everywhere.
-    # todo: rename all exception objects to end with "Error".
     raise newException(NotSupportedError, "Invalid iptc buffer size.")
 
   # ff, ed, length, ...
@@ -251,11 +249,13 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
   var start = 30
   let finish = 30 + all_size
+  # todo: decode this part of the iptc section:
+  # echo hexDump(@buffer[finish..buffer.len-1])
   result = newSeq[IptcRecord]()
   while true:
     let marker = buffer[start + 0]
     if marker != 0x1c:
-      break  # done
+      raise newException(NotSupportedError, "marker not 0x1c")
     let number = buffer[start + 1]
     let data_set = buffer[start + 2]
     # index start+3, start+4
@@ -265,7 +265,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
       # are the count. But we don't support this.
       raise newException(NotSupportedError, "Over 32k.")
     if start + string_len > finish:
-      return # Bad format.
+      raise newException(NotSupportedError, "Invalid string length")
     var str = bytesToString(buffer, start + 5, string_len)
     if validateUtf8(str) != -1:
       str = ""
@@ -344,6 +344,8 @@ proc readSections(file: File): seq[Section] {.tpub.} =
 type
   SectionKind = tuple[name: string, data: string] ## The section name and data.
 
+# todo: read buffer into memory and process the buffer instead of using file.
+# buffer: var openArray[uint8]
 proc xmpOrExifSection(file: File, key: uint8, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
@@ -351,32 +353,27 @@ proc xmpOrExifSection(file: File, key: uint8, start: int64, finish: int64):
 
   result = ("", "")
   if key != 0xe1:
-    result.data = "key not e1"
-    return
+    raise newException(NotSupportedError, "key not e1")
 
   # ff, e1, length, string+0, data
   # length + 2 is the total section length.
   file.setFilePos(start)
   if read2(file) != 0xffe1:
-    result.data = "not ffe1"
-    return
+    raise newException(NotSupportedError, "not ffe1")
 
   # Read the block length.
   let sectionLen = finish - start
   if sectionLen < 4:
-    result.data = "section length < 4"
-    return
+    raise newException(NotSupportedError, "section length < 4")
   let length = (int32)read2(file)
   if length != sectionLen-2:
-    result.data = "Invalid section length, " & $length & " != " & $(sectionLen-2)
-    return
+    raise newException(NotSupportedError, "Invalid section length")
 
   # Read in the block to the buffer.
   var buffer: seq[char]
   buffer.newSeq(length-2)
   if file.readChars(buffer, 0, length-2) != length-2:
-    result.data = "did not read enough"
-    return
+    raise newException(NotSupportedError, "File too short")
 
   # Return the exif or xmp data. The block contains Exif|xmp, 0, data.
   const sections = {

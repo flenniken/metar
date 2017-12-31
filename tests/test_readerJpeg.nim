@@ -123,6 +123,7 @@ suite "Test readerJpeg.nim":
       #   echo $section
 
       check(sections.len == 11)
+      check($sections[0] == "section = D8 (0, 2) 2")
       check(sections[0].marker == 0xd8)
       check(sections[0].start == 0)
       check(sections[0].finish == 2)
@@ -191,9 +192,8 @@ suite "Test readerJpeg.nim":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
 
-      var (name, data) = xmpOrExifSection(file, 0xe2, 0, 100)
-      check(name == "")
-      check(data == "key not e1")
+      expect NotSupportedError:
+        discard xmpOrExifSection(file, 0xe2, 0, 100)
 
     test "test xmpOrExifSection check return data":
       var filename = "testKindOfSection.bin"
@@ -227,11 +227,11 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
-      check(name == "")
-      check(data == "not ffe1")
+      expect NotSupportedError:
+        discard xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
 
     test "test xmpOrExifSection section length < 4":
+
       var filename = "testKindOfSection.bin"
       var testFile: File
       # ff, e1, length, string+0, data
@@ -244,9 +244,8 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
-      check(name == "")
-      check(data == "section length < 4")
+      expect NotSupportedError:
+        discard xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
 
     test "test compareBytes":
       var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
@@ -271,7 +270,13 @@ suite "Test readerJpeg.nim":
                     0x00, 0x96, 0x03, 0x01, 0x22, 0x00, 0x02,
                     0x11, 0x01, 0x03, 0x11, 0x01]
       let info = getSof0Info(buffer)
-      # echo $info
+
+      let expected = """
+precision: 8, width: 150, height: 100, num components: 3
+1, 34, 0
+2, 17, 1
+3, 17, 1"""
+      check($info == expected)
       check(info.precision == 8)
       check(info.width == 150)
       check(info.height == 100)
@@ -308,7 +313,7 @@ suite "Test readerJpeg.nim":
       # showSections(filename)
 
       var buffer = readSection(filename, 0xed)
-      # echo hexDump(buffer[0..<16])
+      # echo hexDump(buffer, 0x5FD0)
 
       var records = getIptcRecords(buffer)
       check(records.len == 52)

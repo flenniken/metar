@@ -91,15 +91,17 @@ task t, "Build and run t.nim":
 
 task coverage, "Run code coverage of tests":
 
-
-  # Compile code with coverage support.
-  for filename in get_test_filenames():
+  # var test_filenames = get_test_filenames()
+  var test_filenames = ["test_readerJpeg"]
+  
+  # Compile test code with coverage support.
+  for filename in test_filenames:
     exec "nim --debugger:native --passC:--coverage --passL:--coverage c tests/" & filename
 
   exec "lcov --base-directory . --directory . --zerocounters -q"
 
   # Run test code.
-  for filename in get_test_filenames():
+  for filename in test_filenames:
     exec "tests/" & filename
 
   exec "lcov --base-directory . --directory . -c -o coverage.info"
