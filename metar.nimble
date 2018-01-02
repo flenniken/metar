@@ -89,11 +89,14 @@ task tree, "Show the project directory tree":
 task t, "Build and run t.nim":
   exec "nim c -r --out:bin/t metar/private/t"
 
+task t2, "Build and run t2.nim":
+  exec "nim c -r --out:bin/t2 metar/private/t2"
+
 task coverage, "Run code coverage of tests":
 
   # var test_filenames = get_test_filenames()
   var test_filenames = ["test_readerJpeg"]
-  
+
   # Compile test code with coverage support.
   for filename in test_filenames:
     exec "nim --debugger:native --passC:--coverage --passL:--coverage c tests/" & filename
