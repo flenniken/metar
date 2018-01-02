@@ -8,12 +8,25 @@ import strutils
 import tables
 import metadata
 import json
+import tpub
 
 # todo: The start of xml has a unique id. Store that too.
 # <?xpacket begin=' ' id="W5M0MpCehiHzreSzNTczkc9d"?>
 # xpacket_id = W5M0MpCehiHzreSzNTczkc9d
 
-proc parseNamespaces*(xmp: string): OrderedTable[string, string] =
+proc parseXpacket(xpacket: string): seq[tuple[key:string, value:string]] {.tpub.}=
+  # Parse the xpacket and return a list of key=value pairs.
+
+  result = newSeq[tuple[key:string, value:string]]()
+  var x = xpacket.strip()
+  for pair in x.split():
+    var keyValuePair = pair.split('=')
+    if keyValuePair.len == 2:
+      var key = keyValuePair[0].strip()
+      var value = keyValuePair[1].strip(chars=WhiteSpace+{'"'})
+      result.add(("xpacket:" & key, value))
+
+proc parseNamespaces(xmp: string): OrderedTable[string, string] {.tpub.} =
   ## Return a dictionary of the namespace values mapped to their short
   ## form.
 
@@ -83,6 +96,15 @@ proc parseNamespaces*(xmp: string): OrderedTable[string, string] =
 
     "dc:title": {"x-default": "Raw Title"}
 
+
+<?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
+<x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Public XMP Toolkit Core 3.5">
+
+  "begin" = ""
+  "id" = "W5M0MpCehiHzreSzNTczkc9d"
+  "xmlns:x" = "adobe:ns:meta/"
+  "x:xmptk" = "Public XMP Toolkit Core 3.5"
+
 ]#
 
 type
@@ -127,8 +149,18 @@ proc xmpParser*(xmp: string, debug=0): Metadata =
           kind = kList
 
     of xmlAttribute:
+      # echo "$1 = $2, $3" % [$xmlParser.kind, xmlParser.attrKey, xmlParser.attrValue]
       if xmlParser.attrKey == "xml:lang":
         key = xmlParser.attrValue
+
+    # of xmlEntity:
+    #   echo "$1 = $2" % [$xmlParser.kind, xmlParser.entityName]
+
+    of xmlPI:
+      if xmlParser.piName == "xpacket":
+        var list = parseXpacket(xmlParser.piRest)
+        for item in list:
+          result[item.key] = newJString(item.value)
 
     of xmlCharData:
       case kind
