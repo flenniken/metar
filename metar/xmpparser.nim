@@ -111,7 +111,7 @@ type
   XmpKind = enum
     kUnknown, kString, kList, kTable
 
-proc xmpParser*(xmp: string, debug=0): Metadata =
+proc xmpParser*(xmp: string): Metadata =
   ## Parse the xmp xml and return its metadata.
 
   var stream = newStringStream(xmp)

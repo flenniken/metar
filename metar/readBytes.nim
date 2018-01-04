@@ -9,6 +9,8 @@ or buffer.
 
 ]##
 
+#todo: rename file to readNumber.
+
 import endians
 
 proc length*[T](buffer: var openArray[uint8], index=0,
