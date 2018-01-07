@@ -146,13 +146,26 @@ proc compareBytes(buffer: openArray[uint8|char], start: Natural,
   return true
 
 
-proc bytesToString(buffer: openArray[uint8|char], index: Natural,
-                   length: Natural): string {.tpub.} =
-  # Convert bytes in a buffer to a string. Start at the given index
-  # and use length bytes.
-  result = newStringOfCap(length)
-  for ix in index..index+length-1:
+proc bytesToString(buffer: openArray[uint8|char], index: Natural=0,
+                   length: Natural=0): string {.tpub.} =
+  # Read bytes in a buffer to a string. Start at the given index
+  # and use length bytes. When length is 0, the buffer length is used.
+  var strLen:Natural
+  if length == 0:
+    strLen = buffer.len
+  else:
+    strLen = length
+
+  result = newStringOfCap(strLen)
+  for ix in index..index+strLen-1:
     result.add((char)buffer[ix])
+
+  # Make sure the bytes are valid utf8.
+  if validateUtf8(result) != -1:
+    raise newException(ValueError, "Invalid utf-8 bytes.")
+
+  # Remove 0 bytes.
+  result = result.replace("\0")
 
 
 # proc stringToBytes(str: string): seq[char] {.tpub.} =
@@ -162,7 +175,8 @@ proc bytesToString(buffer: openArray[uint8|char], index: Natural,
 #     result.add(str[ch])
 
 
-proc readSection(file: File, start: int64, finish: int64): seq[uint8] =
+
+proc readSection(file: File, start: int64, finish: int64): seq[uint8] {.tpub.} =
   ## Read the given section of the file.
 
   file.setFilePos(start)
@@ -264,11 +278,6 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
     if start + string_len > finish:
       raise newException(NotSupportedError, "Invalid string length")
     var str = bytesToString(buffer, start + 5, string_len)
-    if validateUtf8(str) != -1:
-      str = ""
-    else:
-      # Remove 0 bytes.
-      str = str.replace("\0")
 
     # let record: IptcRecord = (number, data_set, str)
     result.add((number, data_set, str))
@@ -279,7 +288,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
 
 type
-  Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
+  Section* = tuple[marker: uint8, start: int64, finish: int64] ## \ A
   ## section of a file. A section contains a byte identifier, the
   ## start offset and one past the ending offset.
 
@@ -332,49 +341,70 @@ proc readSections(file: File): seq[Section] {.tpub.} =
       file.setFilePos(finish)
 
 
+proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
+  ## Read and return all the sections with the given marker.
+
+  result = @[]
+  var sections = readSections(file)
+  for section in sections:
+    if section.marker == marker:
+      result.add(section)
+
+
+# proc read2Check(file, "Invalid section length"): int =
+#   ## Read two bytes big endian from the current file position.  If
+#   ## there is not two bytes remaining, raise a NotSupportedError with
+#   ## the given message.
+
+#   # Read the block length.
+#   let sectionLen = finish - start
+#   if sectionLen < 4:
+#     raise newException(NotSupportedError, "section length < 4")
+#   let length = (int32)read2(file)
+#   if length != sectionLen-2:
+#     raise newException(NotSupportedError, "Invalid section length")
+
 type
-  SectionKind = tuple[name: string, data: string] ## The section name and data.
+  SectionKind = tuple[name: string, data: seq[uint8]] ##\
+  ## The section name and associated data.
 
 
-proc xmpOrExifSection(file: File, marker: uint8, start: int64, finish: int64):
+proc xmpOrExifSection(file: File, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
   ## and associated string. Return an empty name when not xmp or exif.
 
-  result = ("", "")
-  if marker != 0xe1:
-    raise newException(NotSupportedError, "marker not e1")
+  # ff, e1, length2, string+0, data
 
-  # ff, e1, length, string+0, data
-  # length + 2 is the total section length.
+  if finish - start < 10:
+    raise newException(NotSupportedError, "Invalid section")
+
+  # Read the section.
   file.setFilePos(start)
-  if read2(file) != 0xffe1:
-    raise newException(NotSupportedError, "not ffe1")
+  var buffer = readSection(file, start, finish)
+
+  if length2(buffer, 0) != 0xffe1:
+    raise newException(NotSupportedError, "section start not ffe1")
 
   # Read the block length.
-  let sectionLen = finish - start
-  if sectionLen < 4:
-    raise newException(NotSupportedError, "section length < 4")
-  let length = (int32)read2(file)
-  if length != sectionLen-2:
+  let length = (int32)length2(buffer, 2)
+  if length != finish - start - 2:
     raise newException(NotSupportedError, "Invalid section length")
 
-  # Read the block.
-  var buffer = readSection(file, start+2, finish)
-
   # Return the exif or xmp data. The block contains Exif|xmp, 0, data.
-  const sections = {
+  const mtypes = {
     "exif": "Exif",
     "xmp": "http://ns.adobe.com/xap/1.0/",
   }.toOrderedTable
 
-  for marker, value in sections:
-    if buffer.len > value.len+2:
-      if compareBytes(buffer, 0, value):
-        let str = bytesToString(buffer, value.len+1, buffer.len - value.len - 1)
-        return (marker, str)
+  result = ("", nil)
+  for name, value in mtypes:
+    if compareBytes(buffer, 4, value):
+      let start = 4 + value.len + 1
+      let length = buffer.len - start
+      let data = buffer[start..<start+length]
+      result = (name, data)
 
-  result.data = "section not xmp or exif"
 
 proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
   ## Extract the metadata from the iptc records.
@@ -576,9 +606,10 @@ proc readJpeg*(file: File): Metadata =
 
     elif marker == 0xe1:
       # Could be xmp or exif.
-      let sectionKind = xmpOrExifSection(file, marker, start, finish)
+      let sectionKind = xmpOrExifSection(file, start, finish)
       if sectionKind.name == "xmp":
-        result["xmp"] = xmpParser(sectionKind.data)
+        let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
+        result["xmp"] = xmpParser(xml)
         name = "APP1($1)(range_xmp)" % [$marker]
 #[
       elif sectionKind.name == "exif":

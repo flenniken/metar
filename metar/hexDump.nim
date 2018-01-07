@@ -12,7 +12,7 @@ iterator iterator16(bytes: seq[uint8]): seq[uint8] {.tpub.} =
     xstart = xend
     xend = xstart + 16
 
-proc hexDump*(bytes: seq[uint8|char], offset: uint16=0): string =
+proc hexDump*(bytes: seq[uint8], offset: uint16=0): string =
   ## Return a hex string of the given bytes. The offset parameter is
   ## the starting offset shown on the left.
   ##

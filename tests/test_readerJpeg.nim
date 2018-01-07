@@ -14,25 +14,20 @@ proc openTestFile(filename: string): File =
     assert(false, "test file missing: " & filename)
 
 
-proc readSection(filename: string, marker: uint8): seq[uint8] =
-  ## Read and return a section from the given file.
+proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =
+  ## Read and return a section buffer from the given file.
 
   var file = openTestFile(filename)
   defer: file.close()
-  # Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
-  var sections = readSections(file)
-  var foundSection = false
-  for section in sections:
-    if section.marker == marker:
-      # echo $section
-      let length = section.finish-section.start
-      result.newSeq(length)
-      file.setFilePos(section.start)
-      discard file.readBytes(result, 0, length)
-      foundSection = true
-      break
-  if not foundSection:
-    raise newException(ValueError, "The section was not found.")
+
+  # Find the marker section.
+  let sections = findMarkerSections(file, marker)
+  if sections.len != 1:
+    raise newException(ValueError, "One section was not found.")
+
+  let section = sections[0]
+  result = readSection(file, section.start, section.finish)
+
 
 proc showSections(filename: string) =
   ## Show the sections for the given file.
@@ -157,44 +152,55 @@ suite "Test readerJpeg.nim":
       let xstart = 2
       let xend = 0x1ec4
 
-      # let length = xend-xstart
-      # var buffer: seq[uint8]
-      # buffer.newSeq(length)
-      # file.setFilePos(xstart)
-      # discard file.readBytes(buffer, 0, length)
-      # echo hexDump(buffer, (uint16)xstart)
-
-      var (name, data) = xmpOrExifSection(file, 0xe1, xstart, xend)
+      var (name, data) = xmpOrExifSection(file, xstart, xend)
       check(name == "exif")
-      let expectedLen = xend-xstart-4
       # data.len is the data without the "Exif0".
-      if data.len != expectedLen-5:
+      let expectedLen = xend-xstart-4-5
+      if data.len != expectedLen:
         echo "expectedLen = " & $expectedLen
         echo "data.len = " & $data.len
         fail()
+
+      # echo hexDump(data[0..200])
+
+      check(data[0] == 0)
+      check(data[1] == 0x4d)
+      check(data[2] == 0x4d)
 
     test "test xmpOrExifSection xmp":
       let filename = "testfiles/agency-photographer-example.jpg"
       var file = openTestFile(filename)
       defer: file.close()
 
-      # var sections = readSections(file)
-      # for section in sections:
-      #   echo $section
+      # Find the xmp section.
+      let sections = findMarkerSections(file, 0xe1)
+      # echo "sections.len = " & $sections.len
+      check(sections.len == 2)
+      let section = sections[1]
 
-      file = openTestFile(filename)
-      defer: file.close()
+      # # Dump the start of the section.
+      # var buffer = readSection(file, section.start, section.finish)
+      # echo hexDump(buffer[0..200])
 
-      var (name, data) = xmpOrExifSection(file, 0xe1, 0x2B2E, 0x5FD0)
+      # Parse the xmp section.
+      var (name, data) = xmpOrExifSection(file, section.start,
+                                          section.finish)
       check(name == "xmp")
-      check(data.len < 0x5FD0 - 0x2B2E - 4)
+      check(data.len < section.finish - section.start - 4)
+      # echo hexDump(data[0..200])
+
+      var str = bytesToString(data)
+
+      let expected = "<?xpacket begin="
+      check($str[0..<expected.len] == expected)
+
 
     test "test xmpOrExifSection key not e1":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
 
       expect NotSupportedError:
-        discard xmpOrExifSection(file, 0xe2, 0, 100)
+        discard xmpOrExifSection(file, 0, 100)
 
     test "test xmpOrExifSection check return data":
       var filename = "testKindOfSection.bin"
@@ -211,9 +217,10 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      var (name, data) = xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
+      var (name, data) = xmpOrExifSection(testFile, 0, bytes.len)
       check(name == "exif")
-      check(data == "test")
+      discard data
+      # check(data == "test")
 
     test "test xmpOrExifSection not ffe1":
       var filename = "testKindOfSection.bin"
@@ -229,7 +236,7 @@ suite "Test readerJpeg.nim":
       defer: file.close()
 
       expect NotSupportedError:
-        discard xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
+        discard xmpOrExifSection(testFile, 0, bytes.len)
 
     test "test xmpOrExifSection section length < 4":
 
@@ -246,7 +253,7 @@ suite "Test readerJpeg.nim":
       defer: file.close()
 
       expect NotSupportedError:
-        discard xmpOrExifSection(testFile, 0xe1, 0, bytes.len)
+        discard xmpOrExifSection(testFile, 0, bytes.len)
 
     test "test compareBytes":
       var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
@@ -297,7 +304,7 @@ precision: 8, width: 150, height: 100, num components: 3
         check(false == true)
 
     test "test getSofInfo happy path":
-      var buffer = readSection("testfiles/image.jpg", 0xc0)
+      var buffer = readSectionBuffer("testfiles/image.jpg", 0xc0)
       # echo hexDump(buffer)
 
       var info = getSofInfo(buffer)
@@ -313,7 +320,7 @@ precision: 8, width: 150, height: 100, num components: 3
       let filename = "testfiles/agency-photographer-example.jpg"
       # showSections(filename)
 
-      var buffer = readSection(filename, 0xed)
+      var buffer = readSectionBuffer(filename, 0xed)
       # echo hexDump(buffer, 0x5FD0)
 
       var records = getIptcRecords(buffer)
