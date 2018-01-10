@@ -146,23 +146,38 @@ proc compareBytes(buffer: openArray[uint8|char], start: Natural,
   return true
 
 
+proc stripInvalidUtf8(str: string): string {.tpub.} =
+  ## Strip out invalid utf characters and return a new string.
+
+  result = newStringOfCap(str.len)
+
+  var start = 0
+  while true:
+    var pos = validateUtf8(str[start..<str.len])
+    if pos == -1:
+      pos = str.len
+
+    for ix in start..<pos:
+      result.add(str[ix])
+
+    start = pos + 1
+    if start > str.len:
+      break
+
+
 proc bytesToString(buffer: openArray[uint8|char], index: Natural=0,
                    length: Natural=0): string {.tpub.} =
-  # Read bytes in a buffer to a string. Start at the given index
-  # and use length bytes. When length is 0, the buffer length is used.
-  var strLen:Natural
+  # Create a string from bytes in a buffer.  Use bytes starting at the
+  # given index and use length bytes.
   if length == 0:
-    strLen = buffer.len
-  else:
-    strLen = length
+    return ""
 
-  result = newStringOfCap(strLen)
-  for ix in index..index+strLen-1:
+  result = newStringOfCap(length)
+  for ix in index..index+length-1:
     result.add((char)buffer[ix])
 
-  # Make sure the bytes are valid utf8.
-  if validateUtf8(result) != -1:
-    raise newException(ValueError, "Invalid utf-8 bytes.")
+  # Strip invalid unicode characters.
+  result = stripInvalidUtf8(result)
 
   # Remove 0 bytes.
   result = result.replace("\0")
@@ -176,14 +191,19 @@ proc bytesToString(buffer: openArray[uint8|char], index: Natural=0,
 
 
 
-proc readSection(file: File, start: int64, finish: int64): seq[uint8] {.tpub.} =
-  ## Read the given section of the file.
+proc readSection(file: File, start: int64, finish: int64,
+                 maxLength: Natural=64*1024): seq[uint8] {.tpub.} =
+  ## Read the given section of the file. Raise an exception if
+  ## finish-start > the maxLength.
 
   file.setFilePos(start)
   var length = finish - start
+  if length > maxLength:
+    raise newException(NotSupportedError, "Jpeg: max section length exceeded.")
+
   result = newSeq[uint8](length)
   if file.readBytes(result, 0, length) != length:
-    raise newException(NotSupportedError, "Unable to read all bytes.")
+    raise newException(NotSupportedError, "Jpeg: unable to read all bytes.")
 
 
 proc jpeg_section_name(value: uint8): string {.tpub.} =
@@ -219,19 +239,19 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
   let size = buffer.len
   if size < 30 or size > 65502:
-    raise newException(NotSupportedError, "Invalid iptc buffer size.")
+    raise newException(NotSupportedError, "Iptc: Invalid buffer size.")
 
   # ff, ed, length, ...
   if length2(buffer) != 0xffed:  # index 0, 1
-    raise newException(NotSupportedError, "Invalid iptc header.")
+    raise newException(NotSupportedError, "Iptc: Invalid header.")
 
   if length2(buffer, 2) + 2 > size: # index 2, 3
-    raise newException(NotSupportedError, "Invalid iptc header length.")
+    raise newException(NotSupportedError, "Iptc: Invalid header length.")
 
   if not compareBytes(buffer, 4, "Photoshop 3.0"):
-    raise newException(NotSupportedError, "Not photoshop 3.")
+    raise newException(NotSupportedError, "Iptc: Not photoshop 3.")
   if buffer[17] != 0 or not compareBytes(buffer, 18, "8BIM"):
-    raise newException(NotSupportedError, "Not 0 8BIM.")
+    raise newException(NotSupportedError, "Iptc: Not 0 8BIM.")
   # let type = length2(buffer, 22)  # index 22, 23
 
   # one = buffer[24]
@@ -240,7 +260,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   # four = buffer[27]
   let all_size = length2(buffer, 28)  # index 28, 29
   if all_size == 0 or all_size + 30 > size:
-    raise newException(NotSupportedError, "Inconsistent size.")
+    raise newException(NotSupportedError, "Iptc: Inconsistent size.")
 
   # 5FD0  FF ED 22 BC 50 68 6F 74 6F 73 68 6F 70 20 33 2E  ..".Photoshop 3.
   # 5FE0  30 00 38 42 49 4D 04 04 00 00 00 00 04 8A 1C 02  0.8BIM..........
@@ -266,7 +286,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   while true:
     let marker = buffer[start + 0]
     if marker != 0x1c:
-      raise newException(NotSupportedError, "marker not 0x1c")
+      raise newException(NotSupportedError, "Iptc: marker not 0x1c.")
     let number = buffer[start + 1]
     let data_set = buffer[start + 2]
     # index start+3, start+4
@@ -274,9 +294,9 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
     if string_len > 0x7fff:
       # The length is over 32k. The next length bytes (removing high bit)
       # are the count. But we don't support this.
-      raise newException(NotSupportedError, "Over 32k.")
+      raise newException(NotSupportedError, "Iptc: over 32k.")
     if start + string_len > finish:
-      raise newException(NotSupportedError, "Invalid string length")
+      raise newException(NotSupportedError, "Iptc: invalid string length.")
     var str = bytesToString(buffer, start + 5, string_len)
 
     # let record: IptcRecord = (number, data_set, str)
@@ -302,8 +322,8 @@ proc `$`(section: Section): string {.tpub.} =
 
 proc readSections(file: File): seq[Section] {.tpub.} =
   ## Read the Jpeg file and return a list of sections.  Raise an
-  ## UnknownFormatError exception when the file is not a jpeg.  Raise an
-  ## NotSupportedError exception when the file is bad.
+  ## UnknownFormatError exception when the file is not a jpeg.  Raise
+  ## an NotSupportedError exception when the file cannot be decoded.
 
   # A JPEG starts with ff, d8.
   file.setFilePos(0)
@@ -317,7 +337,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
   while true:
     var start = finish
     if read1(file) != 0xff:
-      raise newException(NotSupportedError, "Invalid JPEG. Byte not 0xff.")
+      raise newException(NotSupportedError, "Jpeg: byte not 0xff.")
     var marker = read1(file)
     if marker == 0xda:
       # The rest of the file except the last two bytes are the pixels.
@@ -334,7 +354,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
     else:
       var length = read2(file)
       if length < 2:
-        raise newException(NotSupportedError, "Invalid JPEG, block is less than 2 bytes.")
+        raise newException(NotSupportedError, "Jpeg: block is less than 2 bytes.")
 
       finish = start + int64(length + 2)
       result.add((marker, start, finish))
@@ -377,19 +397,19 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
   # ff, e1, length2, string+0, data
 
   if finish - start < 10:
-    raise newException(NotSupportedError, "Invalid section")
+    raise newException(NotSupportedError, "xmpExif: Section too short.")
 
   # Read the section.
   file.setFilePos(start)
   var buffer = readSection(file, start, finish)
 
   if length2(buffer, 0) != 0xffe1:
-    raise newException(NotSupportedError, "section start not ffe1")
+    raise newException(NotSupportedError, "xmpExif: section start not 0xffe1.")
 
   # Read the block length.
   let length = (int32)length2(buffer, 2)
   if length != finish - start - 2:
-    raise newException(NotSupportedError, "Invalid section length")
+    raise newException(NotSupportedError, "xmpExif: invalid block length.")
 
   # Return the exif or xmp data. The block contains Exif|xmp, 0, data.
   const mtypes = {
@@ -523,14 +543,14 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   ## NotSupportedError when the buffer cannot be decoded.
 
   if buffer.len < 13:
-    raise newException(NotSupportedError, "Invalid SOF0, not enough bytes.")
+    raise newException(NotSupportedError, "SOF: not enough bytes.")
 
   if length2(buffer) != 0xffc0:  # index 0, 1
-    raise newException(NotSupportedError, "Invalid SOF0, not 0xffc0.")
+    raise newException(NotSupportedError, "SOF: not 0xffc0.")
 
   let size = length2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
-    raise newException(NotSupportedError, "Invalid SOF0, wrong size.")
+    raise newException(NotSupportedError, "SOF: wrong size.")
 
   let precision = buffer[4]  # index 4
   let height = (uint16)length2(buffer, 5)  # index 5, 6
@@ -539,7 +559,7 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
 
   if number_components < 1 or
      10 + 3 * number_components > buffer.len:
-    raise newException(NotSupportedError, "Invalid SOF0, number of components.")
+    raise newException(NotSupportedError, "SOF: number of components.")
 
   var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
   for ix in 0..number_components-1:

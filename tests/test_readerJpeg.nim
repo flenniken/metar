@@ -7,6 +7,16 @@ import hexDump
 import tables
 import json
 
+proc createTestFile(bytes: var openArray[uint8]):
+  tuple[file:File, filename:string] =
+  ## Create a test file with the given bytes.
+
+  var filename = "testfile.bin"
+  var file: File
+  if open(file, filename, fmReadWrite):
+    if file.writeBytes(bytes, 0, bytes.len) != bytes.len:
+      raise newException(IOError, "Unable to write all the bytes.")
+  result = (file, filename)
 
 proc openTestFile(filename: string): File =
   ## Open the given test file and return the file object.
@@ -142,25 +152,21 @@ suite "Test readerJpeg.nim":
       var file = openTestFile(filename)
       defer: file.close()
 
-      # var sections = readSections(file)
-      # for section in sections:
-      #   echo $section
+      # Find the xmp section.
+      let sections = findMarkerSections(file, 0xe1)
+      # echo "sections.len = " & $sections.len
+      check(sections.len == 2)
+      let section = sections[0]
 
-      file = openTestFile(filename)
-      defer: file.close()
+      # # Dump the start of the section.
+      # var buffer = readSection(file, section.start, section.finish)
+      # echo hexDump(buffer[0..200])
 
-      let xstart = 2
-      let xend = 0x1ec4
-
-      var (name, data) = xmpOrExifSection(file, xstart, xend)
+      # Extract the exif data.
+      var (name, data) = xmpOrExifSection(file, section.start,
+                                          section.finish)
       check(name == "exif")
-      # data.len is the data without the "Exif0".
-      let expectedLen = xend-xstart-4-5
-      if data.len != expectedLen:
-        echo "expectedLen = " & $expectedLen
-        echo "data.len = " & $data.len
-        fail()
-
+      check(data.len < section.finish - section.start - 4)
       # echo hexDump(data[0..200])
 
       check(data[0] == 0)
@@ -182,78 +188,80 @@ suite "Test readerJpeg.nim":
       # var buffer = readSection(file, section.start, section.finish)
       # echo hexDump(buffer[0..200])
 
-      # Parse the xmp section.
+      # Extract the xmp data.
       var (name, data) = xmpOrExifSection(file, section.start,
                                           section.finish)
       check(name == "xmp")
       check(data.len < section.finish - section.start - 4)
       # echo hexDump(data[0..200])
 
-      var str = bytesToString(data)
+      var str = bytesToString(data, 0, data.len)
 
       let expected = "<?xpacket begin="
       check($str[0..<expected.len] == expected)
 
 
-    test "test xmpOrExifSection key not e1":
+    test "test xmpOrExifSection not ffe1":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
 
-      expect NotSupportedError:
+      try:
         discard xmpOrExifSection(file, 0, 100)
+        fail()
+      except NotSupportedError:
+        let msg = getCurrentExceptionMsg()
+        check(msg == "xmpExif: section start not 0xffe1.")
 
-    test "test xmpOrExifSection check return data":
-      var filename = "testKindOfSection.bin"
-      var testFile: File
-      # ff, e1, length, string+0, data
-      var bytes = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
-        (uint8)'i', (uint8)'f', 0x00, (uint8)'t',
-        (uint8)'e', (uint8)'s', (uint8)'t']
-      if open(testFile, filename, fmWrite):
-        discard testFile.writeBytes(bytes, 0, bytes.len)
-      testFile.close()
-      defer: removeFile(filename)
 
-      var file = openTestFile(filename)
-      defer: file.close()
-
-      var (name, data) = xmpOrExifSection(testFile, 0, bytes.len)
-      check(name == "exif")
-      discard data
-      # check(data == "test")
-
-    test "test xmpOrExifSection not ffe1":
-      var filename = "testKindOfSection.bin"
-      var testFile: File
+    test "test xmpOrExifSection too short":
+      # Create a test file.
       # ff, e1, length, string+0, data
       var bytes = [0x00'u8, 0x00]
-      if open(testFile, filename, fmWrite):
-        discard testFile.writeBytes(bytes, 0, bytes.len)
-      testFile.close()
-      defer: removeFile(filename)
+      var (file, filename) = createTestFile(bytes)
+      defer:
+        file.close()
+        removeFile(filename)
 
-      var file = openTestFile(filename)
-      defer: file.close()
+      try:
+        discard xmpOrExifSection(file, 0, bytes.len)
+        fail()
+      except NotSupportedError:
+        let msg = getCurrentExceptionMsg()
+        check(msg == "xmpExif: Section too short.")
 
-      expect NotSupportedError:
-        discard xmpOrExifSection(testFile, 0, bytes.len)
-
-    test "test xmpOrExifSection section length < 4":
-
-      var filename = "testKindOfSection.bin"
-      var testFile: File
+    test "test xmpOrExifSection 10":
+      # Create a test file.
       # ff, e1, length, string+0, data
-      var bytes = [0xff'u8, 0xe1]
-      if open(testFile, filename, fmWrite):
-        discard testFile.writeBytes(bytes, 0, bytes.len)
-      testFile.close()
-      defer: removeFile(filename)
+      var bytes = [0'u8, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      var (file, filename) = createTestFile(bytes)
+      defer:
+        file.close()
+        removeFile(filename)
 
-      var file = openTestFile(filename)
-      defer: file.close()
+      try:
+        discard xmpOrExifSection(file, 0, bytes.len-1)
+        fail()
+      except NotSupportedError:
+        let msg = getCurrentExceptionMsg()
+        check(msg == "xmpExif: Section too short.")
 
-      expect NotSupportedError:
-        discard xmpOrExifSection(testFile, 0, bytes.len)
+
+    test "test xmpOrExifSection section length":
+      # Create a test file.
+      # ff, e1, length, string+0, data
+      var bytes = [0xff'u8, 0xe1, 0x88, 0x99, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+      var (file, filename) = createTestFile(bytes)
+      defer:
+        file.close()
+        removeFile(filename)
+
+      try:
+        discard xmpOrExifSection(file, 0, bytes.len)
+        fail()
+      except NotSupportedError:
+        let msg = getCurrentExceptionMsg()
+        check(msg == "xmpExif: invalid block length.")
+
 
     test "test compareBytes":
       var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
@@ -265,13 +273,42 @@ suite "Test readerJpeg.nim":
       check(compareBytes(buffer, 4, "Exig") == false)
 
     test "test bytesToString":
-      var buffer = [0xff'u8, 0xe1, 0, 11, (uint8)'E', (uint8)'x',
-              (uint8)'i', (uint8)'f', 0x00, (uint8)'t',
-              (uint8)'e', (uint8)'s', (uint8)'t']
+      var buffer = [(uint8)'s', (uint8)'t', (uint8)'a', (uint8)'r',
+        (uint8)'E', (uint8)'x', (uint8)'i', (uint8)'f', (uint8)'f',
+        (uint8)'t', (uint8)'e', (uint8)'s', (uint8)'t']
+      check(bytesToString(buffer, 0, buffer.len) == "starExifftest")
       check(bytesToString(buffer, 9, 0) == "")
       check(bytesToString(buffer, 9, 1) == "t")
       check(bytesToString(buffer, 9, 4) == "test")
       check(bytesToString(buffer, 4, 4) == "Exif")
+
+    test "test bytesToString2":
+      var buffer = newSeq[uint8]()
+      check(bytesToString(buffer, 0, 0) == "")
+
+    test "test bytesToString error":
+      var buffer = [0x1u8, 0x02, 0x03, 0x04]
+      try:
+        discard bytesToString(buffer, 0, buffer.len+1)
+        fail()
+      except:
+        # echo repr(getCurrentException())
+        # echo getCurrentException().name
+        # echo getCurrentExceptionMsg()
+        discard
+
+
+    test "test bytesToString error2":
+      var buffer:seq[uint8] = @[]
+      try:
+        discard bytesToString(buffer, 0, buffer.len+1)
+        fail()
+      except:
+        # echo repr(getCurrentException())
+        # echo getCurrentException().name
+        # echo getCurrentExceptionMsg()
+        discard
+
 
     test "test getSofInfo":
       var buffer = [0xff'u8, 0xc0, 0, 0x11, 0x08, 0x00, 0x64,
@@ -298,7 +335,7 @@ precision: 8, width: 150, height: 100, num components: 3
       try:
         discard getSofInfo(buffer)
       except NotSupportedError:
-        var msg = "Invalid SOF0, not enough bytes."
+        var msg = "SOF: not enough bytes."
         check(msg == getCurrentExceptionMsg())
       except:
         check(false == true)
@@ -351,3 +388,22 @@ precision: 8, width: 150, height: 100, num components: 3
       let json = $SofInfoToMeta(info)
       let expected = """{"precision":8,"width":200,"height":100,"components":[[1,2,3],[4,5,6]]}"""
       check(json == expected)
+
+    test "test stripInvalidUtf8":
+
+      check(stripInvalidUtf8("string") == "string")
+
+    test "test stripInvalidUtf8 2":
+
+      let buffer = [0xa9'u8, (uint8)'a', (uint8)'b', (uint8)'c']
+      var str = newStringOfCap(buffer.len)
+      for ix in 0..buffer.len-1:
+        str.add((char)buffer[ix])
+      check(stripInvalidUtf8(str) == "abc")
+
+    test "test stripInvalidUtf8 3":
+      let buffer = [(uint8)'a', (uint8)'b', 0xa9'u8, (uint8)'c']
+      var str = newStringOfCap(buffer.len)
+      for ix in 0..buffer.len-1:
+        str.add((char)buffer[ix])
+      check(stripInvalidUtf8(str) == "abc")
