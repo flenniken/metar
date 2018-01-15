@@ -61,6 +61,17 @@ proc showSectionsFolder(folder: string) =
 
 suite "Test readerJpeg.nim":
 
+  test "readJpg image":
+    var file = openTestFile("testfiles/image.jpg")
+    defer: file.close()
+    var metadata = readJpeg(file)
+    echo pretty(metadata)
+    var str: string = ""
+    toUgly(str, metadata)
+    echo str
+    # todo work on the print method
+    # todo: support multiple sof4 etc items.
+
   test "jpegKeyName iptc Title":
     check(jpegKeyName("iptc", "5") == "Title")
 
@@ -349,6 +360,26 @@ precision: 8, width: 150, height: 100, num components: 3
       check(info.width == 150)
       check(info.height == 100)
 
+      var metadata: Metadata = newJObject()
+      metadata["sofname"] = SofInfoToMeta(info)
+      # echo pretty(metadata)
+
+    test "test getSofInfo sof4":
+
+      var buffer = [
+        0xff'u8, 0xc4, 0, 0x1f, 0x00, 0x00, 0x01, 0x05,
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02,
+        0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+        0x0b]
+      let info = getSofInfo(buffer)
+      # echo $info
+      check(info.precision == 0)
+      check(info.width == 1281)
+      check(info.height == 1)
+      check(info.components.len == 1)
+      check(info.components[0] == (1u8, 1u8, 1u8))
+
     test "test getIptcRecords":
       # let folder = "/Users/steve/code/metarnim/testfiles"
       const folder = "."
@@ -388,6 +419,7 @@ precision: 8, width: 150, height: 100, num components: 3
       let json = $SofInfoToMeta(info)
       let expected = """{"precision":8,"width":200,"height":100,"components":[[1,2,3],[4,5,6]]}"""
       check(json == expected)
+
 
     test "test stripInvalidUtf8":
 

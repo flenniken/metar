@@ -55,6 +55,7 @@ const known_jpeg_section_names = {
   0xc1'u8: "SOF1",
   0xc2'u8: "SOF2",
   0xc3'u8: "SOF3",
+  0xc4'u8: "SOF4",
   0xc5'u8: "SOF5",
   0xc6'u8: "SOF6",
   0xc7'u8: "SOF7",
@@ -539,14 +540,17 @@ proc `$`(self: SofInfo): string {.tpub.} =
 
 
 proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
-  ## Return the SOF0 information from the given buffer. Raise
+  ## Return the SOF information from the given buffer. Raise
   ## NotSupportedError when the buffer cannot be decoded.
 
   if buffer.len < 13:
     raise newException(NotSupportedError, "SOF: not enough bytes.")
 
-  if length2(buffer) != 0xffc0:  # index 0, 1
-    raise newException(NotSupportedError, "SOF: not 0xffc0.")
+  if buffer[0] != 0xff:  # index 0
+    raise newException(NotSupportedError, "SOF: not 0xff.")
+
+  if buffer[1] < 0xc0u8 or buffer[1] > 0xd0u8:  # index 1
+    raise newException(NotSupportedError, "SOF: not in range.")
 
   let size = length2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
@@ -598,6 +602,7 @@ proc readJpeg*(file: File): Metadata =
   ## file format is unknown. It may generate UnknownFormatError and
   ## NotSupportedError exceptions.
 
+  result = newJObject()
   let sections = readSections(file)
 
   var offsets = initOrderedTable[string, tuple[start:int64, finish:int64]]()
@@ -659,10 +664,18 @@ proc readJpeg*(file: File): Metadata =
 
     # sof0 - sof15
     elif marker >= 0xc0u8 and marker < 0xc0u8 + 16u8:
+      # There can be multiple c4.
+      # sof4 = [{}, {}, {},...]
       var buffer = readSection(file, start, finish)
       let sofx = getSofInfo(buffer)
       let sofname = "sof$1" % [$(marker-192)]
-      result[sofname] = SofInfoToMeta(sofx)
+      var list: JsonNode
+      if result.hasKey(sofname):
+        list = result[sofname]
+      else:
+        list = newJArray()
+      list.add(SofInfoToMeta(sofx))
+      result[sofname] = list
       name = "$1($2)(range_$3)" % [sofname, $marker, $marker]
 
     if name == nil:
