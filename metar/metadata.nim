@@ -17,14 +17,33 @@ type
   ## image is recognized quickly by looking at the first few bytes of
   ## the file.
 
+  # todo: remove this exception?
   NotSupportedError* = object of Exception ## \
   ## The reader recognized the image but it cannot handle it.  The
-  ## image might be corrupt or using a feature the reader does not
-  ## understand. NotSupportedError is raised when the reader cannot
-  ## continue.
+  ## image might be corrupt.  NotSupportedError is raised when the
+  ## reader cannot continue. Readers are forgiving, they skip sections
+  ## they do not understand.
 
   Metadata* = JsonNode ## \
-  ## Json representation of the metadata.
+  ## Representation of the metadata using a subset of json.
+  ##
+  ## Metadata is an ordered dictionary where each item is called a
+  ## section. For example: meta, xmp, iptc sections.
+  ##
+  ## A section is either an ordered dictionary or a list of dictionaries.
+  ##
+  ## A dictionary contains strings, numbers, arrays or dictionaries.
+  ##
+  ## An array contains strings, numbers, arrays or dictionaries.
+  ##
+  ## No booleans, or nulls.
+  ##
+  ## {
+  ##   "meta": {}
+  ##   "xmp": {}
+  ##   "iptc": {}
+  ##   "sof": [{},{},...]
+  ## }
 
   Reader* = proc (file: File): Metadata ## \
   ## Read the given file and return its metadata.  Return nil when the

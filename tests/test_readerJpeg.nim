@@ -6,6 +6,7 @@ import readerJpeg
 import hexDump
 import tables
 import json
+import printMetadata
 
 proc createTestFile(bytes: var openArray[uint8]):
   tuple[file:File, filename:string] =
@@ -65,11 +66,9 @@ suite "Test readerJpeg.nim":
     var file = openTestFile("testfiles/image.jpg")
     defer: file.close()
     var metadata = readJpeg(file)
-    echo pretty(metadata)
-    var str: string = ""
-    toUgly(str, metadata)
-    echo str
-    # todo work on the print method
+    # echo pretty(metadata)
+    # var str: string = ""
+    printMetadata(metadata)
     # todo: support multiple sof4 etc items.
 
   test "jpegKeyName iptc Title":

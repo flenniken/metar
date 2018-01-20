@@ -7,6 +7,7 @@ import unicode
 
 const maxKeyLength = 15
 const maxStringLength = 40
+const maxLineLength = 80
 
 proc controlToDot(str: string): string =
   ## Replace control characters in the given string with dots and
@@ -94,71 +95,70 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
         result = "[" & parts.join(", ") & "]"
 
 
-proc printMetadata*(metadata: Metadata) =
-  ## Print the metadata in a human readable format.
 
-  # var meta = metadata["meta"]
-  # var reader = meta["reader"]
 
-  # metadata is an ordered dictionary containing dicts, meta, xmp, iptc,...
-  # dicts are dictionaries containing items, filename, width, height,...
-  # items are strings, numbers, arrays or dictionaries
 
-#[
-========== xmp ==========
-width = 1234
-height = 568
-components = [1, 2, 3]
-values = {"one": 1, "two": 2}
-========== sof0 ==========
-width = 1234
-height = 568
-components = [1, 2, 3, 4, 5, 6,...]
----------- sof4-0 ----------
-"one": 1
-"two": 2
-"three": 3
----------- sof4-1 ----------
-"one": 1
-"two": 2
-"three": 3
 
-]#
+proc keyNameDefault(readerName: string, section: string,
+                    key: string): string {.tpub.} =
+  # If the key name exists, return both the key name and key, else
+  # return key.
+  var name = keyName(readerName, section, key)
+  if name.len == 0:
+    result = key
+  else:
+    result = "$1($2)" % [name, key]
 
+iterator lines(metadata: Metadata): string {.tpub.} =
+  ## Iterate through the metadata line by line in a human readable
+  ## form.
+
+  if metadata.kind != JObject:
+    raise newException(ValueError, "Expected top level object.")
   for section, d in metadata.pairs():
-    echo "========== $1 ==========" % [section]
-    for key, node in d.pairs():
-      # var name = keyName(reader, section, key)
-      var name = keyName("jpeg", section, key)
-      if name.len > 0:
-        name = "$1($2)" % [name, key]
-      else:
-        name = key
-      var leafString = getLeafString(node, 30)
-      if leafString != nil:
-        echo "$1 = $2" % [name, leafString]
-      else:
-        if node.kind == JObject:
-          echo "$1 = {...}" % [name]
-        else:
-          echo "$1 = [...]" % [name]
-
-
-#JNull, JBool, JInt, JFloat, JString, JObject, JArray
+    yield("========== $1 ==========" % [section])
+    # The second level must be an object or array of objects.
+    if d.kind == JObject:
+      for key, node in d.pairs():
+        # todo: pass reader not jpeg
+        var name = keyNameDefault("jpeg", section, key)
+        var leafString = getLeafString(node, maxLineLength)
+        yield("$1 = $2" % [name, leafString])
+    elif d.kind == JArray:
+      var num = 1
+      for nestedNode in d.items():
+        if nestedNode.kind != JObject:
+          raise newException(ValueError, "Expected nested node object.")
+        yield("-- $1 --" % [$num])
+        for key, node in nestedNode.pairs():
+          # todo: pass reader not jpeg
+          var name = keyNameDefault("jpeg", section, key)
+          var leafString = getLeafString(node, maxLineLength)
+          yield("$1 = $2" % [name, leafString])
+        num += 1
+    else:
+      raise newException(ValueError, "Expected second level object.")
 
 
 #[
-  if node.kind != JArray:
-    return leaf(node, maxLength)
 
-  var parts = newSeq[string]()
-  var length = 2
-  for item in node:
-    string = leaf(item, maxLeafLength)
-    if length + len(string) + len(parts) * 2 + len(", ...") > maxLength:
-      parts.append("...")
-      break
-    parts.append(string)
-    length += len(string)
-  result = "[$1]" % [parts.join(", ")]
+Metadata is an ordered dictionary where each item is called a
+section. For example: meta, xmp, iptc sections.
+
+A section is either an ordered dictionary or a list of dictionaries.
+
+dictionary where each item is called an item.  For example: filename,
+width, height. Items are strings, numbers, arrays or dictionaries
+
+{
+  "xmp": {}
+  "iptc": {}
+  "sof": [{},{},...]
+
 ]#
+
+proc printMetadata*(metadata: Metadata) =
+  ## Print the metadata in a human readable form.
+
+  for line in metadata.lines():
+    echo line

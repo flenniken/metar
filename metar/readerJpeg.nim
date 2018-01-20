@@ -676,7 +676,7 @@ proc readJpeg*(file: File): Metadata =
         list = newJArray()
       list.add(SofInfoToMeta(sofx))
       result[sofname] = list
-      name = "$1($2)(range_$3)" % [sofname, $marker, $marker]
+      name = "$1($2)" % [sofname, $marker]
 
     if name == nil:
       name = "range_" & $marker
