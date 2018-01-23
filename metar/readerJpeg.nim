@@ -778,7 +778,7 @@ proc readJpeg*(file: File): Metadata =
   ## NotSupportedError exceptions.
 
   result = newJObject()
-  var ranges = initOrderedTable[string, tuple[start:int64, finish:int64]]()
+  var ranges = newJObject()
   var dups = initTable[string, int]()
   let sections = readSections(file)
 
@@ -795,30 +795,16 @@ proc readJpeg*(file: File): Metadata =
     if section_name == "":
       section_name = $section.marker
 
-    # todo: make and array of sections when multiple.
-    # Handle duplicate sections.
-    var name:string
-    let symbol = if known: "" else: "*"
-    if section_name in dups:
-      # We have multiple of the same section. Create a unique name for
-      # it by appending a number to the normal name.
-      var count = dups[section_name] + 1
-      dups[section_name] = count
-      name = "$1($2)_$3$4" % [section_name, $section.marker, $count, symbol]
-    else:
-      dups[section_name] = 1
-      name = "$1($2)$3" % [section_name, $section.marker, symbol]
-
     if info != nil:
       result[section_name] = info
 
-    ranges[name] = (section.start, section.finish)
+    let symbol = if known: "" else: "*"
+    let name = "$1($2)$3" % [section_name, $section.marker, symbol]
 
-  # Convert the list of ranges to json.
-  var jRanges = newJObject()
-  for k, v in ranges.pairs:
-    var a = newJArray()
-    a.add(newJInt(v.start))
-    a.add(newJInt(v.finish))
-    jRanges[k] = a
-  result["ranges"] = jRanges
+    var rItem = newJArray()
+    rItem.add(newJString(name))
+    rItem.add(newJInt64(section.start))
+    rItem.add(newJInt64(section.finish))
+    ranges.add(rItem)
+
+  result["ranges"] = ranges
