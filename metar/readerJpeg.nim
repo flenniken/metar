@@ -208,9 +208,11 @@ proc readSection(file: File, start: int64, finish: int64,
 
 
 proc jpeg_section_name(value: uint8): string {.tpub.} =
-  ## Return the name for the given jpeg section value or nil when not
+  ## Return the name for the given jpeg section value or "" when not
   ## known.
   result = known_jpeg_section_names.getOrDefault(value)
+  if result == nil:
+    result = ""
 
 
 proc iptc_name(value: uint8): string {.tpub.} =
@@ -242,6 +244,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   if size < 30 or size > 65502:
     raise newException(NotSupportedError, "Iptc: Invalid buffer size.")
 
+  # todo: be more forgiving of bad iptc data.
   # ff, ed, length, ...
   if length2(buffer) != 0xffed:  # index 0, 1
     raise newException(NotSupportedError, "Iptc: Invalid header.")
@@ -538,13 +541,24 @@ proc `$`(self: SofInfo): string {.tpub.} =
     lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
   result = lines.join("\n")
 
+# Marker Identifier 2 bytes 0xff, 0xc4 to identify DHT marker
+# Length 2 bytes -- This specify length of Huffman table
+# HT information 1 byte -- bit 0..3 : number of HT (0..3, otherwise error)
+#   bit 4     : type of HT, 0 = DC table, 1 = AC table
+#   bit 5..7 : not used, must be 0
+# Number of Symbols 16 bytes -- Number of symbols with codes of length 1..16,
+#   the sum(n) of these bytes is the total number of codes,
+#   which must be <= 256
+# Symbols n bytes -- Table containing the symbols in order of increasing
+#   code length ( n = total number of codes ).
+
+# A single DHT segment may contain multiple HTs, each with its own
+# information byte.
+
 
 proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   ## Return the SOF information from the given buffer. Raise
   ## NotSupportedError when the buffer cannot be decoded.
-
-  if buffer.len < 13:
-    raise newException(NotSupportedError, "SOF: not enough bytes.")
 
   if buffer[0] != 0xff:  # index 0
     raise newException(NotSupportedError, "SOF: not 0xff.")
@@ -576,6 +590,41 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   result = SofInfo(precision: precision, width: width, height: height,
                     components: components)
 
+proc getHdtInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
+  ## Return the HDT information from the given buffer. Raise
+  ## NotSupportedError when the buffer cannot be decoded.
+
+  if buffer[0] != 0xff:  # index 0
+    raise newException(NotSupportedError, "SOF: not 0xff.")
+
+  if buffer[1] < 0xc0u8 or buffer[1] > 0xd0u8:  # index 1
+    raise newException(NotSupportedError, "SOF: not in range.")
+
+  let size = length2(buffer, 2)  # index 2, 3
+  if size + 2 != buffer.len:
+    raise newException(NotSupportedError, "SOF: wrong size.")
+
+  let precision = buffer[4]  # index 4
+  let height = (uint16)length2(buffer, 5)  # index 5, 6
+  let width = (uint16)length2(buffer, 7)  # index 7, 8
+  let number_components = (int)buffer[9]  # index 9
+
+  if number_components < 1 or
+     10 + 3 * number_components > buffer.len:
+    raise newException(NotSupportedError, "SOF: number of components.")
+
+  var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
+  for ix in 0..number_components-1:
+    let start = 10 + 3 * ix
+    let x = buffer[start + 0]
+    let y = buffer[start + 1]
+    let z = buffer[start + 2]
+    components.add((x, y, z))
+
+  result = SofInfo(precision: precision, width: width, height: height,
+                    components: components)
+
+
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## nil when not known.
@@ -583,7 +632,7 @@ proc jpegKeyName*(section: string, key: string): string =
   try:
     if section == "iptc":
       return iptc_name(cast[uint8](parseUInt(key)))
-    elif section == "offsets":
+    elif section == "ranges":
       # Strip off the leading range_ and trailing _xx.
       let parts = key.split({'_'})
       # let sectionKey = cast[uint8](parseUInt(parts[1]))
@@ -596,6 +645,132 @@ proc jpegKeyName*(section: string, key: string): string =
     discard
   result = nil
 
+proc getJFIF(buffer: var openArray[uint8]): Metadata {.tpub.} =
+  ## Return the jfif metadata information for the given buffer.  Raise
+  ## an NotSupportedError when the buffer cannot be decoded.
+
+  # ----------APP0(224)----------
+  # 0000  FF E0 00 10 4A 46 49 46 00 01 01 01 00 60 00 60  ....JFIF.....`.`
+  # 0010  00 00
+
+  # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
+  # density 2, thumbnail width 1, thumbnail height 1, 3 * width * height thumbnail pixels.
+
+  result = newJObject()
+
+  if length2(buffer, 0) != 0xffe0: # index 0, 1
+    raise newException(NotSupportedError, "jfif: Invalid header.")
+
+  var length = length2(buffer, 2) # index 2, 3
+  if length > buffer.len-2:
+    raise newException(NotSupportedError, "jfif: Invalid length.")
+
+  if not compareBytes(buffer, 4, "JFIF") or buffer[8] != 0u8:
+    raise newException(NotSupportedError, "jfif: Not JFIF0.")
+
+  result["major"] = newJInt((int)buffer[9])
+  result["minor"] = newJInt((int)buffer[10])
+
+  result["units"] = newJInt((int)buffer[11])
+  result["x"] = newJInt(length2(buffer, 12))
+  result["y"] = newJInt(length2(buffer, 14))
+  result["width"] = newJInt((int)buffer[16])
+  result["height"] = newJInt((int)buffer[17])
+  # If width and height are not 0, the thumbnail image follows.
+
+proc handle_section(file: File, section: Section):
+    tuple[section_name: string, info: Metadata, known: bool] {.tpub.} =
+  ## Handle the jpeg section of the file. Return the section_name and
+  ## metadata. section_name is "" when the name isn't known and info
+  ## nil when there isn't any metadata and known is true when the
+  ## code knows how to decode the section.
+
+  var (marker, start, finish) = section
+  var section_name = jpeg_section_name(marker)
+  var info:Metadata
+  var known = true
+
+  case marker
+  of 0xd8, 0xd9:
+    # 216 0xffd8 header
+    # 217 0xffd9 footer
+    discard
+
+  of 0xed:
+    # Process IPTC metadata.
+    var buffer = readSection(file, start, finish)
+    let iptc_records = getIptcRecords(buffer)
+    if iptc_records.len > 0:
+      var iptcInfo = getIptcInfo(iptc_records)
+      info = newJObject()
+      for k, v in iptcInfo.pairs():
+        info[k] = newJString(v)
+      section_name = "iptc"
+
+  of 0xe1:
+    # Could be xmp or exif.
+    let sectionKind = xmpOrExifSection(file, start, finish)
+    if sectionKind.name == "xmp":
+      let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
+      section_name = "xmp"
+      info = xmpParser(xml)
+
+#[
+    elif sectionKind.name == "exif":
+      # Parse the exif. It is stored as a tiff file.
+      from .tiff import read_header, read_ifd, print_ifd
+      header_offset = start+4+len("exif\x00")+1
+      ifd_offset, endian = read_header(file, header_offset)
+      if ifd_offset is not nil:
+        # print("ifd_offset = {}".format(ifd_offset))
+        # print("endian = {}".format(endian))
+        ifd = read_ifd(file, header_offset, endian, ifd_offset)
+        # print_ifd("exif", ifd)
+        process_exif(ifd)
+
+        # Move the range_ keys to the ranges dictionary.
+        delete_keys = []
+        for key, value in ifd.items():
+          if isinstance(key, str) and key.startswith("range_"):
+            ranges[key] = value
+            delete_keys.add(key)
+        for key in delete_keys:
+          del ifd[key]
+
+        result["exif"] = ifd
+        name = "APP1({})(range_exif)".format(marker)
+]#
+
+  of 0xc0:
+    var buffer = readSection(file, start, finish)
+    let sofx = getSofInfo(buffer)
+    info = SofInfoToMeta(sofx)
+
+    # There can be multiple c4.
+    # c4 = [{}, {}, {},...]
+    # var buffer = readSection(file, start, finish)
+    # let sofx = getSofInfo(buffer)
+    # let sofname = jpeg_section_name(marker)
+    # var list: JsonNode
+    # if result.hasKey(sofname):
+    #   list = result[sofname]
+    # else:
+    #   list = newJArray()
+    # list.add(SofInfoToMeta(sofx))
+    # result[sofname] = list
+
+  of 0xe0:
+    var buffer = readSection(file, start, finish)
+    info = getJFIF(buffer)
+
+  else:
+    # echo "----------$1----------" % section_name
+    # var buffer = readSection(file, start, finish)
+    # echo hexDump(@buffer)
+    known = false
+
+  result = (section_name, info, known)
+
 
 proc readJpeg*(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
@@ -603,101 +778,47 @@ proc readJpeg*(file: File): Metadata =
   ## NotSupportedError exceptions.
 
   result = newJObject()
+  var ranges = initOrderedTable[string, tuple[start:int64, finish:int64]]()
+  var dups = initTable[string, int]()
   let sections = readSections(file)
 
-  var offsets = initOrderedTable[string, tuple[start:int64, finish:int64]]()
-  var dups = initTable[string, int]()
-
   for section in sections:
-    var (marker, start, finish) = section
+    var known:bool
+    var section_name = ""
+    var info:Metadata
+
+    try:
+      (section_name, info, known) = handle_section(file, section)
+    except NotSupportedError:
+      known = false
+
+    if section_name == "":
+      section_name = $section.marker
+
+    # todo: make and array of sections when multiple.
+    # Handle duplicate sections.
     var name:string
-    if marker == 0xe0:
-      # todo: read the JFIF.
-      # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
-      # density 2, thumbnail width 1, thumbnail height 1, 3 * width * height thumbnail pixels.
-      discard
+    let symbol = if known: "" else: "*"
+    if section_name in dups:
+      # We have multiple of the same section. Create a unique name for
+      # it by appending a number to the normal name.
+      var count = dups[section_name] + 1
+      dups[section_name] = count
+      name = "$1($2)_$3$4" % [section_name, $section.marker, $count, symbol]
+    else:
+      dups[section_name] = 1
+      name = "$1($2)$3" % [section_name, $section.marker, symbol]
 
-    elif marker == 0xed:
-      # Process IPTC metadata.
-      var buffer = readSection(file, start, finish)
-      let iptc_records = getIptcRecords(buffer)
-      if iptc_records.len > 0:
-        var info = getIptcInfo(iptc_records)
-        var jInfo = newJObject()
-        for k, v in info.pairs():
-          jInfo[k] = newJString(v)
-        result["iptc"] = jInfo
-        name = "APPD($1)(range_iptc)" % [$marker]
+    if info != nil:
+      result[section_name] = info
 
-    elif marker == 0xe1:
-      # Could be xmp or exif.
-      let sectionKind = xmpOrExifSection(file, start, finish)
-      if sectionKind.name == "xmp":
-        let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
-        result["xmp"] = xmpParser(xml)
-        name = "APP1($1)(range_xmp)" % [$marker]
-#[
-      elif sectionKind.name == "exif":
-        # Parse the exif. It is stored as a tiff file.
-        from .tiff import read_header, read_ifd, print_ifd
-        header_offset = start+4+len("exif\x00")+1
-        ifd_offset, endian = read_header(file, header_offset)
-        if ifd_offset is not nil:
-          # print("ifd_offset = {}".format(ifd_offset))
-          # print("endian = {}".format(endian))
-          ifd = read_ifd(file, header_offset, endian, ifd_offset)
-          # print_ifd("exif", ifd)
-          process_exif(ifd)
+    ranges[name] = (section.start, section.finish)
 
-          # Move the range_ keys to the offsets dictionary.
-          delete_keys = []
-          for key, value in ifd.items():
-            if isinstance(key, str) and key.startswith("range_"):
-              offsets[key] = value
-              delete_keys.add(key)
-          for key in delete_keys:
-            del ifd[key]
-
-          result["exif"] = ifd
-          name = "APP1({})(range_exif)".format(marker)
-]#
-
-    # sof0 - sof15
-    elif marker >= 0xc0u8 and marker < 0xc0u8 + 16u8:
-      # There can be multiple c4.
-      # sof4 = [{}, {}, {},...]
-      var buffer = readSection(file, start, finish)
-      let sofx = getSofInfo(buffer)
-      let sofname = "sof$1" % [$(marker-192)]
-      var list: JsonNode
-      if result.hasKey(sofname):
-        list = result[sofname]
-      else:
-        list = newJArray()
-      list.add(SofInfoToMeta(sofx))
-      result[sofname] = list
-      name = "$1($2)" % [sofname, $marker]
-
-    if name == nil:
-      name = "range_" & $marker
-    if name in offsets:
-      # We have more than one section with the same marker. Create a
-      # unigue name for it, by appending a number to the normal name,
-      # i.e., range_d0_2.
-      var count = dups.getOrDefault(name)
-      if count == 0:
-        count = 2
-      else:
-        count += 1
-      dups[name] = count
-      name = "$1_$2" % [name, $count]
-
-    offsets[name] = (start, finish)
-
-  var jOffsets = newJObject()
-  for k, v in offsets.pairs:
+  # Convert the list of ranges to json.
+  var jRanges = newJObject()
+  for k, v in ranges.pairs:
     var a = newJArray()
     a.add(newJInt(v.start))
     a.add(newJInt(v.finish))
-    jOffsets[k] = a
-  result["offsets"] = jOffsets
+    jRanges[k] = a
+  result["ranges"] = jRanges

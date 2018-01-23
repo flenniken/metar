@@ -140,22 +140,6 @@ iterator lines(metadata: Metadata): string {.tpub.} =
       raise newException(ValueError, "Expected second level object.")
 
 
-#[
-
-Metadata is an ordered dictionary where each item is called a
-section. For example: meta, xmp, iptc sections.
-
-A section is either an ordered dictionary or a list of dictionaries.
-
-dictionary where each item is called an item.  For example: filename,
-width, height. Items are strings, numbers, arrays or dictionaries
-
-{
-  "xmp": {}
-  "iptc": {}
-  "sof": [{},{},...]
-
-]#
 
 proc printMetadata*(metadata: Metadata) =
   ## Print the metadata in a human readable form.

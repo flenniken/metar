@@ -62,14 +62,14 @@ proc showSectionsFolder(folder: string) =
 
 suite "Test readerJpeg.nim":
 
-  test "readJpg image":
+  test "test readJpg":
     var file = openTestFile("testfiles/image.jpg")
     defer: file.close()
     var metadata = readJpeg(file)
     # echo pretty(metadata)
-    # var str: string = ""
+    # for line in metadata.lines():
+    #   echo line
     printMetadata(metadata)
-    # todo: support multiple sof4 etc items.
 
   test "jpegKeyName iptc Title":
     check(jpegKeyName("iptc", "5") == "Title")
@@ -87,6 +87,34 @@ suite "Test readerJpeg.nim":
     check(jpegKeyName("offsets", "xxyzj") == nil)
 
   when not defined(release):
+
+    test "test handle_section":
+      var file = openTestFile("testfiles/image.jpg")
+      defer: file.close()
+      var sections = readSections(file)
+      check(sections.len == 11)
+
+      # for ix, section in sections:
+      #   var (section_name, info) = handle_section(file, section)
+      #   var str:string
+      #   if info == nil:
+      #     str = ""
+      #   else:
+      #     str = $info
+      #   echo "$1 $2: $3" % [$ix, section_name, str]
+
+      var (section_name, info, known) = handle_section(file, sections[1])
+      let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
+      check(section_name == "APP0")
+      check($info == expected1)
+      check(known == true)
+
+      (section_name, info, known) = handle_section(file, sections[4])
+      let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
+      check(section_name == "SOF0")
+      check($info == expected4)
+      check(known == true)
+
 
     test "iptc_name key not found":
       check(iptc_name(0) == nil)
@@ -109,8 +137,9 @@ suite "Test readerJpeg.nim":
     test "iptc_name 6":
       check(iptc_name(6) == nil)
 
+    # todo: switch nil to "" for strings.
     test "jpeg_section_name 0":
-      check(jpeg_section_name(0) == nil)
+      check(jpeg_section_name(0) == "")
 
     test "jpeg_section_name 1":
       check(jpeg_section_name(1) == "TEM")
@@ -119,16 +148,16 @@ suite "Test readerJpeg.nim":
       check(jpeg_section_name(0xc0) == "SOF0")
 
     test "jpeg_section_name 2":
-      check(jpeg_section_name(0) == nil)
+      check(jpeg_section_name(0) == "")
 
     test "jpeg_section_name 0xbf":
-      check(jpeg_section_name(0xbf) == nil)
+      check(jpeg_section_name(0xbf) == "")
 
     test "jpeg_section_name 0xfe":
       check(jpeg_section_name(0xfe) == "COM")
 
     test "jpeg_section_name 0xff":
-      check(jpeg_section_name(0xff) == nil)
+      check(jpeg_section_name(0xff) == "")
 
     test "test readSections":
       var file = openTestFile("testfiles/image.jpg")
