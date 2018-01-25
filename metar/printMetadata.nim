@@ -127,14 +127,28 @@ iterator lines(metadata: Metadata): string {.tpub.} =
     elif d.kind == JArray:
       var num = 1
       for nestedNode in d.items():
-        if nestedNode.kind != JObject:
-          raise newException(ValueError, "Expected nested node object.")
-        yield("-- $1 --" % [$num])
-        for key, node in nestedNode.pairs():
-          # todo: pass reader not jpeg
-          var name = keyNameDefault("jpeg", section, key)
-          var leafString = getLeafString(node, maxLineLength)
-          yield("$1 = $2" % [name, leafString])
+        if nestedNode.kind == JObject:
+          yield("-- $1 --" % [$num])
+          for key, node in nestedNode.pairs():
+            # todo: pass reader not jpeg
+            var name = keyNameDefault("jpeg", section, key)
+            var leafString = getLeafString(node, maxLineLength)
+            yield("$1 = $2" % [name, leafString])
+        elif nestedNode.kind == JArray:
+          if section == "ranges":
+            yield("$2($3)$4 ($5, $6)" % [
+              $num,
+              nestedNode[0].getStr(),
+              $nestedNode[1].getNum(),
+              if nestedNode[2].getBVal(): "" else: "*",
+              $nestedNode[3].getNum(),
+              $nestedNode[4].getNum(),
+            ])
+          else:
+            let leaf = getLeafString(nestedNode, maxLineLength)
+            yield("$1: $2" % [$num, leaf])
+        else:
+          raise newException(ValueError, "Expected nested node container.")
         num += 1
     else:
       raise newException(ValueError, "Expected second level object.")

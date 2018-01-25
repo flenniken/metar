@@ -778,7 +778,7 @@ proc readJpeg*(file: File): Metadata =
   ## NotSupportedError exceptions.
 
   result = newJObject()
-  var ranges = newJObject()
+  var ranges = newJArray()
   var dups = initTable[string, int]()
   let sections = readSections(file)
 
@@ -792,19 +792,15 @@ proc readJpeg*(file: File): Metadata =
     except NotSupportedError:
       known = false
 
-    if section_name == "":
-      section_name = $section.marker
-
     if info != nil:
       result[section_name] = info
 
-    let symbol = if known: "" else: "*"
-    let name = "$1($2)$3" % [section_name, $section.marker, symbol]
-
     var rItem = newJArray()
-    rItem.add(newJString(name))
-    rItem.add(newJInt64(section.start))
-    rItem.add(newJInt64(section.finish))
+    rItem.add(newJString(section_name))
+    rItem.add(newJInt((int)section.marker))
+    rItem.add(newJBool(known))
+    rItem.add(newJInt(section.start))
+    rItem.add(newJInt(section.finish))
     ranges.add(rItem)
 
   result["ranges"] = ranges
