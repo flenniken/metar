@@ -17,7 +17,6 @@ type
   ## image is recognized quickly by looking at the first few bytes of
   ## the file.
 
-  # todo: remove this exception?
   NotSupportedError* = object of Exception ## \
   ## The reader recognized the image but it cannot handle it.  The
   ## image might be corrupt.  NotSupportedError is raised when the
@@ -45,11 +44,10 @@ type
   ##   "sof": [{},{},...]
   ## }
 
-  Reader* = proc (file: File): Metadata ## \
-  ## Read the given file and return its metadata.  Return nil when the
-  ## file format is unknown. It may generate UnknownFormatError and
-  ## NotSupportedError exceptions.
+  Reader* = proc (file: File): Metadata ## \ Read the given file and
+  ## return its metadata.  Return UnknownFormatError when the file
+  ## format is unknown. May return NotSupportedError exception.
 
   KeyName* = proc (section: string, key: string): string ## \
   ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
+  ## "" when not known.

@@ -85,7 +85,7 @@ proc readMetadata*(filename: string): Metadata =
 
 proc keyName*(readerName: string, section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
+  ## "" when not known.
   ##
   ## readerName is the name of the reader, 'jpeg', 'dng', etc. You can
   ## get this from the 'meta' section's reader key. Section is a top
@@ -99,5 +99,5 @@ proc keyName*(readerName: string, section: string, key: string): string =
 
   let (_, _, keyNameMethod) = readers.getOrDefault(readerName)
   if keyNameMethod == nil:
-    return nil
+    return ""
   result = keyNameMethod(section, key)

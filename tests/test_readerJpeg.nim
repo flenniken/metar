@@ -62,29 +62,29 @@ proc showSectionsFolder(folder: string) =
 
 suite "Test readerJpeg.nim":
 
-  test "test readJpg":
-    var file = openTestFile("testfiles/image.jpg")
-    defer: file.close()
-    var metadata = readJpeg(file)
-    # echo pretty(metadata)
-    # for line in metadata.lines():
-    #   echo line
-    printMetadata(metadata)
+  # test "test readJpg":
+  #   var file = openTestFile("testfiles/image.jpg")
+  #   defer: file.close()
+  #   var metadata = readJpeg(file)
+  #   # echo pretty(metadata)
+  #   # for line in metadata.lines():
+  #   #   echo line
+  #   printMetadata(metadata)
 
   test "jpegKeyName iptc Title":
     check(jpegKeyName("iptc", "5") == "Title")
 
   test "jpegKeyName iptc invalid":
-    check(jpegKeyName("iptc", "999") == nil)
+    check(jpegKeyName("iptc", "999") == "")
 
-  test "jpegKeyName offsets c0":
-    check(jpegKeyName("offsets", "range_c0") == "SOF0")
+  test "jpegKeyName ranges c0":
+    check(jpegKeyName("ranges", "range_c0") == "SOF0")
 
-  test "jpegKeyName offsets c0":
-    check(jpegKeyName("offsets", "range_c0_3") == "SOF0")
+  test "jpegKeyName ranges c0":
+    check(jpegKeyName("ranges", "range_c0_3") == "SOF0")
 
-  test "jpegKeyName offsets invalid":
-    check(jpegKeyName("offsets", "xxyzj") == nil)
+  test "jpegKeyName ranges invalid":
+    check(jpegKeyName("ranges", "xxyzj") == "")
 
   when not defined(release):
 
@@ -117,7 +117,7 @@ suite "Test readerJpeg.nim":
 
 
     test "iptc_name key not found":
-      check(iptc_name(0) == nil)
+      check(iptc_name(0) == "")
 
     test "iptc_name Title":
       check(iptc_name(5) == "Title")
@@ -132,12 +132,11 @@ suite "Test readerJpeg.nim":
       check(iptc_name(122) == "Description Writer")
 
     test "iptc_name 123":
-      check(iptc_name(123) == nil)
+      check(iptc_name(123) == "")
 
     test "iptc_name 6":
-      check(iptc_name(6) == nil)
+      check(iptc_name(6) == "")
 
-    # todo: switch nil to "" for strings.
     test "jpeg_section_name 0":
       check(jpeg_section_name(0) == "")
 
@@ -374,9 +373,10 @@ precision: 8, width: 150, height: 100, num components: 3
       try:
         discard getSofInfo(buffer)
       except NotSupportedError:
-        var msg = "SOF: not enough bytes."
+        var msg = "SOF: buffer too small."
         check(msg == getCurrentExceptionMsg())
       except:
+        echo getCurrentExceptionMsg()
         check(false == true)
 
     test "test getSofInfo happy path":
@@ -392,21 +392,6 @@ precision: 8, width: 150, height: 100, num components: 3
       metadata["sofname"] = SofInfoToMeta(info)
       # echo pretty(metadata)
 
-    test "test getSofInfo sof4":
-
-      var buffer = [
-        0xff'u8, 0xc4, 0, 0x1f, 0x00, 0x00, 0x01, 0x05,
-        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02,
-        0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
-        0x0b]
-      let info = getSofInfo(buffer)
-      # echo $info
-      check(info.precision == 0)
-      check(info.width == 1281)
-      check(info.height == 1)
-      check(info.components.len == 1)
-      check(info.components[0] == (1u8, 1u8, 1u8))
 
     test "test getIptcRecords":
       # let folder = "/Users/steve/code/metarnim/testfiles"
@@ -467,3 +452,20 @@ precision: 8, width: 150, height: 100, num components: 3
       for ix in 0..buffer.len-1:
         str.add((char)buffer[ix])
       check(stripInvalidUtf8(str) == "abc")
+
+    test "test getHdtInfo":
+      var buffer = [
+        0xff'u8, 0xc4, 0, 0x1f, 0x00, 0x00, 0x01, 0x05,
+        0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02,
+        0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a,
+        0x0b]
+      # 0000  FF C4 00 1F 00 00 01 05 01 01 01 01 01 01 00 00  ................
+      # 0010  00 00 00 00 00 00 01 02 03 04 05 06 07 08 09 0A  ................
+      # 0020  0B
+      let info = getHdtInfo(buffer)
+      # echo info
+      let expected = """{"bits":0,"counts":[0,1,5,1,1,1,1,1,1,0,0,0,0,0,0,0],"symbols":[0,1,2,3,4,5,6,7,8,9,10,11]}"""
+      check($info == expected)
+
+      #todo: add more getHdtInfo tests

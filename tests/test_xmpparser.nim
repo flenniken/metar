@@ -297,6 +297,6 @@ suite "test xmpparser.nim":
 
 
   test "test xmpParser":
-    echo "testing"
     var metadata = xmpParser(xmpSample)
-    echo pretty(metadata)
+    # echo pretty(metadata)
+    #todo: test xmpParser

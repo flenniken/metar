@@ -19,10 +19,10 @@ proc readTiff*(file: File): Metadata =
 
 proc tiffKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
+  ## "" when not known.
   ##
   ## .. code-block:: nim
   ##   import readerJpeg
   ##   echo tiffKeyName("ifd0", "256")
   ##   ImageWidth
-  return nil
+  return ""

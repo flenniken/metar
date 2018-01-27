@@ -216,9 +216,10 @@ proc jpeg_section_name(value: uint8): string {.tpub.} =
 
 
 proc iptc_name(value: uint8): string {.tpub.} =
-  ## Return the iptc name for the given value or nil when not
-  ## known.
+  ## Return the iptc name for the given value or "" when not known.
   result = known_iptc_names.getOrDefault(value)
+  if result == nil:
+    result = ""
 
 
 
@@ -541,25 +542,14 @@ proc `$`(self: SofInfo): string {.tpub.} =
     lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
   result = lines.join("\n")
 
-# Marker Identifier 2 bytes 0xff, 0xc4 to identify DHT marker
-# Length 2 bytes -- This specify length of Huffman table
-# HT information 1 byte -- bit 0..3 : number of HT (0..3, otherwise error)
-#   bit 4     : type of HT, 0 = DC table, 1 = AC table
-#   bit 5..7 : not used, must be 0
-# Number of Symbols 16 bytes -- Number of symbols with codes of length 1..16,
-#   the sum(n) of these bytes is the total number of codes,
-#   which must be <= 256
-# Symbols n bytes -- Table containing the symbols in order of increasing
-#   code length ( n = total number of codes ).
-
-# A single DHT segment may contain multiple HTs, each with its own
-# information byte.
-
 
 proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   ## Return the SOF information from the given buffer. Raise
   ## NotSupportedError when the buffer cannot be decoded.
 
+  if buffer.len < 10:
+    raise newException(NotSupportedError, "SOF: buffer too small.")
+
   if buffer[0] != 0xff:  # index 0
     raise newException(NotSupportedError, "SOF: not 0xff.")
 
@@ -590,44 +580,65 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   result = SofInfo(precision: precision, width: width, height: height,
                     components: components)
 
-proc getHdtInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
+proc getHdtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   ## Return the HDT information from the given buffer. Raise
   ## NotSupportedError when the buffer cannot be decoded.
 
-  if buffer[0] != 0xff:  # index 0
-    raise newException(NotSupportedError, "SOF: not 0xff.")
+  # 0000  FF C4 00 1F 00 00 01 05 01 01 01 01 01 01 00 00  ................
+  # 0010  00 00 00 00 00 00 01 02 03 04 05 06 07 08 09 0A  ................
+  # 0020  0B
 
-  if buffer[1] < 0xc0u8 or buffer[1] > 0xd0u8:  # index 1
-    raise newException(NotSupportedError, "SOF: not in range.")
+  # A single DHT segment may contain multiple HTs, each with its own
+  # information byte.
+
+  result = newJObject()
+
+  if length2(buffer, 0) != 0xffc4:  # index 0, 1
+    raise newException(NotSupportedError, "DHT: not 0xffc4.")
 
   let size = length2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
-    raise newException(NotSupportedError, "SOF: wrong size.")
+    raise newException(NotSupportedError, "DHT: wrong size.")
 
-  let precision = buffer[4]  # index 4
-  let height = (uint16)length2(buffer, 5)  # index 5, 6
-  let width = (uint16)length2(buffer, 7)  # index 7, 8
-  let number_components = (int)buffer[9]  # index 9
+  # HT information 1 byte -- bit 0..3 : number of HT (0..3, otherwise error)
+  #   bit 4     : type of HT, 0 = DC table, 1 = AC table
+  #   bit 5..7 : not used, must be 0
+  let bits = buffer[4]  # index 4
+  # 0 1 2 3 number of HT
+  #         4 -- type of HT, 0 = DC table, 1 = AC table
+  #           5 6 7 -- 0
+  #
+  result["bits"] = newJInt((int)bits)
+  # let acdcTable = bits and 0b1000
+  # let numberHT = bits and 0b11110000 >> 4
 
-  if number_components < 1 or
-     10 + 3 * number_components > buffer.len:
-    raise newException(NotSupportedError, "SOF: number of components.")
+  # Number of Symbols 16 bytes -- Number of symbols with codes of
+  # length 1..16, the sum of these bytes is the total number of codes,
+  # which must be <= 256.
+  var counts = newJArray()
+  var sum = 0
+  for ix in 0..15:
+    let num = buffer[ix+5]
+    counts.add(newJInt((int)num))
+    sum += (int)num
+  if sum > 256:
+    raise newException(NotSupportedError, "DHT: more than 256 symbols.")
+  if sum+21 != buffer.len:
+    raise newException(NotSupportedError, "DHT: more symbols than space.")
+  result["counts"] = counts
+  # result["sum"] = newJInt(sum)
 
-  var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
-  for ix in 0..number_components-1:
-    let start = 10 + 3 * ix
-    let x = buffer[start + 0]
-    let y = buffer[start + 1]
-    let z = buffer[start + 2]
-    components.add((x, y, z))
+  # The symbols in order of increasing code length.
+  var symbols = newJArray()
+  for ix in 0..sum-1:
+    symbols.add(newJInt((int)buffer[ix+21]))
+  result["symbols"] = symbols
 
-  result = SofInfo(precision: precision, width: width, height: height,
-                    components: components)
 
 
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
-  ## nil when not known.
+  ## "" when not known.
 
   try:
     if section == "iptc":
@@ -638,14 +649,15 @@ proc jpegKeyName*(section: string, key: string): string =
       # let sectionKey = cast[uint8](parseUInt(parts[1]))
       let value = parseHexInt(parts[1])
       return jpeg_section_name(cast[uint8](value))
+    # todo: add back exif
     # elif section == "exif":
     #   from .tiff import tag_name
     #   return tag_name(key)
   except:
     discard
-  result = nil
+  result = ""
 
-proc getJFIF(buffer: var openArray[uint8]): Metadata {.tpub.} =
+proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   ## Return the jfif metadata information for the given buffer.  Raise
   ## an NotSupportedError when the buffer cannot be decoded.
 
@@ -681,22 +693,29 @@ proc getJFIF(buffer: var openArray[uint8]): Metadata {.tpub.} =
 proc handle_section(file: File, section: Section):
     tuple[section_name: string, info: Metadata, known: bool] {.tpub.} =
   ## Handle the jpeg section of the file. Return the section_name and
-  ## metadata. section_name is "" when the name isn't known and info
-  ## nil when there isn't any metadata and known is true when the
-  ## code knows how to decode the section.
+  ## metadata. Section_name is "" when the name isn't known.  Info nil
+  ## when there isn't any metadata. Known is true when the code knows
+  ## how to decode the section.
 
   var (marker, start, finish) = section
   var section_name = jpeg_section_name(marker)
   var info:Metadata
   var known = true
 
+  # echo "$1($2) 0x$3" % [section_name, $section.marker,
+  #                       toHex(section.marker).toLowerAscii()]
+
+  # DQT(219) 0xdb
+  # SOS(218) 0xda
+
   case marker
   of 0xd8, 0xd9:
-    # 216 0xffd8 header
-    # 217 0xffd9 footer
+    # SOI(216) 0xd8, 0xffd8 header
+    # EOI(217) 0xd9, 0xffd9 footer
     discard
 
   of 0xed:
+    # APPD
     # Process IPTC metadata.
     var buffer = readSection(file, start, finish)
     let iptc_records = getIptcRecords(buffer)
@@ -708,7 +727,7 @@ proc handle_section(file: File, section: Section):
       section_name = "iptc"
 
   of 0xe1:
-    # Could be xmp or exif.
+    # APP1, Could be xmp or exif.
     let sectionKind = xmpOrExifSection(file, start, finish)
     if sectionKind.name == "xmp":
       let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
@@ -742,29 +761,24 @@ proc handle_section(file: File, section: Section):
 ]#
 
   of 0xc0:
+    # SOF0(192) 0xc0
     var buffer = readSection(file, start, finish)
     let sofx = getSofInfo(buffer)
     info = SofInfoToMeta(sofx)
 
-    # There can be multiple c4.
-    # c4 = [{}, {}, {},...]
-    # var buffer = readSection(file, start, finish)
-    # let sofx = getSofInfo(buffer)
-    # let sofname = jpeg_section_name(marker)
-    # var list: JsonNode
-    # if result.hasKey(sofname):
-    #   list = result[sofname]
-    # else:
-    #   list = newJArray()
-    # list.add(SofInfoToMeta(sofx))
-    # result[sofname] = list
+  of 0xc4:
+    # DHT(196) 0xc4, Define Huffman Table
+    var buffer = readSection(file, start, finish)
+    info = getHdtInfo(buffer)
 
   of 0xe0:
+    # APP0(224) 0xe0, jfif metadata
     var buffer = readSection(file, start, finish)
-    info = getJFIF(buffer)
+    info = getApp0(buffer)
 
   else:
-    # echo "----------$1----------" % section_name
+    # echo "$1($2) 0x$3" % [section_name, $section.marker,
+    #                       toHex(section.marker).toLowerAscii()]
     # var buffer = readSection(file, start, finish)
     # echo hexDump(@buffer)
     known = false
@@ -793,8 +807,10 @@ proc readJpeg*(file: File): Metadata =
       known = false
 
     if info != nil:
+      # todo: support multiple sections with the same name.
       result[section_name] = info
 
+    # Add the section to the ranges.
     var rItem = newJArray()
     rItem.add(newJString(section_name))
     rItem.add(newJInt((int)section.marker))
