@@ -47,8 +47,9 @@ proc getMetaInfo(filename: string, readerName: string, fileSize: int64):
   result["cpu"] = %* hostCPU
 
 proc readMetadata*(filename: string): Metadata =
-  ## Read the given file and return its metadata.  When the file
-  ## format is unknown, return nil.
+  ## Read the given file and return its metadata.  Return
+  ## UnknownFormatError when the file format is unknown. May return
+  ## NotSupportedError exception.
   ##
   ## Open the file and loop through the readers until one returns some
   ## results.
