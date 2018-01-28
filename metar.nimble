@@ -32,6 +32,7 @@ proc get_test_filenames(): seq[string] =
   for filename in text.splitLines():
     if filename.len > 0:
       result.add(filename)
+  exec "rm -f testfiles.txt"
 
 proc runTests() =
   ## Test each nim file in the tests folder.
