@@ -15,6 +15,22 @@ suite "Test printMetadata.nim":
 
   when not defined(release):
 
+    test "test getRangeString":
+      # Add the section to the ranges.
+      # name, marker, start, finish, known, error
+      var node = newJArray()
+      node.add(newJString("section_name"))
+      node.add(newJInt((int)23'u8))
+      node.add(newJInt(1234))
+      node.add(newJInt(4321))
+      node.add(newJBool(false))
+      node.add(newJString("error string"))
+
+      let str = getRangeString(node)
+      # echo str
+      check(str == "section_name(23)* (1234, 4321) error string")
+
+
     test "test ellipsize":
       check(ellipsize("abcde", 5) == "abcde")
       check(ellipsize("abcde", 4) == "a...")

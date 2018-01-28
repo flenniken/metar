@@ -95,8 +95,22 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
         result = "[" & parts.join(", ") & "]"
 
 
+proc getRangeString(node: JsonNode): string {.tpub.} =
+  ## Return the range string for the range node.
 
-
+  assert(node.kind == JArray)
+  assert(node.len == 6)
+  
+  # name, marker, start, finish, known, error
+  # 0,    1,      2,     3,      4,     5
+  result = "$1($2)$3 ($4, $5) $6" % [
+    node[0].getStr(),
+    $node[1].getNum(),
+    if node[4].getBVal(): "" else: "*",
+    $node[2].getNum(),
+    $node[3].getNum(),
+    node[5].getStr()
+  ]
 
 
 proc keyNameDefault(readerName: string, section: string,
@@ -136,15 +150,7 @@ iterator lines(metadata: Metadata): string {.tpub.} =
             yield("$1 = $2" % [name, leafString])
         elif nestedNode.kind == JArray:
           if section == "ranges":
-            yield("$2($3)$4 ($5, $6) $7" % [
-              $num,
-              nestedNode[0].getStr(),
-              $nestedNode[1].getNum(),
-              if nestedNode[2].getBVal(): "" else: "*",
-              $nestedNode[3].getNum(),
-              $nestedNode[4].getNum(),
-              nestedNode[5].getStr(),
-            ])
+            yield(getRangeString(nestedNode))
           else:
             let leaf = getLeafString(nestedNode, maxLineLength)
             yield("$1: $2" % [$num, leaf])
@@ -153,8 +159,6 @@ iterator lines(metadata: Metadata): string {.tpub.} =
         num += 1
     else:
       raise newException(ValueError, "Expected second level object.")
-
-
 
 proc printMetadata*(metadata: Metadata) =
   ## Print the metadata in a human readable form.

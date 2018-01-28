@@ -934,12 +934,13 @@ proc readJpeg*(file: File): Metadata =
       dups[section_name] = 1
 
     # Add the section to the ranges.
+    # name, marker, start, finish, known, error
     var rItem = newJArray()
     rItem.add(newJString(section_name))
     rItem.add(newJInt((int)section.marker))
-    rItem.add(newJBool(known))
     rItem.add(newJInt(section.start))
     rItem.add(newJInt(section.finish))
+    rItem.add(newJBool(known))
     rItem.add(newJString(error))
     ranges.add(rItem)
 
