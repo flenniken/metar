@@ -1,16 +1,16 @@
 import strutils
 import tpub
 
-iterator iterator16(bytes: seq[uint8]): seq[uint8] {.tpub.} =
-  ## Return 16 bytes of a sequence at a time.
+iterator iteratorCount(bytes: seq[uint8], count: Natural): seq[uint8] {.tpub.} =
+  ## Return count bytes of a sequence at a time.
   var xstart = 0
-  var xend = 16
+  var xend = count
   while xstart < bytes.len:
     if xend > bytes.len:
       xend = bytes.len
     yield bytes[xstart..<xend]
     xstart = xend
-    xend = xstart + 16
+    xend = xstart + count
 
 proc hexDump*(bytes: seq[uint8], offset: uint16=0): string =
   ## Return a hex string of the given bytes. The offset parameter is
@@ -26,7 +26,7 @@ proc hexDump*(bytes: seq[uint8], offset: uint16=0): string =
   result = ""
   var start = offset
 
-  for row in iterator16(bytes):
+  for row in iteratorCount(bytes, 16):
     result.add(toHex(start))
     result.add("  ")
 
@@ -65,3 +65,21 @@ proc toHex0*[T](number: T): string =
 
   if result == "":
      return "0"
+
+proc hexDumpSource*(bytes: seq[uint8]): string =
+  # Dump the buffer as an array of bytes in nim source code.
+
+  var lines = newSeq[string]()
+  lines.add("var buffer = [")
+  var first = true
+  for row in iteratorCount(bytes, 8):
+    var line = newSeq[string]()
+    for item in row:
+      if first:
+        line.add("0x$1'u8" % [toHex(item)])
+      else:
+        line.add("0x$1" % [toHex(item)])
+      first = false
+    lines.add("  " & line.join(", ") & ",")
+  lines.add("]")
+  result = lines.join("\n")

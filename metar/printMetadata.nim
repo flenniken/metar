@@ -7,7 +7,7 @@ import unicode
 
 const maxKeyLength = 15
 const maxStringLength = 40
-const maxLineLength = 80
+const maxLineLength = 72
 
 proc controlToDot(str: string): string =
   ## Replace control characters in the given string with dots and
@@ -136,13 +136,14 @@ iterator lines(metadata: Metadata): string {.tpub.} =
             yield("$1 = $2" % [name, leafString])
         elif nestedNode.kind == JArray:
           if section == "ranges":
-            yield("$2($3)$4 ($5, $6)" % [
+            yield("$2($3)$4 ($5, $6) $7" % [
               $num,
               nestedNode[0].getStr(),
               $nestedNode[1].getNum(),
               if nestedNode[2].getBVal(): "" else: "*",
               $nestedNode[3].getNum(),
               $nestedNode[4].getNum(),
+              nestedNode[5].getStr(),
             ])
           else:
             let leaf = getLeafString(nestedNode, maxLineLength)

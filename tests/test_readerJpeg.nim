@@ -62,14 +62,14 @@ proc showSectionsFolder(folder: string) =
 
 suite "Test readerJpeg.nim":
 
-  # test "test readJpg":
-  #   var file = openTestFile("testfiles/image.jpg")
-  #   defer: file.close()
-  #   var metadata = readJpeg(file)
-  #   # echo pretty(metadata)
-  #   # for line in metadata.lines():
-  #   #   echo line
-  #   printMetadata(metadata)
+  test "test readJpeg":
+    var file = openTestFile("testfiles/image.jpg")
+    defer: file.close()
+    var metadata = readJpeg(file)
+    # echo pretty(metadata)
+    # for line in metadata.lines():
+    #   echo line
+    # printMetadata(metadata)
 
   test "jpegKeyName iptc Title":
     check(jpegKeyName("iptc", "5") == "Title")
@@ -80,7 +80,7 @@ suite "Test readerJpeg.nim":
   test "jpegKeyName ranges c0":
     check(jpegKeyName("ranges", "range_c0") == "SOF0")
 
-  test "jpegKeyName ranges c0":
+  test "jpegKeyName ranges c0 2":
     check(jpegKeyName("ranges", "range_c0_3") == "SOF0")
 
   test "jpegKeyName ranges invalid":
@@ -92,7 +92,7 @@ suite "Test readerJpeg.nim":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
       var sections = readSections(file)
-      check(sections.len == 11)
+      check(sections.len == 12)
 
       # for ix, section in sections:
       #   var (section_name, info) = handle_section(file, section)
@@ -163,17 +163,32 @@ suite "Test readerJpeg.nim":
       defer: file.close()
 
       var sections = readSections(file)
-      # for section in sections:
-      #   echo $section
 
-      check(sections.len == 11)
-      check($sections[0] == "section = D8 (0, 2) 2")
-      check(sections[0].marker == 0xd8)
-      check(sections[0].start == 0)
-      check(sections[0].finish == 2)
-      check(sections[10].marker == 0xd9)
-      check(sections[10].start == 0x894)
-      check(sections[10].finish == 0x896)
+      var start = (int64)0
+      for section in sections:
+        check(section.start == start)
+        start = section.finish
+
+      var lines = newSeq[string]()
+      for section in sections:
+        lines.add($section)
+      let got = lines.join("\n")
+
+      let expected = """
+section = D8 (0, 2) 2
+section = E0 (2, 14) 12
+section = DB (14, 59) 45
+section = DB (59, 9E) 45
+section = C0 (9E, B1) 13
+section = C4 (B1, D2) 21
+section = C4 (D2, 189) B7
+section = C4 (189, 1AA) 21
+section = C4 (1AA, 261) B7
+section = DA (261, 26F) E
+section = 00 (26F, 894) 625
+section = D9 (894, 896) 2"""
+      check(got == expected)
+
 
     test "test readSections not jpeg":
       var file = openTestFile("testfiles/image.tif")
@@ -469,3 +484,29 @@ precision: 8, width: 150, height: 100, num components: 3
       check($info == expected)
 
       #todo: add more getHdtInfo tests
+
+    test "test getDqtInfo":
+      var buffer = [
+        0xFF'u8, 0xDB, 0x00, 0x43, 0x00, 0x08, 0x06, 0x06,
+        0x07, 0x06, 0x05, 0x08, 0x07, 0x07, 0x07, 0x09,
+        0x09, 0x08, 0x0A, 0x0C, 0x14, 0x0D, 0x0C, 0x0B,
+        0x0B, 0x0C, 0x19, 0x12, 0x13, 0x0F, 0x14, 0x1D,
+        0x1A, 0x1F, 0x1E, 0x1D, 0x1A, 0x1C, 0x1C, 0x20,
+        0x24, 0x2E, 0x27, 0x20, 0x22, 0x2C, 0x23, 0x1C,
+        0x1C, 0x28, 0x37, 0x29, 0x2C, 0x30, 0x31, 0x34,
+        0x34, 0x34, 0x1F, 0x27, 0x39, 0x3D, 0x38, 0x32,
+        0x3C, 0x2E, 0x33, 0x34, 0x32,
+      ]
+      let info = getDqtInfo(buffer)
+      let expected = """{"bits":0,"qts":[8,6,6,7,6,5,8,7,7,7,9,9,8,10,12,20,13,12,11,11,12,25,18,19,15,20,29,26,31,30,29,26,28,28,32,36,46,39,32,34,44,35,28,28,40,55,41,44,48,49,52,52,52,31,39,57,61,56,50,60,46,51,52,50]}"""
+      check($info == expected)
+
+    test "test getSosInfo":
+      var buffer = [
+        0xFF'u8, 0xDA, 0x00, 0x0C, 0x03, 0x01, 0x00, 0x02,
+        0x11, 0x03, 0x11, 0x00, 0x3F, 0x00,
+      ]
+      let info = getSosInfo(buffer)
+      # echo info
+      let expected = """{"components":[[1,0],[2,17],[3,17]],"skip1":0,"skip2":63,"skip3":0}"""
+      check($info == expected)

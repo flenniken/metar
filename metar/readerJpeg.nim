@@ -245,9 +245,7 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   if size < 30 or size > 65502:
     raise newException(NotSupportedError, "Iptc: Invalid buffer size.")
 
-  # todo: be more forgiving of bad iptc data.
-  # ff, ed, length, ...
-  if length2(buffer) != 0xffed:  # index 0, 1
+  if length2(buffer, 0) != 0xffed:  # index 0, 1
     raise newException(NotSupportedError, "Iptc: Invalid header.")
 
   if length2(buffer, 2) + 2 > size: # index 2, 3
@@ -338,32 +336,39 @@ proc readSections(file: File): seq[Section] {.tpub.} =
   result = @[]
   var finish: int64 = 2
   result.add((0xd8'u8, 0'i64, finish))
+  var foundSos = false
 
   while true:
     var start = finish
+
+    if foundSos:
+      # The rest of the file except the last two bytes are the pixels.
+      finish = file.getFileSize()
+      # Use 0 marker for the pixels.
+      result.add((0'u8, start, finish - 2))
+      result.add((0xd9'u8, finish - 2, finish))
+      break # done
+
     if read1(file) != 0xff:
       raise newException(NotSupportedError, "Jpeg: byte not 0xff.")
     var marker = read1(file)
+
     if marker == 0xda:
-      # The rest of the file except the last two bytes are the pixels.
-      finish = file.getFileSize()
-      result.add((marker, start, finish - 2))
-      result.add((0xd9'u8, finish - 2, finish))
-      break # done
+      foundSos = true
     elif marker in standAlone:
       # When the marker is stand alone, it means there is no
       # associated block following the marker.
       result.add((marker, start, start + 2))
-      if marker == 0xd9:
-        break # done
-    else:
-      var length = read2(file)
-      if length < 2:
-        raise newException(NotSupportedError, "Jpeg: block is less than 2 bytes.")
+      continue
 
-      finish = start + int64(length + 2)
-      result.add((marker, start, finish))
-      file.setFilePos(finish)
+    var length = read2(file)
+    if length < 2:
+      raise newException(NotSupportedError, "Jpeg: block is less than 2 bytes.")
+
+    finish = start + int64(length + 2)
+    result.add((marker, start, finish))
+    file.setFilePos(finish)
+
 
 
 proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
@@ -506,7 +511,6 @@ proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.
 # 0000   FF C0 00 11 08 08 AB 0D 01 03 01 11 00 02 11 01    ................
 # 0010   03 11 01                                           ...
 
-# todo: make a macro like tpub for types.
 type
   SofInfo* = ref object of RootObj
     precision*: uint8
@@ -635,6 +639,101 @@ proc getHdtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   result["symbols"] = symbols
 
 
+proc getDqtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
+  ## Return the DQT Define Quantization Table information from the
+  ## given buffer. Raise NotSupportedError when the buffer cannot be
+  ## decoded.
+
+  # 0000  FF DB 00 43 00 08 06 06 07 06 05 08 07 07 07 09  ...C............
+  # 0010  09 08 0A 0C 14 0D 0C 0B 0B 0C 19 12 13 0F 14 1D  ................
+  # 0020  1A 1F 1E 1D 1A 1C 1C 20 24 2E 27 20 22 2C 23 1C  ....... $.' ",#.
+  # 0030  1C 28 37 29 2C 30 31 34 34 34 1F 27 39 3D 38 32  .(7),01444.'9=82
+  # 0040  3C 2E 33 34 32
+
+  # QT information 1 byte  bit 0..3: number of QT (0..3, otherwise error)
+  #                        bit 4..7: precision of QT, 0 = 8 bit, otherwise 16 bit
+  # Bytes    n bytes       This gives QT values, n = 64*(precision+1)
+
+  result = newJObject()
+
+  if buffer.len < 69:
+    raise newException(NotSupportedError, "DQT: buffer too small.")
+
+  if length2(buffer, 0) != 0xffdb:  # index 0, 1
+    raise newException(NotSupportedError, "DQT: not 0xffdb.")
+
+  let size = length2(buffer, 2)  # index 2, 3
+  if size + 2 != buffer.len:
+    raise newException(NotSupportedError, "DQT: wrong size.")
+
+  let bits = buffer[4]  # index 4
+  result["bits"] = newJInt((int)bits)
+  let num = bits and 0b1111
+  let precision = (bits and 0b11110000) shr 4
+  let count = 64*((int)precision+1)
+  # echo "num = " & $(int)num
+  # echo "precision = " & $(int)precision
+  # echo "count = " & $(int)count
+  # echo hexDump(@buffer)
+
+  if count+5 != buffer.len:
+    raise newException(NotSupportedError, "DQT: more QTs than space.")
+
+  var qts = newJArray()
+  for ix in 0..count-1:
+    qts.add(newJInt((int)buffer[ix+5]))
+  result["qts"] = qts
+
+
+proc getSosInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
+  ## Return the SOS Start Of Scan information from the given
+  ## buffer. Raise NotSupportedError when the buffer cannot be
+  ## decoded.
+
+  # 0000  FF DA 00 0C 03 01 00 02 11 03 11 00 3F 00        ............?.
+
+# Number of Components in scan  1 byte This must be >= 1 and <=4 (otherwise error), usually 1 or 3
+# Each component        2 bytes      For each component, read 2 bytes. It contains,
+#        1 byte   Component Id (1=Y, 2=Cb, 3=Cr, 4=I, 5=Q),
+#        1 byte   Huffman table to use :
+#             bit 0..3 : AC table (0..3)
+#             bit 4..7 : DC table (0..3)
+# Ignorable Bytes          3 bytes      We have to skip 3 bytes.
+# Remarks:    The image data (scans) is immediately following the SOS segment.
+
+  result = newJObject()
+
+  if buffer.len < 10:
+    raise newException(NotSupportedError, "SOS: buffer too small.")
+
+  if length2(buffer, 0) != 0xffda:  # index 0, 1
+    raise newException(NotSupportedError, "SOS: not 0xffda.")
+
+  let size = length2(buffer, 2)  # index 2, 3
+  if size + 2 != buffer.len:
+    raise newException(NotSupportedError, "SOS: wrong buffer size.")
+
+  let numberOfComponents = (int)buffer[4]  # index 4
+  if numberOfComponents < 1 or numberOfComponents > 4:
+    raise newException(NotSupportedError, "SOS: invalid number of components.")
+
+  if numberOfComponents * 2 + 5 + 3 > buffer.len:
+    raise newException(NotSupportedError, "SOS: no space for components.")
+
+  var components = newJArray()
+  var offset = 5
+  for ix in 1..numberOfComponents:
+    var component = newJArray()
+    component.add(newJInt((int)buffer[offset]))
+    component.add(newJInt((int)buffer[offset+1]))
+    components.add(component)
+    offset += 2
+  result["components"] = components
+  result["skip1"] = newJInt((int)buffer[offset+0])
+  result["skip2"] = newJInt((int)buffer[offset+1])
+  result["skip3"] = newJInt((int)buffer[offset+2])
+
+
 
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
@@ -702,13 +801,12 @@ proc handle_section(file: File, section: Section):
   var info:Metadata
   var known = true
 
-  # echo "$1($2) 0x$3" % [section_name, $section.marker,
-  #                       toHex(section.marker).toLowerAscii()]
-
-  # DQT(219) 0xdb
-  # SOS(218) 0xda
-
   case marker
+  of 0:
+    # The pixel scan lines.
+    section_name = "scans"
+    discard
+
   of 0xd8, 0xd9:
     # SOI(216) 0xd8, 0xffd8 header
     # EOI(217) 0xd9, 0xffd9 footer
@@ -776,11 +874,23 @@ proc handle_section(file: File, section: Section):
     var buffer = readSection(file, start, finish)
     info = getApp0(buffer)
 
+  of 0xdb:
+    # DQT(219) 0xdb, Define Quantization Table
+    var buffer = readSection(file, start, finish)
+    info = getDqtInfo(buffer)
+
+  of 0xda:
+    # SOS(218) 0xda
+    var buffer = readSection(file, start, finish)
+    info = getSosInfo(buffer)
+
   else:
     # echo "$1($2) 0x$3" % [section_name, $section.marker,
     #                       toHex(section.marker).toLowerAscii()]
     # var buffer = readSection(file, start, finish)
-    # echo hexDump(@buffer)
+    # echo hexDump(@buffer[0..200])
+    # echo hexDumpSource(buffer[0..100])
+
     known = false
 
   result = (section_name, info, known)
@@ -800,15 +910,28 @@ proc readJpeg*(file: File): Metadata =
     var known:bool
     var section_name = ""
     var info:Metadata
+    var error = ""
 
     try:
       (section_name, info, known) = handle_section(file, section)
     except NotSupportedError:
+      section_name = jpeg_section_name(section.marker)
       known = false
+      error = getCurrentExceptionMsg()
 
     if info != nil:
-      # todo: support multiple sections with the same name.
-      result[section_name] = info
+      if section_name in dups:
+        # More than one, store in an array.
+        var eInfo = result[section_name]
+        if eInfo.kind != JArray:
+          var jarray = newJArray()
+          jarray.add(eInfo)
+          eInfo = jarray
+        eInfo.add(info)
+        result[section_name] = eInfo
+      else:
+        result[section_name] = info
+      dups[section_name] = 1
 
     # Add the section to the ranges.
     var rItem = newJArray()
@@ -817,6 +940,7 @@ proc readJpeg*(file: File): Metadata =
     rItem.add(newJBool(known))
     rItem.add(newJInt(section.start))
     rItem.add(newJInt(section.finish))
+    rItem.add(newJString(error))
     ranges.add(rItem)
 
   result["ranges"] = ranges
