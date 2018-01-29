@@ -191,7 +191,6 @@ proc bytesToString(buffer: openArray[uint8|char], index: Natural=0,
 #     result.add(str[ch])
 
 
-
 proc readSection(file: File, start: int64, finish: int64,
                  maxLength: Natural=64*1024): seq[uint8] {.tpub.} =
   ## Read the given section of the file. Raise an exception if
@@ -220,8 +219,6 @@ proc iptc_name(value: uint8): string {.tpub.} =
   result = known_iptc_names.getOrDefault(value)
   if result == nil:
     result = ""
-
-
 
 
 type
@@ -317,7 +314,7 @@ type
 
 
 proc `$`(section: Section): string {.tpub.} =
-  # Return a string representation of a section.
+  ## Return a string representation of a section.
   return "section = $1 ($2, $3) $4" % [toHex(section.marker),
     toHex0(section.start), toHex0(section.finish),
     toHex0(section.finish-section.start)]
@@ -380,19 +377,6 @@ proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
     if section.marker == marker:
       result.add(section)
 
-
-# proc read2Check(file, "Invalid section length"): int =
-#   ## Read two bytes big endian from the current file position.  If
-#   ## there is not two bytes remaining, raise a NotSupportedError with
-#   ## the given message.
-
-#   # Read the block length.
-#   let sectionLen = finish - start
-#   if sectionLen < 4:
-#     raise newException(NotSupportedError, "section length < 4")
-#   let length = (int32)read2(file)
-#   if length != sectionLen-2:
-#     raise newException(NotSupportedError, "Invalid section length")
 
 type
   SectionKind = tuple[name: string, data: seq[uint8]] ##\
@@ -787,7 +771,8 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   result["y"] = newJInt(length2(buffer, 14))
   result["width"] = newJInt((int)buffer[16])
   result["height"] = newJInt((int)buffer[17])
-  # If width and height are not 0, the thumbnail image follows.
+
+  # todo: If width and height are not 0, the thumbnail image follows.
 
 proc handle_section(file: File, section: Section):
     tuple[section_name: string, info: Metadata, known: bool] {.tpub.} =
@@ -832,6 +817,7 @@ proc handle_section(file: File, section: Section):
       section_name = "xmp"
       info = xmpParser(xml)
 
+      # todo: support exif
 #[
     elif sectionKind.name == "exif":
       # Parse the exif. It is stored as a tiff file.
