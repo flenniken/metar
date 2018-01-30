@@ -24,4 +24,5 @@ suite "Test readMetadata.nim":
   test "test getMetaInfo":
     let info = getMetaInfo("filename", "readerName", 12345)
     # echo info
-    echo pretty(info)
+    # echo pretty(info)
+    # todo: check values

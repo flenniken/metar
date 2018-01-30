@@ -106,7 +106,7 @@ suite "Test readerJpeg.nim":
 
       var (section_name, info, known) = handle_section(file, sections[1])
       let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
-      check(section_name == "APP0")
+      check(section_name == "jfif")
       check($info == expected1)
       check(known == true)
 

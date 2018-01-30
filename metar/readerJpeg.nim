@@ -718,6 +718,28 @@ proc getSosInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   result["skip3"] = newJInt((int)buffer[offset+2])
 
 
+proc getDriInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
+  ## Return the DRI Define Restart Interval information from the given
+  ## buffer. Raise NotSupportedError when the buffer cannot be
+  ## decoded.
+
+  # 0000  FF DD 00 04 00 01
+
+  result = newJObject()
+
+  if buffer.len != 6:
+    raise newException(NotSupportedError, "DRI: wrong size buffer.")
+
+  if length2(buffer, 0) != 0xffdd:  # index 0, 1
+    raise newException(NotSupportedError, "DRI: not 0xffdd.")
+
+  let size = length2(buffer, 2)  # index 2, 3
+  if size != 4:
+    raise newException(NotSupportedError, "DRI: length not 4.")
+
+  let interval = length2(buffer, 2)  # index 4, 5
+  result["interval"] = newJInt((int)interval)
+
 
 proc jpegKeyName*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
@@ -775,21 +797,21 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # todo: If width and height are not 0, the thumbnail image follows.
 
 proc handle_section(file: File, section: Section):
-    tuple[section_name: string, info: Metadata, known: bool] {.tpub.} =
-  ## Handle the jpeg section of the file. Return the section_name and
-  ## metadata. Section_name is "" when the name isn't known.  Info nil
+    tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
+  ## Handle the jpeg section of the file. Return the sectionName and
+  ## metadata. sectionName is "" when the name isn't known.  Info nil
   ## when there isn't any metadata. Known is true when the code knows
   ## how to decode the section.
 
   var (marker, start, finish) = section
-  var section_name = jpeg_section_name(marker)
+  var sectionName = jpeg_section_name(marker)
   var info:Metadata
   var known = true
 
   case marker
   of 0:
     # The pixel scan lines.
-    section_name = "scans"
+    sectionName = "scans"
     discard
 
   of 0xd8, 0xd9:
@@ -798,8 +820,8 @@ proc handle_section(file: File, section: Section):
     discard
 
   of 0xed:
-    # APPD
-    # Process IPTC metadata.
+    # APPD, IPTC metadata.
+    sectionName = "iptc"
     var buffer = readSection(file, start, finish)
     let iptc_records = getIptcRecords(buffer)
     if iptc_records.len > 0:
@@ -807,19 +829,21 @@ proc handle_section(file: File, section: Section):
       info = newJObject()
       for k, v in iptcInfo.pairs():
         info[k] = newJString(v)
-      section_name = "iptc"
 
   of 0xe1:
     # APP1, Could be xmp or exif.
     let sectionKind = xmpOrExifSection(file, start, finish)
     if sectionKind.name == "xmp":
       let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
-      section_name = "xmp"
+      sectionName = "xmp"
       info = xmpParser(xml)
+
+    elif sectionKind.name == "exif":
+      sectionName = "exif"
+      known = false
 
       # todo: support exif
 #[
-    elif sectionKind.name == "exif":
       # Parse the exif. It is stored as a tiff file.
       from .tiff import read_header, read_ifd, print_ifd
       header_offset = start+4+len("exif\x00")+1
@@ -857,8 +881,11 @@ proc handle_section(file: File, section: Section):
 
   of 0xe0:
     # APP0(224) 0xe0, jfif metadata
+    # todo: support jfxx too:
+    # https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format#JFIF_APP0_marker_segment
     var buffer = readSection(file, start, finish)
     info = getApp0(buffer)
+    sectionName = "jfif"
 
   of 0xdb:
     # DQT(219) 0xdb, Define Quantization Table
@@ -870,16 +897,26 @@ proc handle_section(file: File, section: Section):
     var buffer = readSection(file, start, finish)
     info = getSosInfo(buffer)
 
+  of 0xdd:
+    # DRI (Define Restart Interval)
+    var buffer = readSection(file, start, finish)
+    info = getDriInfo(buffer)
+
+  # of 0xee:
+  #   # APPE
+  #   var buffer = readSection(file, start, finish)
+  #   info = getAppeInfo(buffer)
+
   else:
-    # echo "$1($2) 0x$3" % [section_name, $section.marker,
-    #                       toHex(section.marker).toLowerAscii()]
-    # var buffer = readSection(file, start, finish)
-    # echo hexDump(@buffer[0..200])
-    # echo hexDumpSource(buffer[0..100])
+    echo "$1($2) 0x$3" % [sectionName, $marker, toHex(marker).toLowerAscii()]
+    var buffer = readSection(file, start, finish)
+    let finish = if buffer.len > 200: 200 else: buffer.len-1
+    echo hexDump(buffer[0..finish])
+    # echo hexDumpSource(buffer[0..finish])
 
     known = false
 
-  result = (section_name, info, known)
+  result = (sectionName, info, known)
 
 
 proc readJpeg*(file: File): Metadata =
@@ -894,35 +931,35 @@ proc readJpeg*(file: File): Metadata =
 
   for section in sections:
     var known:bool
-    var section_name = ""
+    var sectionName = ""
     var info:Metadata
     var error = ""
 
     try:
-      (section_name, info, known) = handle_section(file, section)
+      (sectionName, info, known) = handle_section(file, section)
     except NotSupportedError:
-      section_name = jpeg_section_name(section.marker)
+      sectionName = jpeg_section_name(section.marker)
       known = false
       error = getCurrentExceptionMsg()
 
     if info != nil:
-      if section_name in dups:
+      if sectionName in dups:
         # More than one, store in an array.
-        var eInfo = result[section_name]
+        var eInfo = result[sectionName]
         if eInfo.kind != JArray:
           var jarray = newJArray()
           jarray.add(eInfo)
           eInfo = jarray
         eInfo.add(info)
-        result[section_name] = eInfo
+        result[sectionName] = eInfo
       else:
-        result[section_name] = info
-      dups[section_name] = 1
+        result[sectionName] = info
+      dups[sectionName] = 1
 
     # Add the section to the ranges.
     # name, marker, start, finish, known, error
     var rItem = newJArray()
-    rItem.add(newJString(section_name))
+    rItem.add(newJString(sectionName))
     rItem.add(newJInt((int)section.marker))
     rItem.add(newJInt(section.start))
     rItem.add(newJInt(section.finish))
