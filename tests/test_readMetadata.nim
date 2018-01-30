@@ -1,6 +1,7 @@
 
 import unittest
 import readMetadata
+import json
 
 suite "Test readMetadata.nim":
 
@@ -19,3 +20,8 @@ suite "Test readMetadata.nim":
     require(keyName("tiff", "xmp", "missing") == "")
 
   # todo: test keyNames basic working case
+
+  test "test getMetaInfo":
+    let info = getMetaInfo("filename", "readerName", 12345)
+    # echo info
+    echo pretty(info)

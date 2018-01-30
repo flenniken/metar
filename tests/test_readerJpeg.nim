@@ -63,13 +63,14 @@ proc showSectionsFolder(folder: string) =
 suite "Test readerJpeg.nim":
 
   test "test readJpeg":
-    var file = openTestFile("testfiles/image.jpg")
+    var file = openTestFile("testfiles/IMG_6093.JPG")
     defer: file.close()
     var metadata = readJpeg(file)
     # echo pretty(metadata)
     # for line in metadata.lines():
     #   echo line
-    # printMetadata(metadata)
+    printMetadata(metadata)
+
 
   test "jpegKeyName iptc Title":
     check(jpegKeyName("iptc", "5") == "Title")

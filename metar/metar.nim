@@ -13,6 +13,8 @@ import strutils
 import parseopt2
 import readMetadata
 import version
+import printMetadata
+import metadata
 
 type
   Args* = tuple[files: seq[string], json: bool, help: bool, version: bool] ## \
@@ -94,9 +96,11 @@ proc main*() =
   for filename in args.files:
     if args.files.len > 1:
       echo "file: ", filename
-    let metadata = readMetadata(filename)
-    if metadata != nil:
-      echo "Unable to read the image."
+    var metadata:Metadata
+    try:
+      metadata = readMetadata(filename)
+    except UnknownFormatError:
+      echo getCurrentExceptionMsg()
       continue
     if args.json:
       printMetadataJson(metadata)

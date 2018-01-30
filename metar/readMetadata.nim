@@ -17,6 +17,7 @@ import metadata
 import readerJpeg
 import readerDng
 import readerTiff
+import tpub
 
 let readers = {
   # name: (name, Reader method, KeyName method)
@@ -25,31 +26,27 @@ let readers = {
   "tiff": ("tiff", readTiff, tiffKeyName),
 }.toOrderedTable
 
-proc printMetadata*(metadata: Metadata) =
-  ## Print human readable metadata.
-  echo "printing metadata"
-
 proc printMetadataJson*(metadata: Metadata) =
   ## Print metadata as JSON.
   echo pretty(metadata)
 
-proc getMetaInfo(filename: string, readerName: string, fileSize: int64):
-                Metadata =
+proc getMetaInfo(filename: string, readerName: string,
+                 fileSize: int64): Metadata {.tpub.} =
   ## Return the meta information about the file and running system.
 
   result = newJObject()
-  result["filename"] = %* filename
-  result["reader"] = %* readerName
-  result["size"] = %* fileSize
-  result["version"] = %* versionNumber
-  result["nimVersion"] = %* NimVersion
-  result["os"] = %* hostOS
-  result["cpu"] = %* hostCPU
+  result["filename"] = newJString(filename)
+  result["reader"] = newJString(readerName)
+  result["size"] = newJInt(fileSize)
+  result["version"] = newJString(versionNumber)
+  result["nimVersion"] = newJString(NimVersion)
+  result["os"] = newJString(hostOS)
+  result["cpu"] = newJString(hostCPU)
+
 
 proc readMetadata*(filename: string): Metadata =
   ## Read the given file and return its metadata.  Return
-  ## UnknownFormatError when the file format is unknown. May return
-  ## NotSupportedError exception.
+  ## UnknownFormatError when the file format is unknown.
   ##
   ## Open the file and loop through the readers until one returns some
   ## results.
@@ -61,27 +58,30 @@ proc readMetadata*(filename: string): Metadata =
   ##   echo "reader = " & meta["reader"]
   ##   reader = jepg
 
-  result = nil
   var f: File
   if not open(f, filename, fmRead):
     return
   defer: f.close()
 
+  result = nil
   var readerName: string
-  for readerName, reader, _ in readers.values():
+  for name, reader, _ in readers.values():
     try:
       result = reader(f)
-      if result != nil:
-        break
+      readerName = name
+      break
     except UnknownFormatError:
       continue
     except NotSupportedError:
-      echo "Not supported: " & getCurrentExceptionMsg()
+      echo name & ": " & getCurrentExceptionMsg()
       continue
+
+  if result == nil:
+    raise newException(UnknownFormatError, "File type not recognized.")
 
   # Add the meta dictionary information to the metadata.
   let fileSize = f.getFileSize()
-  result["meta"] = %* getMetaInfo(filename, readerName, fileSize)
+  result["meta"] = getMetaInfo(filename, readerName, fileSize)
 
 
 proc keyName*(readerName: string, section: string, key: string): string =

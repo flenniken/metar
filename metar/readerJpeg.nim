@@ -652,7 +652,7 @@ proc getDqtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
 
   let bits = buffer[4]  # index 4
   result["bits"] = newJInt((int)bits)
-  let num = bits and 0b1111
+  # let num = bits and 0b1111
   let precision = (bits and 0b11110000) shr 4
   let count = 64*((int)precision+1)
   # echo "num = " & $(int)num
@@ -883,9 +883,9 @@ proc handle_section(file: File, section: Section):
 
 
 proc readJpeg*(file: File): Metadata =
-  ## Read the given file and return its metadata.  Return nil when the
-  ## file format is unknown. It may generate UnknownFormatError and
-  ## NotSupportedError exceptions.
+  ## Read the given file and return its metadata.  Return
+  ## UnknownFormatError when the file format is unknown. May return
+  ## NotSupportedError exception.
 
   result = newJObject()
   var ranges = newJArray()
