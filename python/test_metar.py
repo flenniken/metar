@@ -34,5 +34,13 @@ size = 2198
 """
     self.assertTrue(contains in data)
 
+  def test_key_name(self):
+    self.assertEqual(metar.key_name("jpeg", "iptc", "5"), "Title")
+
+    self.assertEqual(metar.key_name("jpeg", "ranges", "216"), "SOI")
+    self.assertEqual(metar.key_name("jpeg", "ranges", "219"), "DQT")
+    self.assertEqual(metar.key_name("jpeg", "ranges", "224"), "APP0")
+
+
 if __name__ == '__main__':
   unittest.main()

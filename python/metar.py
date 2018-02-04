@@ -6,3 +6,4 @@ import metarpy
 __version__ = metarpy.py_get_version()
 read_metadata_json = metarpy.py_read_metadata_json
 read_metadata = metarpy.py_read_metadata
+key_name = metarpy.py_key_name

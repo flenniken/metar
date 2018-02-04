@@ -21,3 +21,7 @@ proc py_read_metadata*(filename: string): string {.exportpy.} =
     result = readMetadata(filename).readable()
   except UnknownFormatError:
     result = ""
+
+proc py_key_name*(readerName: string, section: string,
+                  key: string): string {.exportpy.} =
+  result = keyName(readerName, section, key)

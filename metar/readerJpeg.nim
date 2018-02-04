@@ -749,11 +749,7 @@ proc jpegKeyName*(section: string, key: string): string =
     if section == "iptc":
       return iptc_name(cast[uint8](parseUInt(key)))
     elif section == "ranges":
-      # Strip off the leading range_ and trailing _xx.
-      let parts = key.split({'_'})
-      # let sectionKey = cast[uint8](parseUInt(parts[1]))
-      let value = parseHexInt(parts[1])
-      return jpeg_section_name(cast[uint8](value))
+      return jpeg_section_name(cast[uint8](parseUInt(key)))
     # todo: add back exif
     # elif section == "exif":
     #   from .tiff import tag_name
