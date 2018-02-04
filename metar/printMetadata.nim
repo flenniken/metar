@@ -100,7 +100,7 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
 
   assert(node.kind == JArray)
   assert(node.len == 6)
-  
+
   # name, marker, start, finish, known, error
   # 0,    1,      2,     3,      4,     5
   result = "$1($2)$3 ($4, $5) $6" % [
@@ -165,3 +165,9 @@ proc printMetadata*(metadata: Metadata) =
 
   for line in metadata.lines():
     echo line
+
+proc readable*(metadata: Metadata): string =
+  var lines = newSeq[string]()
+  for line in metadata.lines():
+    lines.add(line)
+  result = lines.join("\n")

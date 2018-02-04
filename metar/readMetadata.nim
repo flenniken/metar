@@ -31,7 +31,8 @@ proc printMetadataJson*(metadata: Metadata) =
   echo pretty(metadata)
 
 proc getMetaInfo(filename: string, readerName: string,
-                 fileSize: int64): Metadata {.tpub.} =
+    fileSize: int64, problems: seq[tuple[reader: string,
+    message: string]]): Metadata {.tpub.} =
   ## Return the meta information about the file and running system.
 
   result = newJObject()
@@ -42,10 +43,24 @@ proc getMetaInfo(filename: string, readerName: string,
   result["nimVersion"] = newJString(NimVersion)
   result["os"] = newJString(hostOS)
   result["cpu"] = newJString(hostCPU)
+  var p = newJArray()
+  for item in problems:
+    var jarray = newJArray()
+    var jname = newJString(item.reader)
+    var jmessage = newJString(item.message)
+    jarray.add(jname)
+    jarray.add(jmessage)
+    p.add(jarray)
+  result["problems"] = p
+
+  var r = newJArray()
+  for name, _, _ in readers.values():
+    r.add(newJString(name))
+  result["readers"] = r
 
 
 proc readMetadata*(filename: string): Metadata =
-  ## Read the given file and return its metadata.  Return
+  ## Read the given file and return its metadata.  Raise
   ## UnknownFormatError when the file format is unknown.
   ##
   ## Open the file and loop through the readers until one returns some
@@ -63,6 +78,10 @@ proc readMetadata*(filename: string): Metadata =
     return
   defer: f.close()
 
+  # Record the readers that thought they could handle the image but
+  # couldn't. These are the ones that raise NotSupportedError.
+  var problems = newSeq[tuple[reader: string, message: string]]()
+
   result = nil
   var readerName: string
   for name, reader, _ in readers.values():
@@ -73,15 +92,15 @@ proc readMetadata*(filename: string): Metadata =
     except UnknownFormatError:
       continue
     except NotSupportedError:
-      echo name & ": " & getCurrentExceptionMsg()
+      problems.add((name, getCurrentExceptionMsg()))
       continue
 
-  if result == nil:
+  if result == nil and problems.len == 0:
     raise newException(UnknownFormatError, "File type not recognized.")
 
   # Add the meta dictionary information to the metadata.
   let fileSize = f.getFileSize()
-  result["meta"] = getMetaInfo(filename, readerName, fileSize)
+  result["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
 
 
 proc keyName*(readerName: string, section: string, key: string): string =

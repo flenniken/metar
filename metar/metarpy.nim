@@ -4,23 +4,20 @@ import version
 import json # for $metadata
 import readMetadata
 import printMetadata
+import metadata
 
-proc get_version*(): string {.exportpy.} =
+#todo: document these functions
+proc py_get_version*(): string {.exportpy.} =
   result = versionNumber
 
-proc py_read_metadata(filename: string): string {.exportpy.} =
-  var metadata = readMetadata(filename)
-  if metadata == nil:
+proc py_read_metadata_json*(filename: string): string {.exportpy.} =
+  try:
+    result = $readMetadata(filename)
+  except UnknownFormatError:
     result = ""
-  else:
-    result = $metadata
 
-proc py_read_metadata_human(filename: string): string {.exportpy.} =
-  var metadata = readMetadata(filename)
-  if metadata == nil:
+proc py_read_metadata*(filename: string): string {.exportpy.} =
+  try:
+    result = readMetadata(filename).readable()
+  except UnknownFormatError:
     result = ""
-  else:
-    var lines = newSeq[string]()
-    for line in metadata.lines():
-      lines.add(line)
-    result = lines.join("\n")

@@ -13,10 +13,10 @@ import readMetadata
 # import json
 
 suite "Test printMetadata.nim":
-  test "test printMetadata image.jpg":
-    let filename = "testfiles/image.jpg"
-    let metadata = readMetadata(filename)
-    printMetadata(metadata)
+  # test "test printMetadata image.jpg":
+  #   let filename = "testfiles/image.jpg"
+  #   let metadata = readMetadata(filename)
+  #   printMetadata(metadata)
 
   when not defined(release):
 
