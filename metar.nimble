@@ -18,6 +18,7 @@ skipExt = @["nim"]
 task m, "Build and run metar":
   exec "nim c -r --out:bin/metar metar/metar"
 
+
 proc test_module(filename: string) =
   ## Test one module.
   const cmd = "nim c --verbosity:0 --hints:off -r --out:bin/$1 tests/$1"
@@ -43,8 +44,9 @@ task test, "Run all the tests":
   runTests()
 
 # Is there a way to pass a filename?
-task one, "Test the test_readerJpeg file.":
-  test_module("test_readerJpeg")
+# task one, "Test the test_readerJpeg file.":
+#   test_module("test_readerJpeg")
+
 
 task debug, "Debug the test_readerJpeg file.":
   ## Debug test_readerJpeg "test xmpOrExifSection section length"
@@ -153,3 +155,20 @@ task dot, "Show dependency graph":
   # Make a dotted line.
   # version -> ver [style = dotted]
   # metar -> ver [style = dotted]
+
+task py, "Build python module":
+  exec "nim c --threads:on --tlsEmulation:off --app:lib --out:bin/metarpy.so metar/metarpy"
+
+task showtests, "Show command line to run tests":
+  exec """find . -name test_\* | xargs grep 'test .*:$' | sed 's:^.*/tests/:nim c -r tests/:' | sed 's/:.*test/ "test/' | sed s/://"""
+
+  echo "lines should look like:"
+  echo """nim c -r tests/test_readerJpeg.nim "test readJpeg"  """
+
+task showtestfiles, "Show command line to debug tests.":
+  for filename in get_test_filenames():
+    echo "filename=" & filename
+    var nimswitches = "c --debugger:native --verbosity:0 --hints:off"
+    echo """nimswitches='$1'""" % nimswitches
+    echo r"nim $nimswitches --out:bin/$filename tests/$filename.nim"
+    echo ""

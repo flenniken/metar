@@ -26,3 +26,13 @@ suite "Test readMetadata.nim":
     # echo info
     # echo pretty(info)
     # todo: check values
+
+  test "test readMetadata nil":
+    let info = readMetadata("filename")
+    check(info == nil)
+
+  test "test readMetadata":
+    let filename = "testfiles/image.jpg"
+    let info = readMetadata(filename)
+    # todo: check output
+    # echo info

@@ -5,3 +5,4 @@ bin/
 metar/private/
 docs/
 testfiles/
+*.pyc

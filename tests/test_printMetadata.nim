@@ -3,6 +3,7 @@ import printMetadata
 import unittest
 import json
 import strutils
+import readMetadata
 
 # import os
 # import strutils
@@ -12,6 +13,10 @@ import strutils
 # import json
 
 suite "Test printMetadata.nim":
+  test "test printMetadata image.jpg":
+    let filename = "testfiles/image.jpg"
+    let metadata = readMetadata(filename)
+    printMetadata(metadata)
 
   when not defined(release):
 
