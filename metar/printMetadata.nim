@@ -9,17 +9,18 @@ const maxKeyLength = 15
 const maxStringLength = 40
 const maxLineLength = 72
 
-proc controlToDot(str: string): string =
-  ## Replace control characters in the given string with dots and
-  ## return the new string.
+#todo: use controlToDot
+# proc controlToDot(str: string): string =
+#   ## Replace control characters in the given string with dots and
+#   ## return the new string.
 
-  result = newStringOfCap(str.len)
-  for ch in runes(str):
-    if ch <% (Rune)32:
-      result.add('.')
-    else:
-      var utf8 = toUTF8(ch)
-      result.add(utf8)
+#   result = newStringOfCap(str.len)
+#   for ch in runes(str):
+#     if ch <% (Rune)32:
+#       result.add('.')
+#     else:
+#       var utf8 = toUTF8(ch)
+#       result.add(utf8)
 
 proc ellipsize(str: string, maxLen: Natural): string {.tpub.} =
   ## If the string is longer than maxLen, truncate it and add "...".
@@ -122,6 +123,7 @@ proc keyNameDefault(readerName: string, section: string,
     result = key
   else:
     result = "$1($2)" % [name, key]
+
 
 iterator lines(metadata: Metadata): string {.tpub.} =
   ## Iterate through the metadata line by line in a human readable

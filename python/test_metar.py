@@ -1,6 +1,6 @@
 import metar
 import unittest
-from capture import capture
+
 
 class TestMetar(unittest.TestCase):
 
@@ -36,7 +36,6 @@ size = 2198
 
   def test_key_name(self):
     self.assertEqual(metar.key_name("jpeg", "iptc", "5"), "Title")
-
     self.assertEqual(metar.key_name("jpeg", "ranges", "216"), "SOI")
     self.assertEqual(metar.key_name("jpeg", "ranges", "219"), "DQT")
     self.assertEqual(metar.key_name("jpeg", "ranges", "224"), "APP0")

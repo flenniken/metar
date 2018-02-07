@@ -1,6 +1,7 @@
 
 import unittest
 import readMetadata
+import metadata
 import json
 import strutils
 import printMetadata
@@ -59,13 +60,17 @@ suite "Test readMetadata.nim":
     check(str.contains(""""readers":["""") == true)
 
 
-  test "test readMetadata nil":
-    let info = readMetadata("filename")
-    check(info == nil)
+  test "test getMetadata nil":
+    var gotException = false
+    try:
+      discard getMetadata("filename")
+    except UnknownFormatError:
+      gotException = true
+    check(gotException == true)
 
-  test "test readMetadata":
+  test "test getMetadata":
     let filename = "testfiles/image.jpg"
-    let str = readMetadata(filename).readable()
+    let str = getMetadata(filename).readable()
     let expected = """
 ========== jfif ==========
 major = 1

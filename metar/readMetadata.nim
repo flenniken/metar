@@ -18,6 +18,8 @@ import readerJpeg
 import readerDng
 import readerTiff
 import tpub
+import nimpy
+# import printMetadata
 
 let readers = {
   # name: (name, Reader method, KeyName method)
@@ -59,23 +61,16 @@ proc getMetaInfo(filename: string, readerName: string,
   result["readers"] = r
 
 
-proc readMetadata*(filename: string): Metadata =
+proc getMetadata*(filename: string): Metadata =
   ## Read the given file and return its metadata.  Raise
   ## UnknownFormatError when the file format is unknown.
   ##
   ## Open the file and loop through the readers until one returns some
   ## results.
-  ##
-  ## .. code-block:: nim
-  ##   import metar
-  ##   md = readMetadata("filename.jpg")
-  ##   meta = md["meta"]
-  ##   echo "reader = " & meta["reader"]
-  ##   reader = jepg
 
   var f: File
   if not open(f, filename, fmRead):
-    return
+    raise newException(UnknownFormatError, "Cannot open file.")
   defer: f.close()
 
   # Record the readers that thought they could handle the image but
@@ -95,15 +90,19 @@ proc readMetadata*(filename: string): Metadata =
       problems.add((name, getCurrentExceptionMsg()))
       continue
 
-  if result == nil and problems.len == 0:
-    raise newException(UnknownFormatError, "File type not recognized.")
+  if result == nil:
+    if problems.len == 0:
+      raise newException(UnknownFormatError, "File type not recognized.")
+    result = newJObject()
 
   # Add the meta dictionary information to the metadata.
   let fileSize = f.getFileSize()
   result["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
 
+proc getVersion*(): string {.exportpy.} =
+  result = versionNumber
 
-proc keyName*(readerName: string, section: string, key: string): string =
+proc keyName*(readerName: string, section: string, key: string): string {.exportpy.} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   ##

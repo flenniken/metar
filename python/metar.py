@@ -1,9 +1,9 @@
 import sys
 # todo: remove hard coded path.
 sys.path.append("/Users/steve/code/metarnim/bin")
-import metarpy
+import metarlib
 
-__version__ = metarpy.py_get_version()
-read_metadata_json = metarpy.py_read_metadata_json
-read_metadata = metarpy.py_read_metadata
-key_name = metarpy.py_key_name
+__version__ = metarlib.getVersion()
+read_metadata_json = metarlib.readMetadataJson
+read_metadata = metarlib.readMetadata
+key_name = metarlib.keyName

@@ -78,11 +78,17 @@ suite "Test readerJpeg.nim":
   test "jpegKeyName iptc invalid":
     check(jpegKeyName("iptc", "999") == "")
 
-  test "jpegKeyName ranges c0":
-    check(jpegKeyName("ranges", "range_c0") == "SOF0")
+  test "jpegKeyName ranges 192":
+    check(jpegKeyName("ranges", "192") == "SOF0")
 
-  test "jpegKeyName ranges c0 2":
-    check(jpegKeyName("ranges", "range_c0_3") == "SOF0")
+  test "jpegKeyName ranges 254":
+    check(jpegKeyName("ranges", "254") == "COM")
+
+  test "jpegKeyName ranges 0":
+    check(jpegKeyName("ranges", "0") == "")
+
+  test "jpegKeyName ranges 255":
+    check(jpegKeyName("ranges", "255") == "")
 
   test "jpegKeyName ranges invalid":
     check(jpegKeyName("ranges", "xxyzj") == "")
