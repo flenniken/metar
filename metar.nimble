@@ -157,8 +157,10 @@ task dot, "Show dependency graph":
   # metar -> ver [style = dotted]
 
 task py, "Build python module":
-  exec "nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metarlib.so metar/metar"
-
+  exec r"find . -name \*.pyc -delete"
+  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar"
+  exec "python python/test_metar.py"
+  
 task showtests, "Show command line to run tests":
   exec """find . -name test_\* | xargs grep 'test .*:$' | sed 's:^.*/tests/:nim c -r tests/:' | sed 's/:.*test "/ "/' | sed s/://"""
 

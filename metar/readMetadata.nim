@@ -99,10 +99,8 @@ proc getMetadata*(filename: string): Metadata =
   let fileSize = f.getFileSize()
   result["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
 
-proc getVersion*(): string {.exportpy.} =
-  result = versionNumber
-
-proc keyName*(readerName: string, section: string, key: string): string {.exportpy.} =
+proc keyNameImp*(readerName: string, section: string, key: string):
+            string {.exportpy: "key_name".} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   ##

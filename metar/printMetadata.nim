@@ -118,7 +118,7 @@ proc keyNameDefault(readerName: string, section: string,
                     key: string): string {.tpub.} =
   # If the key name exists, return both the key name and key, else
   # return key.
-  var name = keyName(readerName, section, key)
+  var name = keyNameImp(readerName, section, key)
   if name.len == 0:
     result = key
   else:

@@ -1,11 +1,15 @@
+# todo: remove this
+import sys
+sys.path.append("/Users/steve/code/metarnim/bin")
+
 import metar
 import unittest
 
 
 class TestMetar(unittest.TestCase):
 
-  def test_version(self):
-      self.assertEqual(metar.__version__, "0.0.2")
+  def test_get_version(self):
+    self.assertTrue(metar.get_version().startswith("0."))
 
   def test_read_metadata_json(self):
     data =  metar.read_metadata_json("testfiles/image.jpg")

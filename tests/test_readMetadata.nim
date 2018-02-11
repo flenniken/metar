@@ -6,6 +6,8 @@ import json
 import strutils
 import printMetadata
 
+const keyName = keyNameImp
+
 suite "Test readMetadata.nim":
 
   # proc keyName*(readerName: string, section: string, key: string): string =

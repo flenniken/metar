@@ -20,15 +20,26 @@ when not defined(buidingLib):
   import parseopt2
   import parseCommandLine
 
+# The keyName proc is here so it will get exported in the python module.
+proc keyName*(readerName: string, section: string, key: string):
+            string {.exportpy: "key_name".} =
+  result = keyNameImp(readerName, section, key)
 
-proc readMetadataJson*(filename: string): string {.exportpy.} =
+
+proc getVersion*(): string {.exportpy: "get_version".} =
+   result = versionNumber
+
+
+proc readMetadataJson*(filename: string): string
+    {.exportpy: "read_metadata_json".} =
   try:
     result = $getMetadata(filename)
   except UnknownFormatError:
     result = ""
 
 
-proc readMetadata*(filename: string): string {.exportpy.} =
+proc readMetadat*(filename: string): string
+    {.exportpy: "read_metadata".} =
   try:
     result = getMetadata(filename).readable()
   except UnknownFormatError:
