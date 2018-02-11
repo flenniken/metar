@@ -164,6 +164,8 @@ iterator lines(metadata: Metadata): string {.tpub.} =
 
 
 proc readable*(metadata: Metadata): string =
+  ## Return the metadata as a human readable string.
+
   var lines = newSeq[string]()
   for line in metadata.lines():
     lines.add(line)

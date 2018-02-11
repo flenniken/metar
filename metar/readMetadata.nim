@@ -27,10 +27,6 @@ let readers = {
   "tiff": ("tiff", readTiff, tiffKeyName),
 }.toOrderedTable
 
-proc printMetadataJson*(metadata: Metadata) =
-  ## Print metadata as JSON.
-  echo pretty(metadata)
-
 proc getMetaInfo(filename: string, readerName: string,
     fileSize: int64, problems: seq[tuple[reader: string,
     message: string]]): Metadata {.tpub.} =

@@ -11,8 +11,14 @@ proc parseCommandLine*(optParser: var OptParser): Args =
   ##
   ## .. code-block:: nim
   ##   import parseopt2
-  ##   import metar
-  ##   echo parseCommandLine()
+  ##   import parseCommandLine
+  ##   var optParser = initOptParser(@["-j", "image.dng"])
+  ##   var args = parseCommandLine(optParser)
+  ##   check(args.help == false)
+  ##   check(args.json == true)
+  ##   check(args.version == false)
+  ##   check(args.files.len == 1)
+  ##   check(args.files[0] == "image.dng")
 
   var files: seq[string] = @[]
   var json = false

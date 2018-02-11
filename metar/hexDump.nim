@@ -48,7 +48,11 @@ proc hexDump*(bytes: seq[uint8], offset: uint16=0): string =
     result.add("\n")
 
 proc toHex0*[T](number: T): string =
-  ## Remove the leading 0's from toHex output.
+  ## Return the number as a hex string. It is like toHex but with the
+  ## leading 0's removed.
+  ##
+  ## .. code-block:: nim
+  ##   check(toHex0(0x0004'u16) == "4")
 
   let str = toHex(number)
 
@@ -66,8 +70,8 @@ proc toHex0*[T](number: T): string =
   if result == "":
      return "0"
 
-proc hexDumpSource*(bytes: seq[uint8]): string =
-  # Dump the buffer as an array of bytes in nim source code.
+proc hexDumpSource(bytes: seq[uint8]): string {.tpub.} =
+  ## Dump the buffer as an array of bytes in nim source code.
 
   var lines = newSeq[string]()
   lines.add("var buffer = [")

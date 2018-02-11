@@ -4,7 +4,7 @@
 metadata
 =====
 
-The metadata module implements types used by the metadata reader
+The metadata module contains types used by the metadata reader
 modules. It defines the interface required to be a reader.
 
 ]##
@@ -29,20 +29,18 @@ type
   ## Metadata is an ordered dictionary where each item is called a
   ## section. For example: meta, xmp, iptc sections.
   ##
-  ## A section is either an ordered dictionary or a list of dictionaries.
+  ## * A section is either an ordered dictionary or a list of dictionaries.
+  ## * A dictionary contains strings, numbers, arrays or dictionaries.
+  ## * An array contains strings, numbers, arrays or dictionaries.
+  ## * No booleans, or nulls.
   ##
-  ## A dictionary contains strings, numbers, arrays or dictionaries.
-  ##
-  ## An array contains strings, numbers, arrays or dictionaries.
-  ##
-  ## No booleans, or nulls.
-  ##
-  ## {
-  ##   "meta": {}
-  ##   "xmp": {}
-  ##   "iptc": {}
-  ##   "sof": [{},{},...]
-  ## }
+  ## .. code-block::
+  ##   {
+  ##     "meta": {}
+  ##     "xmp": {}
+  ##     "iptc": {}
+  ##     "sof": [{},{},...]
+  ##   }
 
   Reader* = proc (file: File): Metadata ## \ Read the given file and
   ## return its metadata.  Return UnknownFormatError when the file

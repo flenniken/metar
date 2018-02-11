@@ -4,7 +4,8 @@
 metar
 =====
 
-The metar module implements the metar command line program.
+The metar module implements the metar command line program and it
+contains the public procedures.
 
 ]##
 
@@ -23,15 +24,19 @@ when not defined(buidingLib):
 # The keyName proc is here so it will get exported in the python module.
 proc keyName*(readerName: string, section: string, key: string):
             string {.exportpy: "key_name".} =
+  ## Return a human readable name for the given key.
   result = keyNameImp(readerName, section, key)
 
 
 proc getVersion*(): string {.exportpy: "get_version".} =
-   result = versionNumber
+  ## Return the version number.
+  result = versionNumber
 
 
 proc readMetadataJson*(filename: string): string
     {.exportpy: "read_metadata_json".} =
+  ## Read the given image file's metadata and return it as a JSON
+  ## string. Return an empty string when the file is not recognized.
   try:
     result = $getMetadata(filename)
   except UnknownFormatError:
@@ -40,6 +45,9 @@ proc readMetadataJson*(filename: string): string
 
 proc readMetadata*(filename: string): string
     {.exportpy: "read_metadata".} =
+  ## Read the given image file's metadata and return it as a human
+  ## readable string. Return an empty string when the file is not
+  ## recognized.
   try:
     result = getMetadata(filename).readable()
   except UnknownFormatError:
@@ -68,8 +76,16 @@ file          Image filename to analyze.
 
 
 iterator processArgs*(args: Args): string =
-  ## Return the requested information as bunches of lines.
-
+  ## Given the command line arguments, return the requested
+  ## information as bunches of lines.
+  ##
+  ## .. code-block:: nim
+  ##   import parseopt2
+  ##   var optParser = initOptParser(@["-j", "image.dng"])
+  ##   var args = parseCommandLine(optParser)
+  ##   for str in processArgs(args):
+  ##     echo str
+    
   if args.version:
     yield($versionNumber)
   elif args.files.len == 0 or args.help:
