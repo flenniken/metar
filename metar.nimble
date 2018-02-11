@@ -47,12 +47,6 @@ task test, "Run all the tests":
 # task one, "Test the test_readerJpeg file.":
 #   test_module("test_readerJpeg")
 
-
-task debug, "Debug the test_readerJpeg file.":
-  ## Debug test_readerJpeg "test xmpOrExifSection section length"
-  exec "nim c --debugger:native --verbosity:0 --hints:off --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
-  # exec "lldb bin/test_readerJpeg \"test xmpOrExifSection section length\""
-
 task clean, "Delete unneed files":
   ## Delete binary files in the test dir (files with no extension).
   exec "find tests -type f ! -name \"*.*\" | xargs rm"
@@ -167,7 +161,7 @@ task showtests, "Show command line to run tests":
   echo "lines should look like:"
   echo """nim c -r tests/test_readerJpeg.nim "test readJpeg"  """
 
-task showtestfiles, "Show command line to debug tests.":
+task showtestfiles, "Show command line to debug tests":
   for filename in get_test_filenames():
     echo "filename=" & filename
     var nimswitches = "c --debugger:native --verbosity:0 --hints:off"
