@@ -4,14 +4,7 @@ import unittest
 import json
 import strutils
 import readMetadata
-import metar
 
-# import os
-# import strutils
-# import unittest
-# import hexDump
-# import tables
-# import json
 
 suite "test readable.nim":
 

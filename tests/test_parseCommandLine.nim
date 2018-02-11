@@ -1,6 +1,5 @@
 
 import unittest
-import metar
 import parseopt2
 import parseCommandLine
 

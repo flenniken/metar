@@ -34,4 +34,3 @@ suite "test_metar.nim":
 
   test "test showHelp":
     check(showHelp() == help)
-    
