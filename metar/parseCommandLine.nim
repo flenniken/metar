@@ -3,7 +3,6 @@ import strutils
 import parseopt2
 import readMetadata
 import version
-import printMetadata
 import metadata
 
 

@@ -12,7 +12,7 @@ import macros
 import strutils
 import readMetadata
 import version
-import printMetadata
+import readable
 import metadata
 import nimpy
 import json
@@ -38,7 +38,7 @@ proc readMetadataJson*(filename: string): string
     result = ""
 
 
-proc readMetadat*(filename: string): string
+proc readMetadata*(filename: string): string
     {.exportpy: "read_metadata".} =
   try:
     result = getMetadata(filename).readable()

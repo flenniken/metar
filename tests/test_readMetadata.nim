@@ -4,7 +4,7 @@ import readMetadata
 import metadata
 import json
 import strutils
-import printMetadata
+import readable
 
 const keyName = keyNameImp
 

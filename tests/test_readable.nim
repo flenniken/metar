@@ -1,9 +1,10 @@
 import metadata
-import printMetadata
+import readable
 import unittest
 import json
 import strutils
 import readMetadata
+import metar
 
 # import os
 # import strutils
@@ -12,11 +13,24 @@ import readMetadata
 # import tables
 # import json
 
-suite "Test printMetadata.nim":
-  # test "test printMetadata image.jpg":
-  #   let filename = "testfiles/image.jpg"
-  #   let metadata = readMetadata(filename)
-  #   printMetadata(metadata)
+suite "test readable.nim":
+
+  test "test readable image.jpg":
+    let filename = "testfiles/image.jpg"
+    let metadata = getMetadata(filename)
+    let str = readable(metadata)
+    # echo str
+    let expected = """
+========== jfif ==========
+major = 1
+minor = 1
+units = 1
+x = 96
+y = 96
+width = 0
+height = 0
+"""
+    check(str.startsWith(expected) == true)
 
   when not defined(release):
 
@@ -142,9 +156,7 @@ suite "Test printMetadata.nim":
       xmp["a"] = list
       metadata["xmp"] = xmp
 
-      var lines = newSeq[string]()
-      for line in metadata.lines():
-        lines.add(line)
+      let str = readable(metadata)
 
       let expected = """
 ========== xmp ==========
@@ -156,72 +168,4 @@ on = t
 off = f
 more = {"hi": "there", "num": 5}
 a = [5, 6]"""
-      check(lines.join("\n") == expected)
-
-    # test "test printMetadata2":
-    #   var metadata = newJObject()
-    #   var xmp = newJObject()
-    #   xmp["width"] = newJInt(200)
-    #   xmp["height"] = newJInt(100)
-
-    #   var obj = newJObject()
-    #   obj["hi"] = newJString("there")
-    #   obj["num"] = newJInt(5)
-
-    #   var list = newJArray()
-    #   list.add(obj)
-
-    #   xmp["iptc"] = list
-    #   echo "list"
-    #   echo getLeafString(list, 100)
-
-    #   metadata["xmp"] = xmp
-
-    #   echo "xmp"
-    #   echo getLeafString(xmp, 100)
-
-    #   # var lines = newSeq[string]()
-    #   for line in metadata.lines():
-    #     echo line
-    #   #   lines.add(line)
-    #   # echo lines
-
-    #   var sof = newJObject()
-    #   sof["precision"] = newJInt(8)
-    #   sof["width"] = newJInt(150)
-    #   sof["height"] = newJInt(100)
-
-    #   var list = newJArray()
-    #   list.add(sof)
-
-    #   var obj = newJObject()
-    #   obj["sof0"] = list
-
-#[
-{
-  "sof0": [
-    {
-      "precision": 8,
-      "width": 150,
-      "height": 100,
-      "components": [
-        [
-          1,
-          34,
-          0
-        ],
-        [
-          2,
-          17,
-          1
-        ],
-        [
-          3,
-          17,
-          1
-        ]
-      ]
-    }
-  ],
-}
-]#
+      check(str == expected)

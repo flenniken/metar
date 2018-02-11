@@ -162,11 +162,6 @@ iterator lines(metadata: Metadata): string {.tpub.} =
     else:
       raise newException(ValueError, "Expected second level object.")
 
-proc printMetadata*(metadata: Metadata) =
-  ## Print the metadata in a human readable form.
-
-  for line in metadata.lines():
-    echo line
 
 proc readable*(metadata: Metadata): string =
   var lines = newSeq[string]()

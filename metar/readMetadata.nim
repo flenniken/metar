@@ -19,7 +19,6 @@ import readerDng
 import readerTiff
 import tpub
 import nimpy
-# import printMetadata
 
 let readers = {
   # name: (name, Reader method, KeyName method)
