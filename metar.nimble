@@ -15,9 +15,19 @@ requires "nim >= 0.17.0"
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
-task m, "Build and run metar":
-  exec "nim c -r --out:bin/metar metar/metar"
+proc build_python_module(ignoreOutput: bool = false) =
+  var ignore: string
+  if ignoreOutput:
+    ignore = ">/dev/null 2>&1"
+  else:
+    ignore = ""
+  exec r"find . -name \*.pyc -delete"
+  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar " & ignore
 
+
+task m, "Build metar exe and python module":
+  exec "nim c --out:bin/metar metar/metar"
+  build_python_module()
 
 proc test_module(filename: string) =
   ## Test one module.
@@ -39,6 +49,17 @@ proc runTests() =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     test_module(filename)
+  # Run the python tests.
+  build_python_module(true)
+
+  echo ""
+  # system.addQuitProc(resetAttributes)
+  # setForegroundColor(fgBlue)
+  # stdout.write "[Suite]"
+  # resetAttributes()
+  echo "[Suite] Test Python Module"
+  exec "python python/test_metar.py"
+
 
 task test, "Run all the tests":
   runTests()
@@ -150,11 +171,6 @@ task dot, "Show dependency graph":
   # version -> ver [style = dotted]
   # metar -> ver [style = dotted]
 
-task py, "Build python module":
-  exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar"
-  exec "python python/test_metar.py"
-  
 task showtests, "Show command line to run tests":
   exec """find . -name test_\* | xargs grep 'test .*:$' | sed 's:^.*/tests/:nim c -r tests/:' | sed 's/:.*test "/ "/' | sed s/://"""
 

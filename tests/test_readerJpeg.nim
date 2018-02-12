@@ -1,3 +1,5 @@
+# See: readerJpeg.nim(0):
+
 import os
 import strutils
 import unittest
@@ -513,4 +515,17 @@ precision: 8, width: 150, height: 100, num components: 3
       let info = getSosInfo(buffer)
       # echo info
       let expected = """{"components":[[1,0],[2,17],[3,17]],"skip1":0,"skip2":63,"skip3":0}"""
+      check($info == expected)
+
+
+    test "test getAppeInfo":
+
+      # 0000  FF EE 00 0E 41 64 6F 62 65 00 64 00 00 00 00 01  ....Adobe.d.....
+      var buffer = [
+        0xFF'u8, 0xEE, 0x00, 0x0E, 0x41, 0x64, 0x6F, 0x62,
+        0x65, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x01,
+      ]
+      let info = getAppeInfo(buffer)
+      # echo $info
+      let expected = """{"version":100,"flags0":0,"flags1":256}"""
       check($info == expected)

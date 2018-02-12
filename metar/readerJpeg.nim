@@ -792,6 +792,43 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
 
   # todo: If width and height are not 0, the thumbnail image follows.
 
+proc length2l*(buffer: var openArray[uint8], index: Natural=0): int =
+  ## Read two bytes from the buffer in big-endian starting at the
+  ## given index.
+  return (int)length[uint16](buffer, index, littleEndian)
+
+proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
+  # Get the Adobe APPE metadata.
+
+  # 0000  FF EE 00 0E 41 64 6F 62 65 00 64 00 00 00 00 01  ....Adobe.d.....
+  result = newJObject()
+
+  if length2(buffer, 0) != 0xffee: # index 0, 1
+    raise newException(NotSupportedError, "appe: Invalid header.")
+
+  var length = length2(buffer, 2) # index 2, 3
+  if length > buffer.len-2:
+    raise newException(NotSupportedError, "appe: Invalid length.")
+
+  if not compareBytes(buffer, 4, "Adobe") or buffer[9] != 0u8:
+    raise newException(NotSupportedError, "appe: Not Adobe.")
+
+  var version = length2l(buffer, 10)
+  if version != 0x64:
+    raise newException(NotSupportedError, "appe: unknown version")
+  result["version"] = newJInt((int)version)
+
+  # Two-byte flags0 0x8000 bit: Encoder used Blend=1 downsampling
+  var flags0 = length2l(buffer, 12)
+  result["flags0"] = newJInt((int)flags0)
+
+  var flags1 = length2l(buffer, 14)
+  result["flags1"] = newJInt((int)flags1)
+
+  # # One-byte color transform code
+  # result["transform"] = newJInt((int)buffer[16])
+
+
 proc handle_section(file: File, section: Section):
     tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
   ## Handle the jpeg section of the file. Return the sectionName and
@@ -898,16 +935,17 @@ proc handle_section(file: File, section: Section):
     var buffer = readSection(file, start, finish)
     info = getDriInfo(buffer)
 
-  # of 0xee:
-  #   # APPE
-  #   var buffer = readSection(file, start, finish)
-  #   info = getAppeInfo(buffer)
+  of 0xee:
+    # APPE, Adobe Application-Specific JPEG Marker
+    # http://www.lprng.com/RESOURCES/ADOBE/5116.DCT_Filter.pdf
+    var buffer = readSection(file, start, finish)
+    info = getAppeInfo(buffer)
 
   else:
     echo "$1($2) 0x$3" % [sectionName, $marker, toHex(marker).toLowerAscii()]
     var buffer = readSection(file, start, finish)
     let finish = if buffer.len > 200: 200 else: buffer.len-1
-    echo hexDump(buffer[0..finish])
+    # echo hexDump(buffer[0..finish])
     # echo hexDumpSource(buffer[0..finish])
 
     known = false
