@@ -29,11 +29,10 @@ task m, "Build metar exe and python module":
   exec "nim c --out:bin/metar metar/metar"
   build_python_module()
 
-proc test_module(filename: string) =
+proc test_module(filename: string): string =
   ## Test one module.
   const cmd = "nim c --verbosity:0 --hints:off -r --out:bin/$1 tests/$1"
-  let source = (cmd % [filename])
-  exec source
+  result = (cmd % [filename])
 
 proc get_test_filenames(): seq[string] =
   ## Return each nim file in the tests folder.
@@ -48,7 +47,8 @@ proc get_test_filenames(): seq[string] =
 proc runTests() =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
-    test_module(filename)
+    let source = test_module(filename)
+    exec source
   # Run the python tests.
   build_python_module(true)
 
@@ -63,6 +63,11 @@ proc runTests() =
 
 task test, "Run all the tests":
   runTests()
+
+task showtests, "Show command line to run tests":
+  for filename in get_test_filenames():
+    let source = test_module(filename)
+    echo source
 
 # Is there a way to pass a filename?
 # task one, "Test the test_readerJpeg file.":
@@ -171,11 +176,10 @@ task dot, "Show dependency graph":
   # version -> ver [style = dotted]
   # metar -> ver [style = dotted]
 
-task showtests, "Show command line to run tests":
-  exec """find . -name test_\* | xargs grep 'test .*:$' | sed 's:^.*/tests/:nim c -r tests/:' | sed 's/:.*test "/ "/' | sed s/://"""
-
-  echo "lines should look like:"
-  echo """nim c -r tests/test_readerJpeg.nim "test readJpeg"  """
+# task showtests, "Show command line to run tests":
+#   exec """find . -name test_\* | xargs grep 'test .*:$' | sed 's:^.*/tests/:nim c -r tests/:' | sed 's/:.*test "/ "/' | sed s/://"""
+#   echo "lines should look like:"
+#   echo """nim c -r tests/test_readerJpeg.nim "test readJpeg"  """
 
 task showtestfiles, "Show command line to debug tests":
   for filename in get_test_filenames():

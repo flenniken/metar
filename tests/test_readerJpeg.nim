@@ -68,7 +68,8 @@ suite "Test readerJpeg.nim":
     var file = openTestFile("testfiles/IMG_6093.JPG")
     defer: file.close()
     var metadata = readJpeg(file)
-    echo readable(metadata)
+    discard metadata
+    # echo readable(metadata)
 
 
   test "jpegKeyName iptc Title":

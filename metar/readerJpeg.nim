@@ -1,3 +1,4 @@
+# See: test_readerJpeg.nim(65):
 ##[
 `Home <index.html>`_
 
@@ -831,15 +832,18 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
 
 proc handle_section(file: File, section: Section):
     tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
-  ## Handle the jpeg section of the file. Return the sectionName and
-  ## metadata. sectionName is "" when the name isn't known.  Info nil
-  ## when there isn't any metadata. Known is true when the code knows
-  ## how to decode the section.
+  ## Handle the jpeg section of the file. Return the sectionName,
+  ## metadata and whether the section is known by this code. The
+  ## returned metadata is nil when there isn't any metadata.
 
   var (marker, start, finish) = section
   var sectionName = jpeg_section_name(marker)
   var info:Metadata
   var known = true
+
+  var buffer: seq[uint8]
+  if marker != 0 and marker != 0xe1:
+    buffer = readSection(file, start, finish)
 
   case marker
   of 0:
@@ -855,7 +859,6 @@ proc handle_section(file: File, section: Section):
   of 0xed:
     # APPD, IPTC metadata.
     sectionName = "iptc"
-    var buffer = readSection(file, start, finish)
     let iptc_records = getIptcRecords(buffer)
     if iptc_records.len > 0:
       var iptcInfo = getIptcInfo(iptc_records)
@@ -903,48 +906,40 @@ proc handle_section(file: File, section: Section):
 
   of 0xc0:
     # SOF0(192) 0xc0
-    var buffer = readSection(file, start, finish)
     let sofx = getSofInfo(buffer)
     info = SofInfoToMeta(sofx)
 
   of 0xc4:
     # DHT(196) 0xc4, Define Huffman Table
-    var buffer = readSection(file, start, finish)
     info = getHdtInfo(buffer)
 
   of 0xe0:
     # APP0(224) 0xe0, jfif metadata
     # todo: support jfxx too:
     # https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format#JFIF_APP0_marker_segment
-    var buffer = readSection(file, start, finish)
     info = getApp0(buffer)
     sectionName = "jfif"
 
   of 0xdb:
     # DQT(219) 0xdb, Define Quantization Table
-    var buffer = readSection(file, start, finish)
     info = getDqtInfo(buffer)
 
   of 0xda:
     # SOS(218) 0xda
-    var buffer = readSection(file, start, finish)
     info = getSosInfo(buffer)
 
   of 0xdd:
     # DRI (Define Restart Interval)
-    var buffer = readSection(file, start, finish)
     info = getDriInfo(buffer)
 
   of 0xee:
     # APPE, Adobe Application-Specific JPEG Marker
     # http://www.lprng.com/RESOURCES/ADOBE/5116.DCT_Filter.pdf
-    var buffer = readSection(file, start, finish)
     info = getAppeInfo(buffer)
 
   else:
-    echo "$1($2) 0x$3" % [sectionName, $marker, toHex(marker).toLowerAscii()]
-    var buffer = readSection(file, start, finish)
-    let finish = if buffer.len > 200: 200 else: buffer.len-1
+    # echo "$1($2) 0x$3" % [sectionName, $marker, toHex(marker).toLowerAscii()]
+    # let finish = if buffer.len > 200: 200 else: buffer.len-1
     # echo hexDump(buffer[0..finish])
     # echo hexDumpSource(buffer[0..finish])
 
