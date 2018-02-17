@@ -849,7 +849,6 @@ proc handle_section(file: File, section: Section):
   of 0:
     # The pixel scan lines.
     sectionName = "scans"
-    discard
 
   of 0xd8, 0xd9:
     # SOI(216) 0xd8, 0xffd8 header

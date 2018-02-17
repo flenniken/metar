@@ -85,6 +85,8 @@ proc getMetadata*(filename: string): Metadata =
       problems.add((name, getCurrentExceptionMsg()))
       continue
 
+  # Return UnknownFormatError when none of the readers support
+  # understand the file.
   if result == nil:
     if problems.len == 0:
       raise newException(UnknownFormatError, "File type not recognized.")
