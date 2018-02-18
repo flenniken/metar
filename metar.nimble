@@ -53,11 +53,8 @@ proc runTests() =
   build_python_module(true)
 
   echo ""
-  # system.addQuitProc(resetAttributes)
-  # setForegroundColor(fgBlue)
-  # stdout.write "[Suite]"
-  # resetAttributes()
-  echo "[Suite] Test Python Module"
+  echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
+  # echo "\e[1;32m    [OK] \e[00mtest getAppeInfo\n"
   exec "python python/test_metar.py"
 
 
@@ -119,7 +116,7 @@ task t, "Build and run t.nim":
 
 task t2, "Build and run t2.nim":
   exec "nim c -r --out:bin/t2 metar/private/t2"
-
+                            
 task coverage, "Run code coverage of tests":
 
   # var test_filenames = get_test_filenames()
