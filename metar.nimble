@@ -178,10 +178,19 @@ task dot, "Show dependency graph":
 #   echo "lines should look like:"
 #   echo """nim c -r tests/test_readerJpeg.nim "test readJpeg"  """
 
-task showtestfiles, "Show command line to debug tests":
-  for filename in get_test_filenames():
-    echo "filename=" & filename
-    var nimswitches = "c --debugger:native --verbosity:0 --hints:off"
-    echo """nimswitches='$1'""" % nimswitches
-    echo r"nim $nimswitches --out:bin/$filename tests/$filename.nim"
-    echo ""
+task showtestfiles, "Show command line to debug code":
+  echo ""
+  echo "Common switches:"
+  echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
+  echo ""
+
+  echo "Compile test_readerJpeg with debugging info:"
+  echo "  nim $nimswitches --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
+  echo ""
+
+  echo "Compile metar with debugging info:"
+  echo "  nim $nimswitches --out:bin/metar metar/metar.nim"
+  echo ""
+  echo "Launch metar with the debugger:"
+  echo "  lldb bin/metar testfiles/image.jpg"
+  echo ""
