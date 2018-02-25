@@ -34,3 +34,14 @@ suite "test_metar.nim":
 
   test "test showHelp":
     check(showHelp() == help)
+
+  test "happy path":
+    let args:Args = (files: @["testfiles/image.jpg"], json: false,
+                     help: false, version: false)
+    let expected = "filename = \"testfiles/image.jpg\""
+    var found = false
+    for str in processArgs(args):
+      let pos = find(str, expected)
+      check(pos > 200)
+      found = true
+    check(found == true)

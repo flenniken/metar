@@ -95,14 +95,9 @@ iterator processArgs*(args: Args): string =
       if args.files.len > 1:
         yield("file: " & filename)
       if args.json:
-        let json = readMetadataJson(filename)
-        if json != "":
-          yield(json)
+        yield(readMetadataJson(filename))
       else:
-        let metadata = readMetadata(filename)
-        if metadata != "":
-          for line in metadata.lines():
-            yield(line)
+        yield(readMetadata(filename))
 
 
 when not defined(buidingLib):

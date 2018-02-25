@@ -125,7 +125,7 @@ proc keyNameDefault(readerName: string, section: string,
     result = "$1($2)" % [name, key]
 
 
-iterator lines(metadata: Metadata): string {.tpub.} =
+iterator forLines(metadata: Metadata): string {.tpub.} =
   ## Iterate through the metadata line by line in a human readable
   ## form.
 
@@ -167,6 +167,6 @@ proc readable*(metadata: Metadata): string =
   ## Return the metadata as a human readable string.
 
   var lines = newSeq[string]()
-  for line in metadata.lines():
+  for line in metadata.forLines():
     lines.add(line)
   result = lines.join("\n")

@@ -44,18 +44,29 @@ proc get_test_filenames(): seq[string] =
       result.add(filename)
   exec "rm -f testfiles.txt"
 
+proc runShellTests() =
+  echo ""
+  echo "\e[1;34m[Suite] \e[00mShell Tests"
+  exec "bash -c tests/test_shell.sh"
+
 proc runTests() =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     let source = test_module(filename)
     exec source
-  # Run the python tests.
-  build_python_module(true)
 
+  runShellTests()
+
+  # Build the python module and run its tests.
+  build_python_module(true)
   echo ""
   echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
   # echo "\e[1;32m    [OK] \e[00mtest getAppeInfo\n"
   exec "python python/test_metar.py"
+
+
+task shell, "Run tests from the shell":
+  runShellTests()
 
 
 task test, "Run all the tests":
@@ -65,6 +76,10 @@ task showtests, "Show command line to run tests":
   for filename in get_test_filenames():
     let source = test_module(filename)
     echo source
+  echo ""
+  echo "Run one test like this:"
+  let source = test_module("test_metar.nim")
+  echo source & """ "happy path""""
 
 # Is there a way to pass a filename?
 # task one, "Test the test_readerJpeg file.":
@@ -116,7 +131,7 @@ task t, "Build and run t.nim":
 
 task t2, "Build and run t2.nim":
   exec "nim c -r --out:bin/t2 metar/private/t2"
-                            
+
 task coverage, "Run code coverage of tests":
 
   # var test_filenames = get_test_filenames()
