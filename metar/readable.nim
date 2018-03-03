@@ -102,12 +102,12 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
   assert(node.kind == JArray)
   assert(node.len == 6)
 
-  # name, marker, start, finish, known, error
-  # 0,    1,      2,     3,      4,     5
-  result = "$1($2)$3 ($4, $5) $6" % [
+  # known, name, marker, start, finish, error
+  # 0,     1,    2,      3,     4,      5
+  result = "$1$2($3) ($4, $5) $6" % [
+    if node[4].getBVal(): "" else: "*",
     node[0].getStr(),
     $node[1].getNum(),
-    if node[4].getBVal(): "" else: "*",
     $node[2].getNum(),
     $node[3].getNum(),
     node[5].getStr()

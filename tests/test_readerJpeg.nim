@@ -60,7 +60,11 @@ proc showSectionsFolder(folder: string) =
         echo x.path
         showSections(x.path)
 
-
+#[
+todo: write generic tests for each reader.
+* read a 0 byte file
+* read a 1 byte file
+]#
 
 suite "Test readerJpeg.nim":
 

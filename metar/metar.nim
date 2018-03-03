@@ -92,12 +92,18 @@ iterator processArgs*(args: Args): string =
     yield(showHelp())
   else:
     for filename in args.files:
+      # Show the filename when more than one.
       if args.files.len > 1:
         yield("file: " & filename)
+
+      # Show the metadata if any.
+      var str: string
       if args.json:
-        yield(readMetadataJson(filename))
+        str = readMetadataJson(filename)
       else:
-        yield(readMetadata(filename))
+        str = readMetadata(filename)
+      if str != "":
+        yield(str)
 
 
 when not defined(buidingLib):
