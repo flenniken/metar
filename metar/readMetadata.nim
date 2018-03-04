@@ -10,6 +10,7 @@ information section supported by all image types.
 
 ]##
 
+import os
 import json
 import tables
 import version
@@ -62,6 +63,10 @@ proc getMetadata*(filename: string): Metadata =
   ##
   ## Open the file and loop through the readers until one returns some
   ## results.
+
+  # Verify we have a normal file, not a blocking pipe, directory, etc.
+  if not fileExists(filename):
+    raise newException(UnknownFormatError, "File not found.")
 
   var f: File
   if not open(f, filename, fmRead):

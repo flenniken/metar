@@ -138,7 +138,12 @@ iterator forLines(metadata: Metadata): string {.tpub.} =
       for key, node in d.pairs():
         # todo: pass reader not jpeg
         var name = keyNameDefault("jpeg", section, key)
-        var leafString = getLeafString(node, maxLineLength)
+        # Show the full path for the meta:filename.
+        var leafString: string
+        if section == "meta" and key == "filename":
+          leafString = "\"" & node.getStr() & "\""
+        else:
+          leafString = getLeafString(node, maxLineLength)
         yield("$1 = $2" % [name, leafString])
     elif d.kind == JArray:
       var num = 1

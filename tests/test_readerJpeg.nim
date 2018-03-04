@@ -10,7 +10,8 @@ import tables
 import json
 import readable
 
-proc createTestFile(bytes: var openArray[uint8]):
+
+proc createTestFile(bytes: openArray[uint8]):
   tuple[file:File, filename:string] =
   ## Create a test file with the given bytes.
 
@@ -534,3 +535,48 @@ precision: 8, width: 150, height: 100, num components: 3
       # echo $info
       let expected = """{"version":100,"flags0":0,"flags1":256}"""
       check($info == expected)
+
+
+    test "test readSections few bytes":
+      # Test with very small files to test that the code handles bogus
+      # files well. The first test is of an empty file.
+
+      # ff d8 ff marker1 length2
+      var bytesList = newSeq[seq[uint8]]()
+      bytesList.add(@[])
+      bytesList.add(@[0xff'u8])
+      bytesList.add(@[0xff'u8, 0xd8])
+      bytesList.add(@[0xff'u8, 0xd8, 0xff])
+      bytesList.add(@[0xff'u8, 0xd8, 0xff, 0xda])
+      bytesList.add(@[0xff'u8, 0xd8, 0xff, 0xda, 0])
+      bytesList.add(@[0xff'u8, 0xd8, 0xff, 0xda, 0, 0])
+
+      for bytes in bytesList:
+        # echo "bytes = " & $bytes
+
+        var (file, filename) = createTestFile(bytes)
+        defer:
+          file.close()
+          removeFile(filename)
+        var gotException = false
+        try:
+          discard readSections(file)
+        except UnknownFormatError, NotSupportedError:
+          # echo getCurrentExceptionMsg()
+          gotException = true
+        check(gotException == true)
+
+    test "test readSections shortest":
+      # Shortest file we identify as a "jpeg". It passes and does not
+      # return UnknownFormatError, but it will fail later wtih
+      # NotSupportedError.
+      let bytes = @[0xff'u8, 0xd8, 0xff, 0xda, 0, 2]
+
+      var (file, filename) = createTestFile(bytes)
+      defer:
+        file.close()
+        removeFile(filename)
+      let sections = readSections(file)
+      # for section in sections:
+      #   echo $section
+      check(sections.len == 4)

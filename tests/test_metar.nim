@@ -42,6 +42,10 @@ suite "test_metar.nim":
     var found = false
     for str in processArgs(args):
       let pos = find(str, expected)
+      if pos == -1:
+        echo str
+        echo "the expected string not found:"
+        echo expected
       check(pos > 200)
       found = true
     check(found == true)

@@ -321,7 +321,7 @@ proc `$`(section: Section): string {.tpub.} =
     toHex0(section.finish-section.start)]
 
 
-proc readSections(file: File): seq[Section] {.tpub.} =
+proc readSectionsRaw(file: File): seq[Section] =
   ## Read the Jpeg file and return a list of sections.  Raise an
   ## UnknownFormatError exception when the file is not a jpeg.  Raise
   ## an NotSupportedError exception when the file cannot be decoded.
@@ -367,6 +367,16 @@ proc readSections(file: File): seq[Section] {.tpub.} =
     result.add((marker, start, finish))
     file.setFilePos(finish)
 
+
+proc readSections(file: File): seq[Section] {.tpub.} =
+  # Read sections and handle errors.
+  try:
+    result = readSectionsRaw(file)
+  except UnknownFormatError, NotSupportedError:
+    raise
+  except:
+    # This handles the cases where the file doesn't have enough bytes.
+    raise newException(UnknownFormatError, "Invalid JPEG")
 
 
 proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =

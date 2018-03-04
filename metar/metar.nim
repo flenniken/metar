@@ -74,6 +74,9 @@ Usage: metar [-j] [-v] file [file...]
 file          Image filename to analyze.
 """
 
+# Show the "file: <filename>" of each file before the metadata.
+# Good when there more multiple files and for detecting files that are not images.
+# -f --filename Show filename before the metadata.
 
 iterator processArgs*(args: Args): string =
   ## Given the command line arguments, return the requested
@@ -112,3 +115,4 @@ when not defined(buidingLib):
     let args = parseCommandLine(optParser)
     for str in processArgs(args):
       echo str
+#todo: handle ctrl-c
