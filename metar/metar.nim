@@ -9,6 +9,7 @@ contains the public procedures.
 
 ]##
 
+import os
 import macros
 import strutils
 import readMetadata
@@ -88,7 +89,7 @@ iterator processArgs*(args: Args): string =
   ##   var args = parseCommandLine(optParser)
   ##   for str in processArgs(args):
   ##     echo str
-    
+
   if args.version:
     yield($versionNumber)
   elif args.files.len == 0 or args.help:
@@ -108,11 +109,13 @@ iterator processArgs*(args: Args): string =
       if str != "":
         yield(str)
 
-
 when not defined(buidingLib):
   when isMainModule:
+    proc controlCHandler() {.noconv.} =
+      quit 0
+    setControlCHook(controlCHandler)
+
     var optParser = initOptParser()
     let args = parseCommandLine(optParser)
     for str in processArgs(args):
       echo str
-#todo: handle ctrl-c
