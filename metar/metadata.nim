@@ -42,13 +42,13 @@ type
   ##     "sof": [{},{},...]
   ##   }
 
-  Reader* = proc (file: File): Metadata ## \ Read the given file and
-  ## return its metadata.  Return UnknownFormatError when the file
-  ## format is unknown. May return NotSupportedError exception.
+  # Read* = proc (file: File): Metadata ## \ Read the given file and
+  # ## return its metadata.  Return UnknownFormatError when the file
+  # ## format is unknown. May return NotSupportedError exception.
 
-  KeyName* = proc (section: string, key: string): string ## \
-  ## Return the name of the key for the given section of metadata or
-  ## "" when not known.
+  # KeyName* = proc (section: string, key: string): string ## \
+  # ## Return the name of the key for the given section of metadata or
+  # ## "" when not known.
 
   Args* = tuple[files: seq[string], json: bool, help: bool, version: bool] ## \
   ## Command line arguments.  A list of filenames, and booleans for

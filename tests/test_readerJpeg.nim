@@ -77,26 +77,26 @@ suite "Test readerJpeg.nim":
     # echo readable(metadata)
 
 
-  test "jpegKeyName iptc Title":
-    check(jpegKeyName("iptc", "5") == "Title")
+  test "keyNameJpeg iptc Title":
+    check(keyNameJpeg("iptc", "5") == "Title")
 
-  test "jpegKeyName iptc invalid":
-    check(jpegKeyName("iptc", "999") == "")
+  test "keyNameJpeg iptc invalid":
+    check(keyNameJpeg("iptc", "999") == "")
 
-  test "jpegKeyName ranges 192":
-    check(jpegKeyName("ranges", "192") == "SOF0")
+  test "keyNameJpeg ranges 192":
+    check(keyNameJpeg("ranges", "192") == "SOF0")
 
-  test "jpegKeyName ranges 254":
-    check(jpegKeyName("ranges", "254") == "COM")
+  test "keyNameJpeg ranges 254":
+    check(keyNameJpeg("ranges", "254") == "COM")
 
-  test "jpegKeyName ranges 0":
-    check(jpegKeyName("ranges", "0") == "")
+  test "keyNameJpeg ranges 0":
+    check(keyNameJpeg("ranges", "0") == "")
 
-  test "jpegKeyName ranges 255":
-    check(jpegKeyName("ranges", "255") == "")
+  test "keyNameJpeg ranges 255":
+    check(keyNameJpeg("ranges", "255") == "")
 
-  test "jpegKeyName ranges invalid":
-    check(jpegKeyName("ranges", "xxyzj") == "")
+  test "keyNameJpeg ranges invalid":
+    check(keyNameJpeg("ranges", "xxyzj") == "")
 
   when not defined(release):
 

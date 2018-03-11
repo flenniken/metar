@@ -11,13 +11,13 @@ implements the reader interface.
 
 import metadata
 
-proc readTiff*(file: File): Metadata =
+proc readTiff(file: File): Metadata =
   ## Read the given file and return its metadata.  Return nil when the
   ## file format is unknown. It may generate UnknownFormatError and
   ## NotSupportedError exceptions.
   return nil
 
-proc tiffKeyName*(section: string, key: string): string =
+proc keyNameTiff(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   ##
@@ -26,3 +26,5 @@ proc tiffKeyName*(section: string, key: string): string =
   ##   echo tiffKeyName("ifd0", "256")
   ##   ImageWidth
   return ""
+
+const reader* = (read: readTiff, keyName: keyNameTiff)

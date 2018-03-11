@@ -17,7 +17,7 @@ proc readDng*(file: File): Metadata =
   ## NotSupportedError exceptions.
   return nil
 
-proc dngKeyName*(section: string, key: string): string =
+proc keyNameDng*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   ##
@@ -26,3 +26,5 @@ proc dngKeyName*(section: string, key: string): string =
   ##   echo dngKeyName("ifd0", "256")
   ##   ImageWidth
   return ""
+
+const reader* = (read: readDng, keyName: keyNameDng)

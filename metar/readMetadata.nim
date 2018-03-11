@@ -15,17 +15,16 @@ import json
 import tables
 import version
 import metadata
-import readerJpeg
-import readerDng
-import readerTiff
+from readerJpeg import nil
+from readerDng import nil
+from readerTiff import nil
 import tpub
 import nimpy
 
 let readers = {
-  # name: (name, Reader method, KeyName method)
-  "jpeg": ("jpeg", readJpeg, jpegKeyName),
-  "dng": ("dng", readDng, dngKeyName),
-  "tiff": ("tiff", readTiff, tiffKeyName),
+  "jpeg": readerJpeg.reader,
+  "dng": readerDng.reader,
+  "tiff": readerTiff.reader,
 }.toOrderedTable
 
 proc getMetaInfo(filename: string, readerName: string,
@@ -52,7 +51,7 @@ proc getMetaInfo(filename: string, readerName: string,
   result["problems"] = p
 
   var r = newJArray()
-  for name, _, _ in readers.values():
+  for name in readers.keys():
     r.add(newJString(name))
   result["readers"] = r
 
@@ -79,9 +78,9 @@ proc getMetadata*(filename: string): Metadata =
 
   result = nil
   var readerName: string
-  for name, reader, _ in readers.values():
+  for name, reader in readers.pairs():
     try:
-      result = reader(f)
+      result = reader.read(f)
       readerName = name
       break
     except UnknownFormatError:
@@ -116,7 +115,7 @@ proc keyNameImp*(readerName: string, section: string, key: string):
   ##   echo keyName("dng", "exif", "40961")
   ##   ColorSpace
 
-  let (_, _, keyNameMethod) = readers.getOrDefault(readerName)
-  if keyNameMethod == nil:
+  if readerName in readers:
+    result = readers[readerName].keyName(section, key)
+  else:
     return ""
-  result = keyNameMethod(section, key)

@@ -752,7 +752,7 @@ proc getDriInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   result["interval"] = newJInt((int)interval)
 
 
-proc jpegKeyName*(section: string, key: string): string =
+proc keyNameJpeg(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
 
@@ -803,7 +803,7 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
 
   # todo: If width and height are not 0, the thumbnail image follows.
 
-proc length2l*(buffer: var openArray[uint8], index: Natural=0): int =
+proc length2l(buffer: var openArray[uint8], index: Natural=0): int =
   ## Read two bytes from the buffer in big-endian starting at the
   ## given index.
   return (int)length[uint16](buffer, index, littleEndian)
@@ -957,8 +957,8 @@ proc handle_section(file: File, section: Section):
   result = (sectionName, info, known)
 
 
-proc readJpeg*(file: File): Metadata =
-  ## Read the given file and return its metadata.  Return
+proc readJpeg(file: File): Metadata {.tpub.} =
+  ## Read the given JPEG file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown. May return
   ## NotSupportedError exception.
 
@@ -1006,3 +1006,5 @@ proc readJpeg*(file: File): Metadata =
     ranges.add(rItem)
 
   result["ranges"] = ranges
+
+const reader* = (read: readJpeg, keyName: keyNameJpeg)
