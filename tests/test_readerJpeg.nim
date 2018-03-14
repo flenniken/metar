@@ -115,17 +115,22 @@ suite "Test readerJpeg.nim":
       #     str = $info
       #   echo "$1 $2: $3" % [$ix, section_name, str]
 
-      var (section_name, info, known) = handle_section(file, sections[1])
+      var extra = initTable[string, int]()
+      var (section_name, info, known) = handle_section(file, sections[1], extra)
       let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
       check(section_name == "jfif")
       check($info == expected1)
       check(known == true)
+      check(extra.len == 0)
 
-      (section_name, info, known) = handle_section(file, sections[4])
+      (section_name, info, known) = handle_section(file, sections[4], extra)
       let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
       check(section_name == "SOF0")
       check($info == expected4)
       check(known == true)
+      check(extra.len == 2)
+      check(extra["height"] == 100)
+      check(extra["width"] == 150)
 
 
     test "iptc_name key not found":
