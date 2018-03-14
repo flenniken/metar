@@ -840,7 +840,7 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # result["transform"] = newJInt((int)buffer[16])
 
 
-proc handle_section(file: File, section: Section):
+proc handle_section(file: File, section: Section, extra: var Table[string, int]):
     tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
   ## Handle the jpeg section of the file. Return the sectionName,
   ## metadata and whether the section is known by this code. The
@@ -859,6 +859,8 @@ proc handle_section(file: File, section: Section):
   of 0:
     # The pixel scan lines.
     sectionName = "scans"
+    extra["start"] = (int)start
+    extra["finish"] = (int)finish
 
   of 0xd8, 0xd9:
     # SOI(216) 0xd8, 0xffd8 header
@@ -916,6 +918,8 @@ proc handle_section(file: File, section: Section):
   of 0xc0:
     # SOF0(192) 0xc0
     let sofx = getSofInfo(buffer)
+    extra["width"] = (int)sofx.width
+    extra["height"] = (int)sofx.height
     info = SofInfoToMeta(sofx)
 
   of 0xc4:
@@ -966,6 +970,10 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   var ranges = newJArray()
   var dups = initTable[string, int]()
   let sections = readSections(file)
+  # The extra table contains information collected across multiple jpeg
+  # sections used to build the images metadata section. It gets filled
+  # in with the image width, height, start and end pixel offsets.
+  var extra = initTable[string, int]()
 
   for section in sections:
     var known:bool
@@ -974,7 +982,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     var error = ""
 
     try:
-      (sectionName, info, known) = handle_section(file, section)
+      (sectionName, info, known) = handle_section(file, section, extra)
     except NotSupportedError:
       sectionName = jpeg_section_name(section.marker)
       known = false
@@ -1006,5 +1014,31 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     ranges.add(rItem)
 
   result["ranges"] = ranges
+
+  # Images metadata section. The images section is a list of
+  # objects. Each object has a width, height and pixels element. The
+  # pixels element is a list of ranges. The first image is the main
+  # high resolution image.
+  var width, height, start, finish: int
+  try:
+    width = extra["width"]
+    height = extra["height"]
+    start = extra["start"]
+    finish = extra["finish"]
+  except:
+    raise newException(NotSupportedError, "Jpeg: no main image.")
+
+  var image = newJObject()
+  image["width"] = newJInt((int)width)
+  image["height"] = newJInt((int)height)
+  var part = newJArray()
+  part.add(newJInt(start))
+  part.add(newJInt(finish))
+  var pixels = newJArray()
+  pixels.add(part)
+  image["pixels"] = pixels
+  var images = newJArray()
+  images.add(image)
+  result["images"] = images
 
 const reader* = (read: readJpeg, keyName: keyNameJpeg)
