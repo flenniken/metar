@@ -10,21 +10,17 @@ implements the reader interface.
 ]##
 
 import metadata
+import tpub
 
-proc readDng*(file: File): Metadata =
-  ## Read the given file and return its metadata.  Return nil when the
-  ## file format is unknown. It may generate UnknownFormatError and
-  ## NotSupportedError exceptions.
-  return nil
+proc readDng(file: File): Metadata {.tpub.} =
+  ## Read the given JPEG file and return its metadata.  Return
+  ## UnknownFormatError when the file format is unknown. May return
+  ## NotSupportedError exception.
+  raise newException(UnknownFormatError, "Dng: not implemented.")
 
-proc keyNameDng*(section: string, key: string): string =
+proc keyNameDng(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
-  ##
-  ## .. code-block:: nim
-  ##   import readerJpeg
-  ##   echo dngKeyName("ifd0", "256")
-  ##   ImageWidth
   return ""
 
 const reader* = (read: readDng, keyName: keyNameDng)

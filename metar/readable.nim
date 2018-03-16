@@ -47,14 +47,14 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
     of JNull:
       result = "-"
     of JBool:
-      if node.getBVal():
+      if node.getBool():
         result = "t"
       else:
         result = "f"
     of JInt:
-      result = ellipsize($node.getNum(), maxLen)
+      result = ellipsize($node.getInt(), maxLen)
     of JFloat:
-      result = ellipsize($node.getFNum(), maxLen)
+      result = ellipsize($node.getFloat(), maxLen)
     of JString:
       let length = if maxLen < maxStringLength: maxLen else: maxStringLength
       result = ellipsize("\"" & $node.getStr() & "\"", length)
@@ -105,11 +105,11 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
   # known, name, marker, start, finish, error
   # 0,     1,    2,      3,     4,      5
   result = "$1$2($3) ($4, $5) $6" % [
-    if node[4].getBVal(): "" else: "*",
+    if node[4].getBool(): "" else: "*",
     node[0].getStr(),
-    $node[1].getNum(),
-    $node[2].getNum(),
-    $node[3].getNum(),
+    $node[1].getInt(),
+    $node[2].getInt(),
+    $node[3].getInt(),
     node[5].getStr()
   ]
 
