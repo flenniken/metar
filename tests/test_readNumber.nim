@@ -1,13 +1,13 @@
 import os
 import strutils
 import unittest
-import readBytes
+import readNumber
 
 let filename = "/tmp/test.bin"
 var testFile: File
 var buffer = [0x01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
 
-suite "Test readBytes.nim":
+suite "Test readNumber.nim":
 
   setup:
     # Create a test file.

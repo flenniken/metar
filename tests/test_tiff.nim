@@ -3,7 +3,7 @@ import metadata
 import unittest
 import testUtils
 import tiff
-import readBytes
+import readNumber
 
 suite "test tiff.nim":
 

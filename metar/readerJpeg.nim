@@ -14,7 +14,7 @@ import tables
 import strutils
 import metadata
 import tpub
-import readBytes
+import readNumber
 import endians
 import sequtils
 import hexDump

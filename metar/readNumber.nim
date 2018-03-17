@@ -1,15 +1,13 @@
 ##[
 `Home <index.html>`_
 
-readBytes
+readNumber
 ========
 
-The readBytes module implements procedures to read numbers from a file
+The readNumber module implements procedures to read numbers from a file
 or buffer.
 
 ]##
-
-#todo: rename file to readNumber.
 
 import endians
 
@@ -19,7 +17,7 @@ proc length*[T](buffer: var openArray[uint8], index=0,
   ## specified endianness. Specify the number type with T.
   ##
   ## .. code-block:: nim
-  ##   import readBytes, os
+  ##   import readNumber, os
   ##   var buffer = [0x01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
   ##   var num16 = length[uint16](buffer)
   ##   echo toHex(num16)
@@ -58,7 +56,7 @@ proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
   ## the endian parameter. For example:
   ##
   ## .. code-block:: nim
-  ##   import readBytes
+  ##   import readNumber
   ##   var num16 = readNumber[uint16](file)
   ##   var num32 = readNumber[uint32](file, bigEndian)
   ##   var num32 = readNumber[uint32](file, system.cpuEndian)
