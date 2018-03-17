@@ -1,4 +1,6 @@
 
+# todo: rename to testFile.nim
+
 proc createTestFile*(bytes: openArray[uint8]):
   tuple[file:File, filename:string] =
   ## Create a test file with the given bytes.
