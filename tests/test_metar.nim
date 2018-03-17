@@ -1,6 +1,6 @@
 
 import unittest
-import parseopt2
+import parseopt
 import metar
 import metadata
 import strutils

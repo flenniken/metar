@@ -173,7 +173,6 @@ task dot, "Show dependency graph":
   # strutils [color = red];
   # json [color = red];
   # tables [color = red];
-  # parseopt2 [color = red];
 
   # Set the line color to blue:
   # abc -> def [color = blue]

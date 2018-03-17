@@ -19,7 +19,7 @@ import metadata
 import nimpy
 import json
 when not defined(buidingLib):
-  import parseopt2
+  import parseopt
   import parseCommandLine
 
 # The keyName proc is here so it will get exported in the python module.
@@ -84,7 +84,7 @@ iterator processArgs*(args: Args): string =
   ## information as bunches of lines.
   ##
   ## .. code-block:: nim
-  ##   import parseopt2
+  ##   import parseopt
   ##   var optParser = initOptParser(@["-j", "image.dng"])
   ##   var args = parseCommandLine(optParser)
   ##   for str in processArgs(args):

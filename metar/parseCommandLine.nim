@@ -1,6 +1,6 @@
 import macros
 import strutils
-import parseopt2
+import parseopt
 import readMetadata
 import version
 import metadata
@@ -10,7 +10,7 @@ proc parseCommandLine*(optParser: var OptParser): Args =
   ## Return the command line parameters.
   ##
   ## .. code-block:: nim
-  ##   import parseopt2
+  ##   import parseopt
   ##   import parseCommandLine
   ##   var optParser = initOptParser(@["-j", "image.dng"])
   ##   var args = parseCommandLine(optParser)
