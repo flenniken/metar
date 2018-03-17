@@ -9,7 +9,7 @@ import hexDump
 import tables
 import json
 import readable
-import testUtils
+import testFile
 
 
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =

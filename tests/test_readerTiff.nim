@@ -9,7 +9,7 @@ import hexDump
 import tables
 import json
 import readable
-import testUtils
+import testFile
 
 suite "Test readerTiff.nim":
 

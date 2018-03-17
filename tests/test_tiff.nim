@@ -1,7 +1,7 @@
 import os
 import metadata
 import unittest
-import testUtils
+import testFile
 import tiff
 import readNumber
 
