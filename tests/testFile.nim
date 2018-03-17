@@ -1,10 +1,11 @@
+import ospaths
 
 proc createTestFile*(bytes: openArray[uint8]):
   tuple[file:File, filename:string] =
   ## Create a test file with the given bytes. Return the file and
   ## filename.
 
-  var filename = "testfile.bin"
+  let filename = joinPath(getTempDir(), "testfile.bin")
   var file: File
   if open(file, filename, fmReadWrite):
     if file.writeBytes(bytes, 0, bytes.len) != bytes.len:
@@ -12,7 +13,8 @@ proc createTestFile*(bytes: openArray[uint8]):
   result = (file, filename)
 
 proc openTestFile*(filename: string): File =
-  ## Open the given test file and return the file object.
+  ## Open the given test file for reading and return the file object.
+
   if not open(result, filename, fmRead):
     assert(false, "test file missing: " & filename)
 
