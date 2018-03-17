@@ -39,7 +39,7 @@ suite "test tiff.nim":
     let (offset, endian) = readHeader(file, 3)
     check(offset == (uint16)0x1234)
     check(endian == bigEndian)
-    
+
   test "test readHeader invalid order":
     var bytes = [0x4d'u8, 0x4e, 0x00, 0x2a, 0x12, 0x34]
     var (file, filename) = createTestFile(bytes)
@@ -69,7 +69,7 @@ suite "test tiff.nim":
       gotException = true
 
     check(gotException == true)
-    
+
   test "test readHeader invalid magic":
     var bytes = [0x4d'u8, 0x4d, 0x00, 0x2b, 0x12, 0x34]
     var (file, filename) = createTestFile(bytes)
@@ -85,3 +85,12 @@ suite "test tiff.nim":
       gotException = true
 
     check(gotException == true)
+
+  test "test tagName":
+    check(tagName((uint16)254) == "NewSubfileType")
+    check(tagName((uint16)255) == "SubfileType")
+    check(tagName((uint16)256) == "ImageWidth")
+    check(tagName((uint16)257) == "ImageLength")
+
+    check(tagName((uint16)0) == "")
+    check(tagName((uint16)60123) == "")

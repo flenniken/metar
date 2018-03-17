@@ -430,6 +430,16 @@ proc readHeader*(file: File, start: int64):
   except:
     raise newException(UnknownFormatError, "Tiff: not a tiff file.")
 
+
+proc tagName*(tag: uint16): string =
+  ## Return the name of the given tag or "" when not known.
+
+  result = tagToString.getOrDefault(tag)
+  if result == nil:
+    result = ""
+
+
+
 #[
 class IFDEntry:
   """ Image File Directory Entry
@@ -702,12 +712,6 @@ def add_pixel_ranges(ifd, header_offset):
         ifd[value_range_name] = (start, end)
 
 
-def tag_name(tag):
-  """
-  Return the name of the given tag or None when not found.
-  """
-  return tag_to_string.get(tag)
-
 def print_ifd(name, ifd):
   """
   Print out the given IFD.
@@ -719,7 +723,7 @@ def print_ifd(name, ifd):
       if count > 4:
         values = values[0:4]
         values.append('..{}..'.format(count))
-    tname = tag_name(key)
+    tname = tagName(key)
     if not tname:
       tag = '{}'.format(key)
     else:
