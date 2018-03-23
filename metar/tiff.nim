@@ -403,23 +403,19 @@ def print_ifd(name, ifd):
         echo $entry.values.doublesList
 ]#
 
-proc getIFDEntry*(bytes: var openArray[uint8], endian: Endianness): IFDEntry =
-  ## Read an image file directory entry (IFDEntry) at the file's
-  ## current location and return an IFDEntry object.  The current
-  ## position advances past the IFDEntry. headerOffset is the offset
-  ## of the header and is used when fetching values stored outside the
-  ## entry.
-  if bytes.len() < 12:
+proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness): IFDEntry =
+  ## Given a buffer of IFDEntry bytes, return an IFDEntry object.
+  if buffer.len() < 12:
     raise newException(NotSupportedError, "Tiff: not enough bytes.")
 
-  # tag 2 bytes, kind 2 bytes, count 4 bytes, packed 4 bytes
-  result.tag = length[uint16](bytes, 0, endian)
-  result.kind = Kind(length[uint16](bytes, 2, endian))
-  result.count = length[uint32](bytes, 4, endian)
-  result.packed[0] = bytes[8]
-  result.packed[1] = bytes[9]
-  result.packed[2] = bytes[10]
-  result.packed[3] = bytes[11]
+  # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
+  result.tag = length[uint16](buffer, 0, endian)
+  result.kind = Kind(length[uint16](buffer, 2, endian))
+  result.count = length[uint32](buffer, 4, endian)
+  result.packed[0] = buffer[8]
+  result.packed[1] = buffer[9]
+  result.packed[2] = buffer[10]
+  result.packed[3] = buffer[11]
 
 
     
