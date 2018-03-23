@@ -33,7 +33,7 @@ suite "Test readNumber.nim":
 
   test "read int8":
     testFile.setFilePos(0)
-    var v8 = read_number[uint8](testFile)
+    var v8 = readNumber[uint8](testFile)
     # echo "v8 = ", toHex(v8)
     check(v8 == 0x01)
 
