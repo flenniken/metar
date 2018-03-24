@@ -403,19 +403,26 @@ def print_ifd(name, ifd):
         echo $entry.values.doublesList
 ]#
 
-proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness): IFDEntry =
-  ## Given a buffer of IFDEntry bytes, return an IFDEntry object.
-  if buffer.len() < 12:
-    raise newException(NotSupportedError, "Tiff: not enough bytes.")
+proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
+                  index: Natural = 0): IFDEntry =
+  ## Given a buffer of IFDEntry bytes starting at the given index,
+  ## return an IFDEntry object.
+  if buffer.len()-index < 12:
+    raise newException(NotSupportedError, "Tiff: not enough bytes for IFD entry.")
 
   # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
-  result.tag = length[uint16](buffer, 0, endian)
-  result.kind = Kind(length[uint16](buffer, 2, endian))
-  result.count = length[uint32](buffer, 4, endian)
-  result.packed[0] = buffer[8]
-  result.packed[1] = buffer[9]
-  result.packed[2] = buffer[10]
-  result.packed[3] = buffer[11]
+  result.tag = length[uint16](buffer, index+0, endian)
+  let kind = length[uint16](buffer, index+2, endian)
+  try:
+    result.kind = Kind(kind)
+  except RangeError:
+    raise newException(NotSupportedError,
+      "Tiff: IFD entry kind is not known: " & $kind)
+  result.count = length[uint32](buffer, index+4, endian)
+  result.packed[0] = buffer[index+8]
+  result.packed[1] = buffer[index+9]
+  result.packed[2] = buffer[index+10]
+  result.packed[3] = buffer[index+11]
 
 
     
