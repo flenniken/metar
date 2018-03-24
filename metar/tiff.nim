@@ -22,7 +22,8 @@ Each IFD entry contains a tag and a list of values.
 
 type
   Kind {.pure.} = enum
-    dummy
+    dummy # This is here because enums used as discriminates must
+          # start at 0.
     bytes
     strings
     shorts
@@ -415,6 +416,8 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   let kind = length[uint16](buffer, index+2, endian)
   try:
     result.kind = Kind(kind)
+    if result.kind == Kind.dummy:
+      raise newException(RangeError, "")
   except RangeError:
     raise newException(NotSupportedError,
       "Tiff: IFD entry kind is not known: " & $kind)

@@ -213,3 +213,17 @@ suite "test tiff.nim":
       # echo getCurrentExceptionMsg()
       gotException = true
     check(gotException == true)
+
+  test "test getIFDEntry kind 0":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    var gotException = false
+    try:
+      discard getIFDEntry(buffer, bigEndian)
+    except NotSupportedError:
+      # echo getCurrentException().name
+      # echo getCurrentExceptionMsg()
+      gotException = true
+    check(gotException == true)
