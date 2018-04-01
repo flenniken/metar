@@ -5,8 +5,14 @@ import endians
 import metadata
 import tiffTags
 import strutils
+import tpub
 
 #[
+https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
+
+https://web.archive.org/web/20150503034412/http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
+
+
 
 This is the layout of a Tiff file:
 
@@ -18,64 +24,66 @@ IFD.SubIFDs = [->IFD, ->IFD,...]
 IFD.Exif_IFD -> IFD
 Each IFD entry contains a tag and a list of values.
 
+If the Value is shorter than 4 bytes, it is left-justified within the
+4-byte Value Offset, i.e., stored in the lower numbered bytes.
+
 ]#
 
 type
-  Kind {.pure.} = enum
+  Kind* {.size: 2, pure.} = enum
     dummy # This is here because enums used as discriminates must
           # start at 0.
-    bytes
-    strings
-    shorts
-    longs
-    rationals
-    sbytes
-    sstrings
-    sshorts
-    slongs
-    srationals
-    floats
-    doubles
+    bytes # 1, uint8
+    strings # 2, On of more ASCII strings each ending with 0. Count includes the 0s.
+    shorts # 3, uint16
+    longs # 4, uint32
+    rationals # 5, Two uint32, numerator then denominator.
+    sbytes # 6, s stands for signed.
+    blob # 7, list of bytes.
+    sshorts # 8
+    slongs # 9
+    srationals # 10
+    floats # 11, float32
+    doubles # 12, float64
+  ## IDFEntry types.
+  ## Skip over fields containing an unexpected field type.
 
-  ValueList = ref object
+  IFDEntry* = object
+    tag: uint16
+    kind: Kind
+    count: uint32
+    packed: array[4, uint8] ## 12 byte IFD entry.
+
+  ValueList* = ref object
     case kind: Kind
     of Kind.dummy:
       discard
     of Kind.bytes:
       bytesList: seq[uint8]
     of Kind.strings:
-      # a list of bytes containing ascii strings 0 terminated.
       stringsList: seq[uint8]
     of Kind.shorts:
       shortsList: seq[uint16]
     of Kind.longs:
       longsList: seq[uint32]
     of Kind.rationals:
-      rationalsList: seq[uint32]
+      rationalsList: seq[uint64]
     of Kind.sbytes:
       sbytesList: seq[int8]
-    of Kind.sstrings:
-      sstringsList: seq[uint8]
+    of Kind.blob:
+      blobList: seq[uint8]
     of Kind.sshorts:
       sshortsList: seq[int16]
     of Kind.slongs:
       slongsList: seq[int32]
     of Kind.srationals:
-      srationalsList: seq[int32]
+      srationalsList: seq[int64]
     of Kind.floats:
       floatsList: seq[float32]
     of Kind.doubles:
-      doublesList: seq[float64]
+      doublesList: seq[float64] ##\
+    ## A sequence of kind elements.
 
-  IFDEntry = object
-    tag: uint16
-    kind: Kind
-    count: uint32
-    packed: array[4, uint8]
-
-    # headerOffset: int64
-    # values: ValueList
-    # endian: Endianness
 
 proc tagName*(tag: uint16): string =
   ## Return the name of the given tag or "" when not known.
@@ -93,6 +101,52 @@ proc `$`*(entry: IFDEntry): string =
     toHex(entry.packed[0]), toHex(entry.packed[1]),
     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
+proc len*(entry: IFDEntry, valueList: ValueList): int =
+  case entry.kind:
+    of dummy:
+      result = 0
+    of longs:
+      result = valueList.longsList.len()
+    else:
+      result = 0
+
+proc toString*(entry: IFDEntry, valueList: ValueList): string =
+  # Return a string representation of the ValueList.
+  case entry.kind:
+    of dummy:
+      result = "dummy"
+    of longs:
+      result = $valueList.longsList
+    else:
+      result = "other"
+
+    # case entry.kind:
+    #   of dummy:
+    #     discard
+    #   of bytes:
+    #     echo $entry.values.bytesList
+    #   of strings:
+    #     echo $entry.values.stringsList
+    #   of shorts:
+    #     echo $entry.values.shortsList
+    #   of longs:
+    #     echo $entry.values.longsList
+    #   of rationals:
+    #     echo $entry.values.rationalsList
+    #   of sbytes:
+    #     echo $entry.values.sbytesList
+    #   of sstrings:
+    #     echo $entry.values.sstringsList
+    #   of sshorts:
+    #     echo $entry.values.sshortsList
+    #   of slongs:
+    #     echo $entry.values.slongsList
+    #   of srationals:
+    #     echo $entry.values.srationalsList
+    #   of floats:
+    #     echo $entry.values.floatsList
+    #   of doubles:
+    #     echo $entry.values.doublesList
 
 
 proc readHeader*(file: File, headerOffset: int64):
@@ -347,25 +401,6 @@ def add_pixel_ranges(ifd, header_offset):
         ifd[value_range_name] = (start, end)
 
 
-def print_ifd(name, ifd):
-  """
-  Print out the given IFD.
-  """
-  print('-'*20 + name + '-'*20)
-  for key, values in ifd.items():
-    if isinstance(key, int):
-      count = len(values)
-      if count > 4:
-        values = values[0:4]
-        values.append('..{}..'.format(count))
-    tname = tagName(key)
-    if not tname:
-      tag = '{}'.format(key)
-    else:
-      tag = '{}({})'.format(tname, key)
-    print('{} = {}'.format(tag, values))
-
-
 ]#
 
 
@@ -428,73 +463,87 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   result.packed[3] = buffer[index+11]
 
 
-    
-    #[
-proc readValue(entry: IFDEntry, headerOffset: int64):
+# Map the Kind to its element size.
+const kindToSizeTable = [0'u8, 1, 1, 2, 4, 8, 1, 1, 2, 4, 8, 4, 8]
 
-  if count == 0:
-    return
 
-  let packed = result.packed
+proc kindToSize(kind: Kind): Natural {.tpub.} =
+  ## Return the size of on kind element.
 
-  # Get the values when they fit in the packed 4 bytes.
-  case result.kind:
+  let ix = ord(kind)
+  if ix >= kindToSizeTable.len():
+    result = 0
+  else:
+    result = (Natural)kindToSizeTable[ord(kind)]
+
+
+proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
+               headerOffset: int64 = 0): ValueList =
+  ## Read the list of values of the IFD entry from the file and return the
+  ## data as a ValueList object.
+
+  # Determine where the values start and how many bytes long, read
+  # them into a buffer then put them into a list.
+
+  let kindSize = kindToSize(entry.kind)
+  let bufferSize: int = kindSize * (int)entry.count
+
+  # Read the bytes into a buffer.
+  var buffer = newSeq[uint8](bufferSize)
+  if bufferSize <= 4:
+    # The values fit in packed.
+    # Move packed to buffer.
+    for ix in 0..3:
+      buffer[ix] = entry.packed[ix]
+  else:
+    # The values are in the file at the offset specified by packed.
+    let startOffset = length[uint32](entry.packed, 0, endian)
+    file.setFilePos((int64)startOffset)
+    if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+      raise newException(UnknownFormatError, "Tiff: Unable to read all the IFD entry values.")
+
+  case entry.kind:
     of Kind.bytes:
-      if count <= 4:
-        result.values.bytesList = newSeq[uint8]()
-        for ix in 0..count-1:
-          let item = length[uint8](packed, (int)ix, system.cpuEndian)
-          result.values.bytesList.add(item)
-    of Kinds.strings:
-      # todo: parse strings
-      discard
-      # if count <= 4:
-      #   result.values = getStrings(packed, result.values)
-    of Kinds.shorts:
-      if count <= 2:
-        result.values.shortsList = newSeq[uint16]()
-        for ix in 0..count-1:
-          result.values.shortsList.add(length[uint16](packed, ix*2, system.cpuEndian))
-    of Kinds.longs:
-      if count <= 1:
-        result.values.longsList = newSeq[uint32]()
-        result.values.longsList.add(length[uint32](packed, 0, system.cpuEndian))
+      result.bytesList = buffer
+    of Kind.longs:
+      var list = newSeq[uint32]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[uint32](buffer, ix * sizeof(uint32), endian)
+      result = ValueList(kind: Kind.longs, longsList: list)
+    else:
+      echo result.kind
+      raise newException(UnknownFormatError, "not implemented yet")
 
-    of Kind.sbytes:
-      if count <= 4:
-        result.values.sbytesList = newSeq[int8]()
-        for ix in 0..count-1:
-          result.values.sbytesList.add(length[int8](packed, ix, system.cpuEndian))
-    of Kinds.strings:
-      # todo: parse strings
-      discard
-      # if count <= 4:
-      #   result.values = getStrings(packed, result.values)
-    of Kinds.sshorts:
-      if count <= 2:
-        result.values.sshortsList = newSeq[int16]()
-        for ix in 0..count-1:
-          result.values.sshortsList.add(length[int16](packed, ix*2, system.cpuEndian))
-    of Kinds.slongs:
-      if count <= 1:
-        result.values.slongsList = newSeq[int32]()
-        result.values.slongsList.add(length[int32](packed, 0, system.cpuEndian))
 
-    of Kinds.floats:
-      if count <= 1:
-        result.values.floadsList = newSeq[float32]()
-        result.values.floadsList.add(length[float32](packed, 0, system.cpuEndian))
+    # of Kind.sbytes:
+    #   for ix in 0..count-1:
+    #     result.values.sbytesList.add(bufferSize[int8](packed, ix, endian))
+    # of Kinds.strings:
+    #   # todo: parse strings
+    #   # if count <= 4:
+    #   #   result.values = getStrings(packed, result.values)
+    #   discard
+    # of Kinds.sshorts:
+    #   for ix in 0..count-1:
+    #     result.values.sshortsList.add(bufferSize[int16](packed, ix*2, system.cpuEndian))
+    # of Kinds.slongs:
+    #   for ix in 0..count-1:
+    #     result.values.slongsList.add(bufferSize[int32](packed, 0, system.cpuEndian))
+    # of Kinds.floats:
+    #   for ix in 0..count-1:
+    #     result.values.floadsList.add(bufferSize[float32](packed, 0, system.cpuEndian))
+    # of Kinds.rationals:
+    #   # for ix in 0..count-1:
+    #   # todo: rationals
+    #   discard
+    # of Kinds.srationals:
+    #   # for ix in 0..count-1:
+    #   # todo: srationals
+    #   discard
+    # of Kinds.doubles:
+    #   # for ix in 0..count-1:
+    #   discard
 
-    of Kinds.rationals:
-      # todo: rationals
-      discard
-    of Kinds.srationals:
-      # todo: srationals
-      discard
-    of Kinds.doubles:
-      discard
-
-]#
 
   # # Get the values when they fit in the packed 4 bytes.
   # if self.kind == 1 or self.kind == 6 or self.kind == 7: # one byte numbers

@@ -11,7 +11,7 @@ or buffer.
 
 import endians
 
-proc length*[T](buffer: var openArray[uint8], index=0,
+proc length*[T](buffer: openArray[uint8], index=0,
                 endian: Endianness=littleEndian): T =
   ## Return a number from the buffer at the given index with the
   ## specified endianness. Specify the number type with T.
@@ -30,7 +30,7 @@ proc length*[T](buffer: var openArray[uint8], index=0,
         T is float or T is float32 or T is float64):
     assert(false, "T is not a number type.")
   else:
-    let pointer = addr(buffer[index])
+    let pointer = unsafeAddr(buffer[index])
     when sizeof(T) == 1:
       copyMem(addr(result), pointer, 1)
       return

@@ -5,6 +5,7 @@ import testFile
 import tiff
 import readNumber
 import hexDump
+import strutils
 
 proc dumpTestFile(filename: string, startOffset: int64, length: Natural) =
   ## Hex dump a section of the given file.
@@ -201,6 +202,7 @@ suite "test tiff.nim":
     check(gotException == true)
 
   test "test getIFDEntry invalid kind":
+    # Test with a kind of 0x22.
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x22, 0x00, 0x00, 0x00, 0x05,
       0x00, 0x01, 0x02, 0x03,
@@ -227,3 +229,44 @@ suite "test tiff.nim":
       # echo getCurrentExceptionMsg()
       gotException = true
     check(gotException == true)
+
+  test "test kindToSize":
+    # for kind in low(Kind)..high(Kind):
+    #   echo "$1 $2 $3" % [$ord(kind), $kindToSize(kind), $kind]
+
+    check(ord(low(Kind)) == 0)
+    check(ord(high(Kind)) == 12)
+    check(ord(Kind.bytes) == 1)
+
+    check(kindToSize(Kind.bytes) == 1)
+    check(kindToSize(Kind.strings) == 1)
+    check(kindToSize(Kind.shorts) == 2)
+    check(kindToSize(Kind.longs) == 4)
+    check(kindToSize(Kind.rationals) == 8)
+    check(kindToSize(Kind.sbytes) == 1)
+    check(kindToSize(Kind.blob) == 1)
+    check(kindToSize(Kind.sshorts) == 2)
+    check(kindToSize(Kind.slongs) == 4)
+    check(kindToSize(Kind.srationals) == 8)
+    check(kindToSize(Kind.floats) == 4)
+    check(kindToSize(Kind.doubles) == 8)
+    check(kindToSize(Kind.dummy) == 0)
+
+  test "test readValueList":
+    # tag = 00feh, kind = longs, count = 1, packed = 00010203h
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian)
+    echo $entry
+    var file: File
+    let valueList = readValueList(file, entry, bigEndian)
+    echo "valueList = "
+    echo toString(entry, valueList)
+    echo len(entry, valueList)
+
+    # let list = readValueList(file, entry, bigEndian)
+    # echo $list
+    # echo list.len
+    # echo toHex(list[0])
