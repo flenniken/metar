@@ -252,21 +252,18 @@ suite "test tiff.nim":
     check(kindToSize(Kind.doubles) == 8)
     check(kindToSize(Kind.dummy) == 0)
 
-  test "test readValueList":
+  test "test readValueList 1 long":
     # tag = 00feh, kind = longs, count = 1, packed = 00010203h
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
     ]
     let entry = getIFDEntry(buffer, bigEndian)
-    echo $entry
+    # echo $entry
     var file: File
-    let valueList = readValueList(file, entry, bigEndian)
-    echo "valueList = "
-    echo toString(entry, valueList)
-    echo len(entry, valueList)
-
-    # let list = readValueList(file, entry, bigEndian)
-    # echo $list
+    var list: ValueList = readValueList(file, entry, bigEndian)
     # echo list.len
-    # echo toHex(list[0])
+    # echo $list
+    # echo toHex(list.longsList[0])
+    check(list.len == 1)
+    check(toHex(list.longsList[0]) == "00010203")

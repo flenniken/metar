@@ -63,9 +63,9 @@ type
     of Kind.strings:
       stringsList: seq[uint8]
     of Kind.shorts:
-      shortsList: seq[uint16]
+      shortsList*: seq[uint16]
     of Kind.longs:
-      longsList: seq[uint32]
+      longsList*: seq[uint32]
     of Kind.rationals:
       rationalsList: seq[uint64]
     of Kind.sbytes:
@@ -101,22 +101,16 @@ proc `$`*(entry: IFDEntry): string =
     toHex(entry.packed[0]), toHex(entry.packed[1]),
     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
-proc len*(entry: IFDEntry, valueList: ValueList): int =
-  case entry.kind:
-    of dummy:
-      result = 0
-    of longs:
-      result = valueList.longsList.len()
+proc len*(v: ValueList): int =
+  case v.kind:
+    of longs: result = v.longsList.len()
     else:
       result = 0
 
-proc toString*(entry: IFDEntry, valueList: ValueList): string =
-  # Return a string representation of the ValueList.
-  case entry.kind:
-    of dummy:
-      result = "dummy"
-    of longs:
-      result = $valueList.longsList
+proc `$`*(v: ValueList): string =
+  ## Return a string representation of the ValueList.
+  case v.kind:
+    of longs: result = $v.longsList
     else:
       result = "other"
 
@@ -503,16 +497,24 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
       raise newException(UnknownFormatError, "Tiff: Unable to read all the IFD entry values.")
 
   case entry.kind:
-    of Kind.bytes:
-      result.bytesList = buffer
     of Kind.longs:
       var list = newSeq[uint32]((int)entry.count)
       for ix in 0..<(int)entry.count:
         list[ix] = length[uint32](buffer, ix * sizeof(uint32), endian)
-      result = ValueList(kind: Kind.longs, longsList: list)
+      new(result)
+      result.kind = Kind.longs
+      result.longsList = list
     else:
       echo result.kind
       raise newException(UnknownFormatError, "not implemented yet")
+
+
+# proc `[]`*(valueList: ValueList, index: int): T =
+#   ## Gets the node at `index` in an Array. Result is undefined if `index`
+#   ## is out of bounds, but as long as array bound checks are enabled it will
+#   ## result in an exception.
+#   assert(not isNil(valueList))
+#   return valueList.list[index]
 
 
     # of Kind.sbytes:
