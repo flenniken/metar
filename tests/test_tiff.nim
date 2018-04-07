@@ -267,3 +267,64 @@ suite "test tiff.nim":
     # echo toHex(list.longsList[0])
     check(list.len == 1)
     check(toHex(list.longsList[0]) == "00010203")
+
+  test "test readValueList 1 long little endian":
+    # tag = 00feh, kind = longs, count = 1, packed = 00010203h
+    var buffer = [
+      0xFE'u8, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = littleEndian
+    let entry = getIFDEntry(buffer, endian)
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    check(list.len == 1)
+    check(toHex(list.longsList[0]) == "03020100")
+
+  test "test readValueList 1 short":
+    # tag = 00feh, kind = shorts, count = 1, packed = 00010203h
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, bigEndian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.shortsList[0])
+    check(list.len == 1)
+    check(toHex(list.shortsList[0]) == "0001")
+
+  test "test readValueList 2 short":
+    # tag = 00feh, kind = shorts, count = 2, packed = 00010203h
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, bigEndian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.shortsList[0])
+    # echo toHex(list.shortsList[1])
+    check(list.len == 2)
+    check(toHex(list.shortsList[0]) == "0001")
+    check(toHex(list.shortsList[1]) == "0203")
+
+  test "test readValueList 2 short little endian":
+    # tag = 00feh, kind = shorts, count = 2, packed = 00010203h
+    var buffer = [
+      0xfe'u8, 0x00, 0x03, 0x00, 0x02, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = littleEndian
+    let entry = getIFDEntry(buffer, endian)
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    check(list.len == 2)
+    check(toHex(list.shortsList[0]) == "0100")
+    check(toHex(list.shortsList[1]) == "0302")

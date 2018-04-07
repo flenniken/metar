@@ -31,22 +31,37 @@ If the Value is shorter than 4 bytes, it is left-justified within the
 
 type
   Kind* {.size: 2, pure.} = enum
-    dummy # This is here because enums used as discriminates must
-          # start at 0.
-    bytes # 1, uint8
-    strings # 2, On of more ASCII strings each ending with 0. Count includes the 0s.
-    shorts # 3, uint16
-    longs # 4, uint32
-    rationals # 5, Two uint32, numerator then denominator.
-    sbytes # 6, s stands for signed.
-    blob # 7, list of bytes.
-    sshorts # 8
-    slongs # 9
-    srationals # 10
-    floats # 11, float32
-    doubles # 12, float64
-  ## IDFEntry types.
-  ## Skip over fields containing an unexpected field type.
+    dummy
+    bytes
+    strings
+    shorts
+    longs
+    rationals
+    sbytes
+    blob
+    sshorts
+    slongs
+    srationals
+    floats
+    doubles ##[ \
+IFDEntry types.
+
+Skip over fields containing an unexpected field type.
+
+0, dummy, This is here because enums used as discriminates must start at 0.
+1, bytes, uint8
+2, strings, One or more ASCII strings each ending with 0. Count includes the 0s.
+3, shorts, uint16
+4, longs, uint32
+5, rationals, Two uint32, numerator then denominator.
+6, sbytes, s stands for signed.
+7, blob, list of bytes.
+8, sshorts
+9, slongs
+10, srationals
+11, floats, float32
+12, doubles, float64
+]##
 
   IFDEntry* = object
     tag: uint16
@@ -54,34 +69,42 @@ type
     count: uint32
     packed: array[4, uint8] ## 12 byte IFD entry.
 
+#[ To save time and space the Value Offset (packed) contains the Value
+instead of pointing to the Value if and only if the Value fits into 4
+bytes. If the Value is shorter than 4 bytes, it is left-justified
+within the 4-byte Value Offset, i.e., stored in the lower-numbered
+bytes. Whether the Value fits within 4 bytes is determined by the Type
+(kind) and Count of the field.  ]#
+
   ValueList* = ref object
     case kind: Kind
     of Kind.dummy:
       discard
     of Kind.bytes:
-      bytesList: seq[uint8]
+      bytesList*: seq[uint8]
     of Kind.strings:
-      stringsList: seq[uint8]
+      stringsList*: seq[uint8]
     of Kind.shorts:
       shortsList*: seq[uint16]
     of Kind.longs:
       longsList*: seq[uint32]
     of Kind.rationals:
-      rationalsList: seq[uint64]
+      # todo: use numerator and denominator as two uint32 values.
+      rationalsList*: seq[uint64]
     of Kind.sbytes:
-      sbytesList: seq[int8]
+      sbytesList*: seq[int8]
     of Kind.blob:
-      blobList: seq[uint8]
+      blobList*: seq[uint8]
     of Kind.sshorts:
-      sshortsList: seq[int16]
+      sshortsList*: seq[int16]
     of Kind.slongs:
-      slongsList: seq[int32]
+      slongsList*: seq[int32]
     of Kind.srationals:
-      srationalsList: seq[int64]
+      srationalsList*: seq[int64]
     of Kind.floats:
-      floatsList: seq[float32]
+      floatsList*: seq[float32]
     of Kind.doubles:
-      doublesList: seq[float64] ##\
+      doublesList*: seq[float64] ##\
     ## A sequence of kind elements.
 
 
@@ -101,46 +124,42 @@ proc `$`*(entry: IFDEntry): string =
     toHex(entry.packed[0]), toHex(entry.packed[1]),
     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
+
 proc len*(v: ValueList): int =
   case v.kind:
+    of bytes: result = v.bytesList.len()
+    of strings: result = v.stringsList.len()
+    of shorts: result = v.shortsList.len()
     of longs: result = v.longsList.len()
+    of rationals: result = v.rationalsList.len()
+    of sbytes: result = v.sbytesList.len()
+    of blob: result = v.blobList.len()
+    of sshorts: result = v.sshortsList.len()
+    of slongs: result = v.slongsList.len()
+    of srationals: result = v.srationalsList.len()
+    of floats: result = v.floatsList.len()
+    of doubles: result = v.doublesList.len()
     else:
       result = 0
+
 
 proc `$`*(v: ValueList): string =
   ## Return a string representation of the ValueList.
   case v.kind:
+    of bytes: result = $v.bytesList
+    of strings: result = $v.stringsList
+    of shorts: result = $v.shortsList
     of longs: result = $v.longsList
+    of rationals: result = $v.rationalsList
+    of sbytes: result = $v.sbytesList
+    of blob: result = $v.blobList
+    of sshorts: result = $v.sshortsList
+    of slongs: result = $v.slongsList
+    of srationals: result = $v.srationalsList
+    of floats: result = $v.floatsList
+    of doubles: result = $v.doublesList
     else:
-      result = "other"
-
-    # case entry.kind:
-    #   of dummy:
-    #     discard
-    #   of bytes:
-    #     echo $entry.values.bytesList
-    #   of strings:
-    #     echo $entry.values.stringsList
-    #   of shorts:
-    #     echo $entry.values.shortsList
-    #   of longs:
-    #     echo $entry.values.longsList
-    #   of rationals:
-    #     echo $entry.values.rationalsList
-    #   of sbytes:
-    #     echo $entry.values.sbytesList
-    #   of sstrings:
-    #     echo $entry.values.sstringsList
-    #   of sshorts:
-    #     echo $entry.values.sshortsList
-    #   of slongs:
-    #     echo $entry.values.slongsList
-    #   of srationals:
-    #     echo $entry.values.srationalsList
-    #   of floats:
-    #     echo $entry.values.floatsList
-    #   of doubles:
-    #     echo $entry.values.doublesList
+      result = "Unknown type of Valuelist."
 
 
 proc readHeader*(file: File, headerOffset: int64):
@@ -470,6 +489,15 @@ proc kindToSize(kind: Kind): Natural {.tpub.} =
   else:
     result = (Natural)kindToSizeTable[ord(kind)]
 
+# template newValueList(T, entry, buffer): ValueList =
+#   var list = newSeq[T]((int)entry.count)
+#   for ix in 0..<(int)entry.count:
+#     list[ix] = length[T](buffer, ix * sizeof(T), endian)
+#   new(result)
+#   result.kind = entry.kind
+#   field = entry.kind & "List"
+#   result.field = list
+
 
 proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
                headerOffset: int64 = 0): ValueList =
@@ -487,7 +515,7 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
   if bufferSize <= 4:
     # The values fit in packed.
     # Move packed to buffer.
-    for ix in 0..3:
+    for ix in 0..<bufferSize:
       buffer[ix] = entry.packed[ix]
   else:
     # The values are in the file at the offset specified by packed.
@@ -497,13 +525,27 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
       raise newException(UnknownFormatError, "Tiff: Unable to read all the IFD entry values.")
 
   case entry.kind:
+    of Kind.dummy:
+      raise newException(UnknownFormatError, "Kind of 0 is not valid.")
+
+    of Kind.shorts:
+      var list = newSeq[uint16]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[uint16](buffer, ix * sizeof(uint16), endian)
+      new(result)
+      result.kind = Kind.shorts
+      result.shortsList = list
+
     of Kind.longs:
+      # result = newValueList[uint32](entry, buffer)
+
       var list = newSeq[uint32]((int)entry.count)
       for ix in 0..<(int)entry.count:
         list[ix] = length[uint32](buffer, ix * sizeof(uint32), endian)
       new(result)
       result.kind = Kind.longs
       result.longsList = list
+
     else:
       echo result.kind
       raise newException(UnknownFormatError, "not implemented yet")
