@@ -229,11 +229,6 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   result.packed[3] = buffer[index+11]
 
 
-# macro setAttr(object: untyped, attr: static[string], value: untyped): typed =
-#   ## At compile time generate code like: object.attr = value
-
-#   let source = object & "." & attr & " = " & value
-#   result = parseStmt(source)
 
 
 # proc newValueList(kindType: typedesc, attr: string, entry: IFDEntry,
@@ -285,36 +280,73 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     if file.readBytes(buffer, 0, bufferSize) != bufferSize:
       raise newException(UnknownFormatError, "Tiff: Unable to read all the IFD entry values.")
 
+  result = new(ValueList)
+  result.kind = entry.kind
 
   case entry.kind:
     of Kind.dummy:
-      raise newException(UnknownFormatError, "Kind of 0 is not valid.")
+      raise newException(NotSupportedError, "Kind of 0 is not valid.")
 
     of Kind.bytes:
       var list = newSeq[uint8]((int)entry.count)
       for ix in 0..<(int)entry.count:
         list[ix] = length[uint8](buffer, ix * sizeof(uint8), endian)
-      new(result)
-      result.kind = Kind.bytes
       result.bytesList = list
+
+    of Kind.strings:
+      raise newException(NotSupportedError, "strings not implemented.")
 
     of Kind.shorts:
       var list = newSeq[uint16]((int)entry.count)
       for ix in 0..<(int)entry.count:
         list[ix] = length[uint16](buffer, ix * sizeof(uint16), endian)
-      new(result)
-      result.kind = Kind.shorts
       result.shortsList = list
 
     of Kind.longs:
       var list = newSeq[uint32]((int)entry.count)
       for ix in 0..<(int)entry.count:
         list[ix] = length[uint32](buffer, ix * sizeof(uint32), endian)
-      new(result)
-      result.kind = Kind.longs
       result.longsList = list
 
+    of Kind.rationals:
+      raise newException(NotSupportedError, "strings not rationals.")
 
-    else:
-      echo result.kind
-      raise newException(UnknownFormatError, "not implemented yet")
+    of Kind.sbytes:
+      var list = newSeq[int8]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[int8](buffer, ix * sizeof(int8), endian)
+      result.sbytesList = list
+
+    of Kind.blob:
+      raise newException(NotSupportedError, "strings not rationals.")
+
+    of Kind.sshorts:
+      var list = newSeq[int16]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[int16](buffer, ix * sizeof(int16), endian)
+      result.sshortsList = list
+
+    of Kind.slongs:
+      var list = newSeq[int32]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[int32](buffer, ix * sizeof(int32), endian)
+      result.slongsList = list
+
+    of Kind.srationals:
+      raise newException(NotSupportedError, "strings not rationals.")
+
+    of Kind.floats:
+      var list = newSeq[float32]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[float32](buffer, ix * sizeof(float32), endian)
+      result.floatsList = list
+
+    of Kind.doubles:
+      var list = newSeq[float64]((int)entry.count)
+      for ix in 0..<(int)entry.count:
+        list[ix] = length[float64](buffer, ix * sizeof(float64), endian)
+      result.doublesList = list
+
+    # else:
+    #   echo result.kind
+    #   raise newException(NotSupportedError, "Unknown kind")
