@@ -230,27 +230,27 @@ suite "test tiff.nim":
       gotException = true
     check(gotException == true)
 
-  test "test kindToSize":
+  test "test kindSize":
     # for kind in low(Kind)..high(Kind):
-    #   echo "$1 $2 $3" % [$ord(kind), $kindToSize(kind), $kind]
+    #   echo "$1 $2 $3" % [$ord(kind), $kindSize(kind), $kind]
 
     check(ord(low(Kind)) == 0)
     check(ord(high(Kind)) == 12)
     check(ord(Kind.bytes) == 1)
 
-    check(kindToSize(Kind.bytes) == 1)
-    check(kindToSize(Kind.strings) == 1)
-    check(kindToSize(Kind.shorts) == 2)
-    check(kindToSize(Kind.longs) == 4)
-    check(kindToSize(Kind.rationals) == 8)
-    check(kindToSize(Kind.sbytes) == 1)
-    check(kindToSize(Kind.blob) == 1)
-    check(kindToSize(Kind.sshorts) == 2)
-    check(kindToSize(Kind.slongs) == 4)
-    check(kindToSize(Kind.srationals) == 8)
-    check(kindToSize(Kind.floats) == 4)
-    check(kindToSize(Kind.doubles) == 8)
-    check(kindToSize(Kind.dummy) == 0)
+    check(kindSize(Kind.bytes) == 1)
+    check(kindSize(Kind.strings) == 1)
+    check(kindSize(Kind.shorts) == 2)
+    check(kindSize(Kind.longs) == 4)
+    check(kindSize(Kind.rationals) == 8)
+    check(kindSize(Kind.sbytes) == 1)
+    check(kindSize(Kind.blob) == 1)
+    check(kindSize(Kind.sshorts) == 2)
+    check(kindSize(Kind.slongs) == 4)
+    check(kindSize(Kind.srationals) == 8)
+    check(kindSize(Kind.floats) == 4)
+    check(kindSize(Kind.doubles) == 8)
+    check(kindSize(Kind.dummy) == 0)
 
   test "test readValueList 1 long":
     # tag = 00feh, kind = longs, count = 1, packed = 00010203h
