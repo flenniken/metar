@@ -328,3 +328,114 @@ suite "test tiff.nim":
     check(list.len == 2)
     check(toHex(list.shortsList[0]) == "0100")
     check(toHex(list.shortsList[1]) == "0302")
+
+
+  test "test readValueList 1 byte":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.bytesList[0])
+    check(list.len == 1)
+    check(toHex(list.bytesList[0]) == "00")
+
+  test "test readValueList 2 byte":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.bytesList[0])
+    # echo toHex(list.bytesList[1])
+    check(list.len == 2)
+    check(toHex(list.bytesList[0]) == "00")
+    check(toHex(list.bytesList[1]) == "01")
+
+  test "test readValueList 3 byte":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.bytesList[0])
+    # echo toHex(list.bytesList[1])
+    # echo toHex(list.bytesList[2])
+    check(list.len == 3)
+    check(toHex(list.bytesList[0]) == "00")
+    check(toHex(list.bytesList[1]) == "01")
+    check(toHex(list.bytesList[2]) == "02")
+
+  test "test readValueList 4 byte":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.bytesList[0])
+    # echo toHex(list.bytesList[1])
+    # echo toHex(list.bytesList[2])
+    # echo toHex(list.bytesList[3])
+    check(list.len == 4)
+    check(toHex(list.bytesList[0]) == "00")
+    check(toHex(list.bytesList[1]) == "01")
+    check(toHex(list.bytesList[2]) == "02")
+    check(toHex(list.bytesList[3]) == "03")
+
+  test "test readValueList 4 byte little endian":
+    var buffer = [
+      0xFE'u8, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = littleEndian
+    let entry = getIFDEntry(buffer, endian)
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    check(list.len == 4)
+    check(toHex(list.bytesList[0]) == "00")
+    check(toHex(list.bytesList[1]) == "01")
+    check(toHex(list.bytesList[2]) == "02")
+    check(toHex(list.bytesList[3]) == "03")
+
+  test "test readValueList 1 float32":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list: ValueList = readValueList(file, entry, endian)
+    # echo list.len
+    # echo $list
+    # echo toHex(list.floatsList[0])
+    check(list.len == 1)
+    check(toHex(list.floatsList[0]) == "00000000")
+  test "test write float32":
+    let f:float32 = 0.0
+    # write f to a buffer

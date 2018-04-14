@@ -229,33 +229,6 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   result.packed[3] = buffer[index+11]
 
 
-
-
-# proc newValueList(kindType: typedesc, attr: string, entry: IFDEntry,
-#                   buffer: seq[uint8], endian: Endianness): ValueList =
-#   # Create a new value list for the given item.
-
-#   var list = newSeq[kindType]((int)entry.count)
-#   for ix in 0..<(int)entry.count:
-#     list[ix] = length[kindType](buffer, ix * sizeof(kindType), endian)
-#   new(result)
-#   result.kind = entry.kind
-#   setAttr(result, attr, list)
-
-
-# macro newValueList(theType: static[string], attribute: static[string]): typed =
-#   ## Create a new ValueList object for the given Kind.
-#   let source = """
-# var list = newSeq[$1]((int)entry.count)
-# for ix in 0..<(int)entry.count:
-#   list[ix] = length[$1](buffer, ix * sizeof($1), endian)
-# new(result)
-# result.kind = entry.kind
-# result.$2 = list
-# """ % [theType, attribute]
-#   result = parseStmt(source)
-
-
 proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
                headerOffset: int64 = 0): ValueList =
   ## Read the list of values of the IFD entry from the file and return the
