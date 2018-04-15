@@ -266,6 +266,17 @@ suite "test tiff.nim":
     check(list.len == 1)
     check(toHex((uint32)list[0].getInt()) == "00010203")
 
+  test "test readValueList -1 long":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x09, 0x00, 0x00, 0x00, 0x01,
+      0xff, 0xff, 0xff, 0xff,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian)
+    var file: File
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 1)
+    check(list[0].getInt() == -1)
+
   test "test readValueList 1 long little endian":
     # tag = 00feh, kind = longs, count = 1, packed = 00010203h
     var buffer = [
@@ -291,6 +302,19 @@ suite "test tiff.nim":
     var list = readValueList(file, entry, bigEndian)
     check(list.len == 1)
     check(toHex((uint16)list[0].getInt()) == "0001")
+
+  test "test readValueList -1 short":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01,
+      0xff, 0xff, 0xff, 0xff,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 1)
+    check(list[0].getInt() == -1)
+
 
   test "test readValueList 2 short":
     # tag = 00feh, kind = shorts, count = 2, packed = 00010203h
@@ -402,21 +426,6 @@ suite "test tiff.nim":
     check(list.len == 1)
     check($list == "[0.0]")
 
-
-
-  test "test readValueList 1 float32":
-    var buffer = [
-      0x00'u8, 0xFE, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x01,
-      0x00, 0x00, 0x00, 0x00,
-    ]
-    let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
-    # echo $entry
-    var file: File
-    var list = readValueList(file, entry, endian)
-    # echo $list
-    check(list.len == 1)
-    check($list == "[0.0]")
 
 
   test "test readValueList 1 byte blob":
@@ -604,8 +613,54 @@ suite "test tiff.nim":
     check($list == "[[1,2]]")
 
 
-
   test "test readValueList 1 srationals":
-    echo "test readValueList 1 srationals"
+    # srationals are two int32, a numerator and denominator.
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x0a, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x0c, 0xff, 0xff, 0xff, 0xff, 0, 0, 0, 2
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian)
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 1)
+    check($list == "[[-1,2]]")
 
 
+  test "test readValueList 2 float32":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var list = readValueList(file, entry, endian)
+    # echo $list
+    check(list.len == 2)
+    check($list == "[0.0,0.0]")
+
+
+  test "test readValueList 2 rationals":
+    # rationals are two uint32, a numerator and denominator.
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x05, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x00, 0x00, 0x0c, 0, 0, 0, 1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian)
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 2)
+    check($list == "[[1,2],[3,4]]")

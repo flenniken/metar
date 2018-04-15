@@ -290,6 +290,7 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     for ix in 0..<bufferSize:
       buffer[ix] = entry.packed[ix]
   else:
+    assert(file != nil)
     # The values are in the file at the offset specified by packed.
     let startOffset = length[uint32](entry.packed, 0, endian)
     file.setFilePos(((int64)startOffset) + headerOffset)
@@ -302,9 +303,14 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     of Kind.dummy:
       raise newException(NotSupportedError, "Kind of 0 is not valid.")
 
-    of Kind.bytes:
+    of Kind.bytes, Kind.blob:
       for ix in 0..<(int)entry.count:
         let number = length[uint8](buffer, ix * sizeof(uint8), endian)
+        result.add(newJInt((BiggestInt)number))
+
+    of Kind.sbytes:
+      for ix in 0..<(int)entry.count:
+        let number = length[int8](buffer, ix * sizeof(int8), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.strings:
@@ -315,29 +321,14 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
         let number = length[uint16](buffer, ix * sizeof(uint16), endian)
         result.add(newJInt((BiggestInt)number))
 
-    of Kind.longs:
-      for ix in 0..<(int)entry.count:
-        let number = length[uint32](buffer, ix * sizeof(uint32), endian)
-        result.add(newJInt((BiggestInt)number))
-
-    of Kind.rationals:
-      for ix in countup(0, (int)entry.count, 8):
-        let numerator = length[uint32](buffer, ix, endian)
-        let denominator = length[uint32](buffer, ix+4, endian)
-        var rational = newJArray()
-        rational.add(newJInt((BiggestInt)numerator))
-        rational.add(newJInt((BiggestInt)denominator))
-        result.add(rational)
-
-
-    of Kind.sbytes, Kind.blob:
-      for ix in 0..<(int)entry.count:
-        let number = length[int8](buffer, ix * sizeof(int8), endian)
-        result.add(newJInt((BiggestInt)number))
-
     of Kind.sshorts:
       for ix in 0..<(int)entry.count:
         let number = length[int16](buffer, ix * sizeof(int16), endian)
+        result.add(newJInt((BiggestInt)number))
+
+    of Kind.longs:
+      for ix in 0..<(int)entry.count:
+        let number = length[uint32](buffer, ix * sizeof(uint32), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.slongs:
@@ -345,8 +336,23 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
         let number = length[int32](buffer, ix * sizeof(int32), endian)
         result.add(newJInt((BiggestInt)number))
 
+    of Kind.rationals:
+      for ix in countup(0, (int)entry.count*8-1, 8):
+        let numerator = length[uint32](buffer, ix, endian)
+        let denominator = length[uint32](buffer, ix+4, endian)
+        var rational = newJArray()
+        rational.add(newJInt((BiggestInt)numerator))
+        rational.add(newJInt((BiggestInt)denominator))
+        result.add(rational)
+
     of Kind.srationals:
-      raise newException(NotSupportedError, "strings not rationals.")
+      for ix in countup(0, (int)entry.count*8-1, 8):
+        let numerator = length[int32](buffer, ix, endian)
+        let denominator = length[int32](buffer, ix+4, endian)
+        var rational = newJArray()
+        rational.add(newJInt((BiggestInt)numerator))
+        rational.add(newJInt((BiggestInt)denominator))
+        result.add(rational)
 
     of Kind.floats:
       for ix in 0..<(int)entry.count:
