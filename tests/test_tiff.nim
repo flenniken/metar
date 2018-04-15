@@ -235,10 +235,6 @@ suite "test tiff.nim":
     # for kind in low(Kind)..high(Kind):
     #   echo "$1 $2 $3" % [$ord(kind), $kindSize(kind), $kind]
 
-    check(ord(low(Kind)) == 0)
-    check(ord(high(Kind)) == 12)
-    check(ord(Kind.bytes) == 1)
-
     check(kindSize(Kind.bytes) == 1)
     check(kindSize(Kind.strings) == 1)
     check(kindSize(Kind.shorts) == 2)
@@ -251,7 +247,6 @@ suite "test tiff.nim":
     check(kindSize(Kind.srationals) == 8)
     check(kindSize(Kind.floats) == 4)
     check(kindSize(Kind.doubles) == 8)
-    check(kindSize(Kind.dummy) == 0)
 
   test "test readValueList 1 long":
     # tag = 00feh, kind = longs, count = 1, packed = 00010203h
@@ -664,3 +659,19 @@ suite "test tiff.nim":
     var list = readValueList(file, entry, bigEndian)
     check(list.len == 2)
     check($list == "[[1,2],[3,4]]")
+
+    test "kind values":
+      check(ord(Kind.bytes) == 1)
+      check(ord(Kind.strings) == 2)
+      check(ord(Kind.shorts) == 3)
+      check(ord(Kind.longs) == 4)
+      check(ord(Kind.rationals) == 5)
+      check(ord(Kind.sbytes) == 6)
+      check(ord(Kind.blob) == 7)
+      check(ord(Kind.sshorts) == 8)
+      check(ord(Kind.slongs) == 9)
+      check(ord(Kind.srationals) == 10)
+      check(ord(Kind.floats) == 11)
+      check(ord(Kind.doubles) == 12)
+      check(ord(low(Kind)) == 1)
+      check(ord(high(Kind)) == 12)

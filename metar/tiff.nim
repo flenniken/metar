@@ -33,8 +33,7 @@ If the Value is shorter than 4 bytes, it is left-justified within the
 
 type
   Kind* {.size: 2, pure.} = enum
-    dummy
-    bytes
+    bytes = 1
     strings
     shorts
     longs
@@ -50,7 +49,7 @@ IFDEntry types.
 
 Skip over fields containing an unexpected field type.
 
-0, dummy, This is here because enums used as discriminates must start at 0.
+#0, dummy, This is here because enums used as discriminates must start at 0.
 1, bytes, uint8
 2, strings, One or more ASCII strings each ending with 0. Count includes the 0s.
 3, shorts, uint16
@@ -78,23 +77,6 @@ within the 4-byte Value Offset, i.e., stored in the lower-numbered
 bytes. Whether the Value fits within 4 bytes is determined by the Type
 (kind) and Count of the field.  ]#
 
-  # todo: use numerator and denominator as two uint32 values for rationals.
-  ValueList* = ref object
-    case kind: Kind
-    of Kind.dummy: discard
-    of Kind.bytes: bytesList*: seq[uint8]
-    of Kind.strings: stringsList*: seq[uint8]
-    of Kind.shorts: shortsList*: seq[uint16]
-    of Kind.longs: longsList*: seq[uint32]
-    of Kind.rationals: rationalsList*: seq[uint64]
-    of Kind.sbytes: sbytesList*: seq[int8]
-    of Kind.blob: blobList*: seq[uint8]
-    of Kind.sshorts: sshortsList*: seq[int16]
-    of Kind.slongs: slongsList*: seq[int32]
-    of Kind.srationals: srationalsList*: seq[int64]
-    of Kind.floats: floatsList*: seq[float32]
-    of Kind.doubles: doublesList*: seq[float64] ##\
-    ## A sequence of kind elements.
 
 
 proc tagName*(tag: uint16): string =
@@ -114,26 +96,10 @@ proc `$`*(entry: IFDEntry): string =
     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
 
-proc len*(v: ValueList): int =
-  case v.kind:
-    of dummy: result = 0
-    of bytes: result = v.bytesList.len()
-    of strings: result = v.stringsList.len()
-    of shorts: result = v.shortsList.len()
-    of longs: result = v.longsList.len()
-    of rationals: result = v.rationalsList.len()
-    of sbytes: result = v.sbytesList.len()
-    of blob: result = v.blobList.len()
-    of sshorts: result = v.sshortsList.len()
-    of slongs: result = v.slongsList.len()
-    of srationals: result = v.srationalsList.len()
-    of floats: result = v.floatsList.len()
-    of doubles: result = v.doublesList.len()
 
 
 proc kindSize*(kind: Kind): Natural {.tpub.} =
   case kind:
-    of dummy: result = 0
     of bytes: result = 1
     of strings: result = 1
     of shorts: result = 2
@@ -148,23 +114,6 @@ proc kindSize*(kind: Kind): Natural {.tpub.} =
     of doubles: result = 8
 
 
-proc `$`*(v: ValueList): string =
-  ## Return a string representation of the ValueList.
-  case v.kind:
-    of bytes: result = $v.bytesList
-    of strings: result = $v.stringsList
-    of shorts: result = $v.shortsList
-    of longs: result = $v.longsList
-    of rationals: result = $v.rationalsList
-    of sbytes: result = $v.sbytesList
-    of blob: result = $v.blobList
-    of sshorts: result = $v.sshortsList
-    of slongs: result = $v.slongsList
-    of srationals: result = $v.srationalsList
-    of floats: result = $v.floatsList
-    of doubles: result = $v.doublesList
-    else:
-      result = "Unknown type of Valuelist."
 
 
 proc readHeader*(file: File, headerOffset: int64):
@@ -211,24 +160,23 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   ## Given a buffer of IFDEntry bytes starting at the given index,
   ## return an IFDEntry object.
 
+  # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
   if buffer.len()-index < 12:
     raise newException(NotSupportedError, "Tiff: not enough bytes for IFD entry.")
 
-  # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
-  result.tag = length[uint16](buffer, index+0, endian)
-  let kind = length[uint16](buffer, index+2, endian)
-  try:
-    result.kind = Kind(kind)
-    if result.kind == Kind.dummy:
-      raise newException(RangeError, "")
-  except RangeError:
+  let tag = length[uint16](buffer, index+0, endian)
+  let kind_ord = (int)length[uint16](buffer, index+2, endian)
+  if kind_ord < ord(low(Kind)) or kind_ord > ord(high(Kind)):
     raise newException(NotSupportedError,
-      "Tiff: IFD entry kind is not known: " & $kind)
-  result.count = length[uint32](buffer, index+4, endian)
-  result.packed[0] = buffer[index+8]
-  result.packed[1] = buffer[index+9]
-  result.packed[2] = buffer[index+10]
-  result.packed[3] = buffer[index+11]
+                       "Tiff: IFD entry kind is not known: " & $kind_ord)
+  let kind = Kind(kind_ord)
+  let count = length[uint32](buffer, index+4, endian)
+  var packed: array[4, uint8]
+  packed[0] = buffer[index+8]
+  packed[1] = buffer[index+9]
+  packed[2] = buffer[index+10]
+  packed[3] = buffer[index+11]
+  result = IFDEntry(tag: tag, kind: kind, count: count, packed: packed)
 
 
 iterator items*[T](a: openArray[T], start: Natural = 0): T {.inline.} =
@@ -300,8 +248,6 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
   result = newJArray()
 
   case entry.kind:
-    of Kind.dummy:
-      raise newException(NotSupportedError, "Kind of 0 is not valid.")
 
     of Kind.bytes, Kind.blob:
       for ix in 0..<(int)entry.count:
