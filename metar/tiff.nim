@@ -10,24 +10,19 @@ import macros
 import json
 
 #[
-https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
+The following links are good references for the Tiff format.
 
-https://web.archive.org/web/20150503034412/http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
-
-
+* https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
+* https://web.archive.org/web/20150503034412/http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
 
 This is the layout of a Tiff file:
 
-header -> IFD
-IFD starts with a count, then that many IFD entries (IDFEntry),
+* header -> IFD
+* IFD starts with a count, then that many IFD entries (IDFEntry),
   then an offset to the next IFD or 0.
-IFD.next -> IFD or 0
-IFD.SubIFDs = [->IFD, ->IFD,...]
-IFD.Exif_IFD -> IFD
-Each IFD entry contains a tag and a list of values.
-
-If the Value is shorter than 4 bytes, it is left-justified within the
-4-byte Value Offset, i.e., stored in the lower numbered bytes.
+* IFD.next -> IFD or 0
+* IFD.SubIFDs = [->IFD, ->IFD,...]
+* IFD.Exif_IFD -> IFD
 
 ]#
 
@@ -47,9 +42,6 @@ type
     doubles ##[ \
 IFDEntry types.
 
-Skip over fields containing an unexpected field type.
-
-#0, dummy, This is here because enums used as discriminates must start at 0.
 1, bytes, uint8
 2, strings, One or more ASCII strings each ending with 0. Count includes the 0s.
 3, shorts, uint16
@@ -70,13 +62,14 @@ Skip over fields containing an unexpected field type.
     count: uint32
     packed: array[4, uint8] ## 12 byte IFD entry.
 
-#[ To save time and space the Value Offset (packed) contains the Value
+#[
+To save time and space the Value Offset (packed) contains the Value
 instead of pointing to the Value if and only if the Value fits into 4
 bytes. If the Value is shorter than 4 bytes, it is left-justified
 within the 4-byte Value Offset, i.e., stored in the lower-numbered
 bytes. Whether the Value fits within 4 bytes is determined by the Type
-(kind) and Count of the field.  ]#
-
+(kind) and Count of the field.
+]#
 
 
 proc tagName*(tag: uint16): string =
@@ -88,7 +81,8 @@ proc tagName*(tag: uint16): string =
 
 
 proc `$`*(entry: IFDEntry): string =
-  # Return a string representation of the IFDEntry.
+  ## Return a string representation of the IFDEntry.
+
   "$1($2, $3h), $4 $5, packed: $6 $7 $8 $9"  %
     [tagName(entry.tag), $entry.tag, toHex(entry.tag),
     $entry.count, $entry.kind,
@@ -96,9 +90,9 @@ proc `$`*(entry: IFDEntry): string =
     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
 
-
-
 proc kindSize*(kind: Kind): Natural {.tpub.} =
+  ## Return the number of bytes the given kind uses.
+
   case kind:
     of bytes: result = 1
     of strings: result = 1
@@ -112,8 +106,6 @@ proc kindSize*(kind: Kind): Natural {.tpub.} =
     of srationals: result = 8
     of floats: result = 4
     of doubles: result = 8
-
-
 
 
 proc readHeader*(file: File, headerOffset: int64):
@@ -181,6 +173,7 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
 
 iterator items*[T](a: openArray[T], start: Natural = 0): T {.inline.} =
   ## Iterate over each item of the array starting at the given index.
+
   var i = start
   while i < len(a):
     yield a[i]
@@ -190,6 +183,7 @@ iterator items*[T](a: openArray[T], start: Natural = 0): T {.inline.} =
 proc find*[T, S](a: T, item: S, start: Natural = 0): int {.inline.} =
   ## Find the item in an array and return its index or -1. Start
   ## searching at the given start index.
+
   result = start
   for i in items(a, start):
     if i == item:
