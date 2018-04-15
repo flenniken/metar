@@ -555,13 +555,53 @@ suite "test tiff.nim":
     check(node[0].getStr() == "A")
     check(node[1].getStr() == "C")
 
+  test "test readValueList one more than packed":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05,
+      0x00, 0x00, 0x00, 0x0c, 0, 1, 2, 3, 4, 5
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian)
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 5)
+    check($list == "[0,1,2,3,4]")
+
+
   test "test readValueList 1 float64":
-    echo "test readValueList 1 float64"
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x0c, 0, 0, 0, 0, 0, 0, 0, 0
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian)
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 1)
+    check($list == "[0.0]")
 
 
   test "test readValueList 1 rationals":
     # rationals are two uint32, a numerator and denominator.
-    echo "test readValueList 1 rationals"
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x0c, 0, 0, 0, 1, 0, 0, 0, 2
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian)
+    var list = readValueList(file, entry, bigEndian)
+    check(list.len == 1)
+    check($list == "[[1,2]]")
 
 
 
@@ -569,5 +609,3 @@ suite "test tiff.nim":
     echo "test readValueList 1 srationals"
 
 
-  test "test readValueList one more than packed":
-    echo "test readValueList one more than packed"
