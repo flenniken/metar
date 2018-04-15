@@ -7,6 +7,7 @@ import tiffTags
 import strutils
 import tpub
 import macros
+import json
 
 #[
 https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
@@ -209,6 +210,7 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
                   index: Natural = 0): IFDEntry =
   ## Given a buffer of IFDEntry bytes starting at the given index,
   ## return an IFDEntry object.
+
   if buffer.len()-index < 12:
     raise newException(NotSupportedError, "Tiff: not enough bytes for IFD entry.")
 
@@ -229,10 +231,52 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   result.packed[3] = buffer[index+11]
 
 
+iterator items*[T](a: openArray[T], start: Natural = 0): T {.inline.} =
+  ## Iterate over each item of the array starting at the given index.
+  var i = start
+  while i < len(a):
+    yield a[i]
+    inc(i)
+
+
+proc find*[T, S](a: T, item: S, start: Natural = 0): int {.inline.} =
+  ## Find the item in an array and return its index or -1. Start
+  ## searching at the given start index.
+  result = start
+  for i in items(a, start):
+    if i == item:
+      return
+    inc(result)
+  result = -1
+
+
+proc parseStrings(buffer: openArray[uint8]): JsonNode {.tpub.} =
+  ## Parse the buffer and return the strings in a JSON array.
+
+  # Each string ends with 0 in the buffer.
+  result = newJArray()
+  if buffer.len == 0:
+    return
+  var start = 0
+  var finish = 0
+  while true:
+    finish = buffer.find(0'u8, start)
+    # The last string doesn't need to end with a 0.
+    if finish == -1:
+      finish = buffer.len
+    var str = newStringOfCap(finish-start)
+    for b in buffer[start..<finish]:
+      str.add((char)b)
+    result.add(newJString(str))
+    start = finish + 1
+    if start >= buffer.len:
+      break
+
+
 proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
-               headerOffset: int64 = 0): ValueList =
+               headerOffset: int64 = 0): JsonNode =
   ## Read the list of values of the IFD entry from the file and return the
-  ## data as a ValueList object.
+  ## data as a JSON array.
 
   # Determine where the values start and how many bytes long, read
   # them into a buffer then put them into a list.
@@ -242,8 +286,7 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
   # Read the bytes into a buffer.
   var buffer = newSeq[uint8](bufferSize)
   if bufferSize <= 4:
-    # The values fit in packed.
-    # Move packed to buffer.
+    # The values fit in packed.  Move packed to the buffer.
     for ix in 0..<bufferSize:
       buffer[ix] = entry.packed[ix]
   else:
@@ -253,8 +296,7 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     if file.readBytes(buffer, 0, bufferSize) != bufferSize:
       raise newException(UnknownFormatError, "Tiff: Unable to read all the IFD entry values.")
 
-  result = new(ValueList)
-  result.kind = entry.kind
+  result = newJArray()
 
   case entry.kind:
     of Kind.dummy:
@@ -263,47 +305,44 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     of Kind.bytes:
       var list = newSeq[uint8]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[uint8](buffer, ix * sizeof(uint8), endian)
-      result.bytesList = list
+        let number = length[uint8](buffer, ix * sizeof(uint8), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.strings:
-      raise newException(NotSupportedError, "strings not implemented.")
+      result = parseStrings(buffer)
 
     of Kind.shorts:
       var list = newSeq[uint16]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[uint16](buffer, ix * sizeof(uint16), endian)
-      result.shortsList = list
+        let number = length[uint16](buffer, ix * sizeof(uint16), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.longs:
       var list = newSeq[uint32]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[uint32](buffer, ix * sizeof(uint32), endian)
-      result.longsList = list
+        let number = length[uint32](buffer, ix * sizeof(uint32), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.rationals:
-      raise newException(NotSupportedError, "strings not rationals.")
+      raise newException(NotSupportedError, "rationals not implemented.")
 
-    of Kind.sbytes:
+    of Kind.sbytes, Kind.blob:
       var list = newSeq[int8]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[int8](buffer, ix * sizeof(int8), endian)
-      result.sbytesList = list
-
-    of Kind.blob:
-      raise newException(NotSupportedError, "strings not rationals.")
+        let number = length[int8](buffer, ix * sizeof(int8), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.sshorts:
       var list = newSeq[int16]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[int16](buffer, ix * sizeof(int16), endian)
-      result.sshortsList = list
+        let number = length[int16](buffer, ix * sizeof(int16), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.slongs:
       var list = newSeq[int32]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[int32](buffer, ix * sizeof(int32), endian)
-      result.slongsList = list
+        let number = length[int32](buffer, ix * sizeof(int32), endian)
+        result.add(newJInt((BiggestInt)number))
 
     of Kind.srationals:
       raise newException(NotSupportedError, "strings not rationals.")
@@ -311,15 +350,11 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
     of Kind.floats:
       var list = newSeq[float32]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[float32](buffer, ix * sizeof(float32), endian)
-      result.floatsList = list
+        let number = length[float32](buffer, ix * sizeof(float32), endian)
+        result.add(newJFloat(number))
 
     of Kind.doubles:
       var list = newSeq[float64]((int)entry.count)
       for ix in 0..<(int)entry.count:
-        list[ix] = length[float64](buffer, ix * sizeof(float64), endian)
-      result.doublesList = list
-
-    # else:
-    #   echo result.kind
-    #   raise newException(NotSupportedError, "Unknown kind")
+        let number = length[float64](buffer, ix * sizeof(float64), endian)
+        result.add(newJFloat(number))

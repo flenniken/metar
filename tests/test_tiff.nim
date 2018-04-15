@@ -6,6 +6,7 @@ import tiff
 import readNumber
 import hexDump
 import strutils
+import json
 
 proc dumpTestFile(filename: string, startOffset: int64, length: Natural) =
   ## Hex dump a section of the given file.
@@ -261,12 +262,9 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, bigEndian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, bigEndian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.longsList[0])
+    var list = readValueList(file, entry, bigEndian)
     check(list.len == 1)
-    check(toHex(list.longsList[0]) == "00010203")
+    check(toHex((uint32)list[0].getInt()) == "00010203")
 
   test "test readValueList 1 long little endian":
     # tag = 00feh, kind = longs, count = 1, packed = 00010203h
@@ -277,12 +275,12 @@ suite "test tiff.nim":
     let endian = littleEndian
     let entry = getIFDEntry(buffer, endian)
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
+    var list = readValueList(file, entry, endian)
     check(list.len == 1)
-    check(toHex(list.longsList[0]) == "03020100")
+    check(toHex((uint32)list[0].getInt()) == "03020100")
 
   test "test readValueList 1 short":
-    # tag = 00feh, kind = shorts, count = 1, packed = 00010203h
+# tag = 00feh, kind = shorts, count = 1, packed = 00010203h
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
@@ -290,12 +288,9 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, bigEndian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, bigEndian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.shortsList[0])
+    var list = readValueList(file, entry, bigEndian)
     check(list.len == 1)
-    check(toHex(list.shortsList[0]) == "0001")
+    check(toHex((uint16)list[0].getInt()) == "0001")
 
   test "test readValueList 2 short":
     # tag = 00feh, kind = shorts, count = 2, packed = 00010203h
@@ -306,14 +301,10 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, bigEndian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, bigEndian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.shortsList[0])
-    # echo toHex(list.shortsList[1])
+    var list = readValueList(file, entry, bigEndian)
     check(list.len == 2)
-    check(toHex(list.shortsList[0]) == "0001")
-    check(toHex(list.shortsList[1]) == "0203")
+    check(toHex((uint16)list[0].getInt()) == "0001")
+    check(toHex((uint16)list[1].getInt()) == "0203")
 
   test "test readValueList 2 short little endian":
     # tag = 00feh, kind = shorts, count = 2, packed = 00010203h
@@ -324,10 +315,10 @@ suite "test tiff.nim":
     let endian = littleEndian
     let entry = getIFDEntry(buffer, endian)
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
+    var list = readValueList(file, entry, endian)
     check(list.len == 2)
-    check(toHex(list.shortsList[0]) == "0100")
-    check(toHex(list.shortsList[1]) == "0302")
+    check(toHex((uint16)list[0].getInt()) == "0100")
+    check(toHex((uint16)list[1].getInt()) == "0302")
 
 
   test "test readValueList 1 byte":
@@ -339,12 +330,9 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, endian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.bytesList[0])
+    var list = readValueList(file, entry, endian)
     check(list.len == 1)
-    check(toHex(list.bytesList[0]) == "00")
+    check($list == "[0]")
 
   test "test readValueList 2 byte":
     var buffer = [
@@ -355,14 +343,9 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, endian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.bytesList[0])
-    # echo toHex(list.bytesList[1])
+    var list = readValueList(file, entry, endian)
     check(list.len == 2)
-    check(toHex(list.bytesList[0]) == "00")
-    check(toHex(list.bytesList[1]) == "01")
+    check($list == "[0,1]")
 
   test "test readValueList 3 byte":
     var buffer = [
@@ -373,16 +356,9 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, endian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
-    # echo list.len
-    # echo $list
-    # echo toHex(list.bytesList[0])
-    # echo toHex(list.bytesList[1])
-    # echo toHex(list.bytesList[2])
+    var list = readValueList(file, entry, endian)
     check(list.len == 3)
-    check(toHex(list.bytesList[0]) == "00")
-    check(toHex(list.bytesList[1]) == "01")
-    check(toHex(list.bytesList[2]) == "02")
+    check($list == "[0,1,2]")
 
   test "test readValueList 4 byte":
     var buffer = [
@@ -393,18 +369,10 @@ suite "test tiff.nim":
     let entry = getIFDEntry(buffer, endian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
-    # echo list.len
+    var list = readValueList(file, entry, endian)
     # echo $list
-    # echo toHex(list.bytesList[0])
-    # echo toHex(list.bytesList[1])
-    # echo toHex(list.bytesList[2])
-    # echo toHex(list.bytesList[3])
     check(list.len == 4)
-    check(toHex(list.bytesList[0]) == "00")
-    check(toHex(list.bytesList[1]) == "01")
-    check(toHex(list.bytesList[2]) == "02")
-    check(toHex(list.bytesList[3]) == "03")
+    check($list == "[0,1,2,3]")
 
   test "test readValueList 4 byte little endian":
     var buffer = [
@@ -414,28 +382,192 @@ suite "test tiff.nim":
     let endian = littleEndian
     let entry = getIFDEntry(buffer, endian)
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
+    var list = readValueList(file, entry, endian)
+    # echo $list
     check(list.len == 4)
-    check(toHex(list.bytesList[0]) == "00")
-    check(toHex(list.bytesList[1]) == "01")
-    check(toHex(list.bytesList[2]) == "02")
-    check(toHex(list.bytesList[3]) == "03")
+    check($list == "[0,1,2,3]")
+
 
   test "test readValueList 1 float32":
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x00,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry, endian)
+    # echo $list
+    check(list.len == 1)
+    check($list == "[0.0]")
+
+
+
+  test "test readValueList 1 float32":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x0b, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x00, 0x00, 0x00,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry, endian)
+    # echo $list
+    check(list.len == 1)
+    check($list == "[0.0]")
+
+
+  test "test readValueList 1 byte blob":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x07, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
     let entry = getIFDEntry(buffer, endian)
     # echo $entry
     var file: File
-    var list: ValueList = readValueList(file, entry, endian)
-    # echo list.len
+    var list = readValueList(file, entry, endian)
     # echo $list
-    # echo toHex(list.floatsList[0])
     check(list.len == 1)
-    check(toHex(list.floatsList[0]) == "00000000")
-  test "test write float32":
-    let f:float32 = 0.0
-    # write f to a buffer
+    check($list == "[0]")
+
+
+  test "test readValueList strings 1":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02,
+      0x65, 0x00, 0x02, 0x03,
+    ]
+    # The count field is the number of bytes in all the strings and
+    # their ending 0.
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry, endian)
+    # echo $list
+    check(list.len == 1)
+    check($list == """["e"]""")
+
+  test "test readValueList strings 2":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04,
+      0x41, 0x00, 0x42, 0x00,
+    ]
+    # The count field is the number of bytes in all the strings and
+    # their ending 0.
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry, endian)
+    # echo $list
+    check(list.len == 2)
+    check($list == """["A","B"]""")
+
+  test "test readValueList strings 3":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04,
+      0x65, 0x66, 0x67, 0x00,
+    ]
+    # The count field is the number of bytes in all the strings and
+    # their ending 0.
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian)
+    var file: File
+    var list = readValueList(file, entry, endian)
+    check(list.len == 1)
+    check($list == """["efg"]""")
+
+  test "find":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x02, 0x00, 0x00, 0x00, 0x04,
+      0x65, 0x66, 0x67, 0x77,
+    ]
+    var pos: int
+    pos = tiff.find(buffer, 2'u8)
+    check(pos == 3)
+    pos = tiff.find(buffer, 2'u8, 1)
+    check(pos == 3)
+    pos = tiff.find(buffer, 0'u8)
+    check(pos == 0)
+    pos = tiff.find(buffer, 0'u8, 1)
+    check(pos == 2)
+    pos = tiff.find(buffer, 0'u8, 20)
+    check(pos == -1)
+    pos = tiff.find(buffer, 44u8)
+    check(pos == -1)
+    pos = tiff.find(buffer, 0x77u8)
+    check(pos == 11)
+
+# [10] => ["1"]
+# [abc0] => ["abc"]
+# [1020] => ["1","2"]
+# [] => []
+# [0] => [""]
+# [1] => ["1"]
+# [102] => ["1","2"]
+
+  test "test parseStrings A":
+    var buffer = [65'u8, 0x00]
+    var node = parseStrings(buffer)
+    check(node.len == 1)
+    check(node[0].getStr() == "A")
+
+  test "test parseStrings ABC":
+    var buffer = [65'u8, 66'u8, 67'u8, 0x00]
+    var node = parseStrings(buffer)
+    check(node.len == 1)
+    check(node[0].getStr() == "ABC")
+
+  test "test parseStrings A,B":
+    var buffer = [65'u8, 0, 66, 0]
+    var node = parseStrings(buffer)
+    check(node.len == 2)
+    check(node[0].getStr() == "A")
+    check(node[1].getStr() == "B")
+
+
+  test "test parseStrings empty":
+    var buffer = newSeq[uint8]()
+    var node = parseStrings(buffer)
+    check(node.len == 0)
+
+
+  test "test parseStrings 0":
+    var buffer = [0'u8]
+    var node = parseStrings(buffer)
+    check(node.len == 1)
+    check(node[0].getStr() == "")
+
+
+  test "test parseStrings no ending 0":
+    var buffer = [65'u8]
+    var node = parseStrings(buffer)
+    check(node.len == 1)
+    check(node[0].getStr() == "A")
+
+  test "test parseStrings no ending 0 again":
+    var buffer = [65'u8, 0, 67]
+    var node = parseStrings(buffer)
+    check(node.len == 2)
+    check(node[0].getStr() == "A")
+    check(node[1].getStr() == "C")
+
+  test "test readValueList 1 float64":
+    echo "test readValueList 1 float64"
+
+
+  test "test readValueList 1 rationals":
+    # rationals are two uint32, a numerator and denominator.
+    echo "test readValueList 1 rationals"
+
+
+
+  test "test readValueList 1 srationals":
+    echo "test readValueList 1 srationals"
+
+
+  test "test readValueList one more than packed":
+    echo "test readValueList one more than packed"
