@@ -118,6 +118,7 @@ proc keyNameDefault(readerName: string, section: string,
                     key: string): string {.tpub.} =
   # If the key name exists, return both the key name and key, else
   # return key.
+
   var name = keyNameImp(readerName, section, key)
   if name.len == 0:
     result = key
@@ -125,7 +126,7 @@ proc keyNameDefault(readerName: string, section: string,
     result = "$1($2)" % [name, key]
 
 
-iterator forLines(metadata: Metadata): string {.tpub.} =
+iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
   ## Iterate through the metadata line by line in a human readable
   ## form.
 
@@ -136,8 +137,7 @@ iterator forLines(metadata: Metadata): string {.tpub.} =
     # The second level must be an object or array of objects.
     if d.kind == JObject:
       for key, node in d.pairs():
-        # todo: pass reader not jpeg
-        var name = keyNameDefault("jpeg", section, key)
+        var name = keyNameDefault(readerName, section, key)
         # Show the full path for the meta:filename.
         var leafString: string
         if section == "meta" and key == "filename":
@@ -152,7 +152,7 @@ iterator forLines(metadata: Metadata): string {.tpub.} =
           yield("-- $1 --" % [$num])
           for key, node in nestedNode.pairs():
             # todo: pass reader not jpeg
-            var name = keyNameDefault("jpeg", section, key)
+            var name = keyNameDefault(readerName, section, key)
             var leafString = getLeafString(node, maxLineLength)
             yield("$1 = $2" % [name, leafString])
         elif nestedNode.kind == JArray:
@@ -168,10 +168,16 @@ iterator forLines(metadata: Metadata): string {.tpub.} =
       raise newException(ValueError, "Expected second level object.")
 
 
-proc readable*(metadata: Metadata): string =
+proc readable*(metadata: Metadata, readerName: string = ""): string =
   ## Return the metadata as a human readable string.
 
+  var name = readerName
+  if readerName == "":
+    let meta = metadata.getOrDefault("meta")
+    if meta != nil:
+      name = meta["reader"].getStr()
+
   var lines = newSeq[string]()
-  for line in metadata.forLines():
+  for line in metadata.forLines(name):
     lines.add(line)
   result = lines.join("\n")

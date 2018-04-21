@@ -1,3 +1,5 @@
+# See: tiff.nim(0):
+
 import os
 import metadata
 import unittest
@@ -7,6 +9,7 @@ import readNumber
 import hexDump
 import strutils
 import json
+import readable
 
 proc dumpTestFile(filename: string, startOffset: int64, length: Natural) =
   ## Hex dump a section of the given file.
@@ -675,3 +678,23 @@ suite "test tiff.nim":
       check(ord(Kind.doubles) == 12)
       check(ord(low(Kind)) == 1)
       check(ord(high(Kind)) == 12)
+
+  test "test readIFD":
+    var file = openTestFile("testfiles/image.tif")
+    defer: file.close()
+    const headerOffset:int64 = 0
+    let (ifdOffset, endian) = readHeader(file, headerOffset)
+
+    let (ifd, next) = readIFD(file, headerOffset, ifdOffset, endian)
+    # echo $ifd
+    # echo $next
+    # var metadata = newJObject()
+    # metadata["ifd"] = ifd
+    # echo readable(metadata, "tiff")
+
+    let expected = """{"254":[0],"256":[124],"257":[124],"258":[8,8,8],"259":[1],"262":[2],"273":[243,20703,41163],"277":[3],"278":[55],"279":[20460,20460,5208],"282":[[31,1]],"283":[[31,1]],"296":[2],"305":["?"]}"""
+    check(ifd.len == 14)
+    check($ifd["254"] == "[0]")
+    check($ifd["296"] == "[2]")
+    check($ifd["258"] == "[8,8,8]")
+    check(next == 243)

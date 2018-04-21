@@ -1,3 +1,4 @@
+# See: test_tiff.nim(0):
 
 import tables
 import readNumber
@@ -118,7 +119,7 @@ proc readHeader*(file: File, headerOffset: int64):
   # A header is made up of a three elements, order, magic and offset:
   # 2 bytes: byte order, 0x4949 or 0x4d4d
   # 2 bytes: magic number, 0x2a (42)
-  # 4 bytes: offset
+  # 4 bytes: IFD offset
 
   try:
     file.setFilePos(headerOffset)
@@ -303,3 +304,47 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
       for ix in 0..<(int)entry.count:
         let number = length[float64](buffer, ix * sizeof(float64), endian)
         result.add(newJFloat(number))
+
+
+proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
+    endian: Endianness): tuple[ifd: JsonNode, next: int64] =
+  ## Read the Image File Directory at the given offset and return a
+  ## json dictionary of the entries. The dictionary key is the entry tag,
+  ## and the value is a list of the entry's values.
+
+  assert(sizeOf(IFDEntry) == 12)
+  var ifd = newJObject()
+  var next:int64 = 0
+
+  # Read the count of entries.
+  let start = headerOffset + ifdOffset
+  file.setFilePos(start)
+  var count = (int)readNumber[uint16](file, endian)
+  let bufferSize = 12 * count
+  if count > 0:
+    var buffer = newSeq[uint8](bufferSize)
+    if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+      raise newException(IOError, "Unable to read the file.")
+
+    # Loop through the IDF entries.
+    for ix in 0..<count:
+      let entry = getIFDEntry(buffer, endian, ix*12)
+      let list = readValueList(file, entry, endian)
+      ifd[$entry.tag] = list
+
+  # Get the offset to the next IFD.
+  next = (int64)readNumber[uint32](file, endian)
+
+  result = (ifd, next)
+
+  # # Add the IFD to the ranges.
+  # # name, marker, start, finish, known, error
+  # var ranges = newJArray()
+  # var rItem = newJArray()
+  # rItem.add(newJString("ifd"))
+  # rItem.add(newJInt((int)0))
+  # rItem.add(newJInt(start))
+  # rItem.add(newJInt(start+bufferSize))
+  # rItem.add(newJBool(true))
+  # rItem.add(newJString(""))
+  # ranges.add(rItem)
