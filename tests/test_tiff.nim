@@ -691,7 +691,7 @@ suite "test tiff.nim":
     # echo $ifdInfo.list
     # check(ifdInfo.next == 0)
 
-    for info in ifdInfo.list:
+    for info in ifdInfo:
       let (name, node) = info
       # echo "name = " & $name
       # echo "node = " & $node

@@ -72,9 +72,6 @@ bytes. Whether the Value fits within 4 bytes is determined by the Type
 (kind) and Count of the field.
 ]#
 
-  IFDInfo* = object
-    list*: seq[tuple[name: string, node: JsonNode]]
-
 
 
 
@@ -322,7 +319,7 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
 
 
 proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
-    endian: Endianness): IFDInfo =
+    endian: Endianness): seq[tuple[name: string, node: JsonNode]] =
   ## Read the Image File Directory at the given offset and return the
   ## IFD metadata information.
 
@@ -337,50 +334,51 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
   if file.readBytes(buffer, 0, bufferSize) != bufferSize:
     raise newException(IOError, "Unable to read the file.")
 
-  # Get the offset to the next IFD.
-  let next = readNumber[uint32](file, endian)
-
-  # Loop through the IFD entries and process each one.
-
-  var list = newSeq[tuple[name: string, node: JsonNode]]()
+  result = newSeq[tuple[name: string, node: JsonNode]]()
   var ifd = newJObject()
-  list.add(("ifd-" & $ifdOffset, ifd))
-  # Add "next" into the ifd dictionary.
+  result.add(("ifd-" & $ifdOffset, ifd))
+  # Add next ifd offset and the current offset into the ifd
+  # dictionary.
+  let next = readNumber[uint32](file, endian)
   ifd["offset"] = newJInt((BiggestInt)start)
   ifd["next"] = newJInt((BiggestInt)next)
 
+  # Loop through the IFD entries and process each one.
   if count > 0:
     for ix in 0..<count:
       let entry = getIFDEntry(buffer, endian, ix*12)
 
       case entry.tag:
       of 700'u16:
-        ifd[$entry.tag] = newJString("xmp")
+        # The name xmp is common between image formats.  The user can
+        # find it by name.
+        # todo: what if there are two of xmp?
+        let name = "xmp"
+        ifd[$entry.tag] = newJString(name)
         var xmp = newJObject()
         xmp["test"] = newJString("testing")
-        list.add(("xmp", xmp))
+        result.add((name, xmp))
 
       of 34665'u16: # exif
+        # let name = "exif-" & $ifdOffset
+        let name = "exif"
+        ifd[$entry.tag] = newJString(name)
         var exif = newJObject()
         exif["testexit"] = newJString("exiftttt")
-        ifd[$entry.tag] = newJString("exif")
-        list.add(("exif", exif))
+        result.add((name, exif))
 
       of 330'u16: # SubIFDs
         # SubIFDs is a list of offsets to low res ifds.
         let jArray = readValueList(file, entry, endian)
         ifd[$entry.tag] = jArray
-        var ix = 0
         for jInt in jArray.items():
           let ifdOffset = (int64)jInt.getInt()
           let moreInfo = readIFD(file, headerOffset, ifdOffset, endian)
-          for info in moreInfo.list:
+          for info in moreInfo:
             let (name, node) = info
-            list.add(("ifd-" & $ifdOffset, node))
-          ix += 1
+            result.add(("ifd-" & $ifdOffset, node))
 
       else:
+        # todo: truncate big lists.
         let jArray = readValueList(file, entry, endian)
         ifd[$entry.tag] = jArray
-
-  result = IFDInfo(list: list)
