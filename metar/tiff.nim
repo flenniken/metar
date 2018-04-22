@@ -367,6 +367,15 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
         exif["testexit"] = newJString("exiftttt")
         result.add((name, exif))
 
+      # todo: turn these into image sections.
+      of 324'u16: # TileOffsets
+        let value = $entry.count & " offsets"
+        ifd[$entry.tag] = newJString(value)
+
+      of 325'u16: # TileByteCounts
+        let value = $entry.count & " counts"
+        ifd[$entry.tag] = newJString(value)
+
       of 330'u16: # SubIFDs
         # SubIFDs is a list of offsets to low res ifds.
         let jArray = readValueList(file, entry, endian)
@@ -379,6 +388,10 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
             result.add(("ifd-" & $ifdOffset, node))
 
       else:
-        # todo: truncate big lists.
-        let jArray = readValueList(file, entry, endian)
-        ifd[$entry.tag] = jArray
+        let bufferSize: int = kindSize(entry.kind) * (int)entry.count
+        if bufferSize < 1000:
+          let jArray = readValueList(file, entry, endian)
+          ifd[$entry.tag] = jArray
+        else:
+          let value = "too big: " & $entry.count & " " & $entry.kind
+          ifd[$entry.tag] = newJString(value)
