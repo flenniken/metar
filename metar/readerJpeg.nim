@@ -167,7 +167,7 @@ proc stripInvalidUtf8(str: string): string {.tpub.} =
       break
 
 
-proc bytesToString(buffer: openArray[uint8|char], index: Natural=0,
+proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
                    length: Natural=0): string {.tpub.} =
   # Create a string from bytes in a buffer.  Use bytes starting at the
   # given index and use length bytes.
@@ -974,7 +974,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   # sections used to build the images metadata section. It gets filled
   # in with the image width, height, start and end pixel offsets.
   var extra = initTable[string, int]()
-
+ 
   for section in sections:
     var known:bool
     var sectionName = ""

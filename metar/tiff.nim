@@ -72,6 +72,11 @@ bytes. Whether the Value fits within 4 bytes is determined by the Type
 (kind) and Count of the field.
 ]#
 
+  IFDInfo* = object
+    list*: seq[tuple[name: string, node: JsonNode]]
+
+
+
 
 proc tagName*(tag: uint16): string =
   ## Return the name of the given tag or "" when not known.
@@ -160,6 +165,7 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
   let tag = length[uint16](buffer, index+0, endian)
   let kind_ord = (int)length[uint16](buffer, index+2, endian)
   if kind_ord < ord(low(Kind)) or kind_ord > ord(high(Kind)):
+    # todo: show the kind in the range error field.
     raise newException(NotSupportedError,
                        "Tiff: IFD entry kind is not known: " & $kind_ord)
   let kind = Kind(kind_ord)
@@ -306,45 +312,75 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
         result.add(newJFloat(number))
 
 
+
+  ## list of json dictionaries. The first dictionary is the ifd and
+  ## the optional other dictionaries are for special items found in
+  ## the idf, like xmp, exif, etc. The "next" return value is the
+  ## offset to the next ifd. The ifd dictionary key is the entry tag,
+  ## and the value is a list of the entry's values. The key for xmp is
+  ## 700 and its value is "xmp".
+
+
 proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
-    endian: Endianness): tuple[ifd: JsonNode, next: int64] =
-  ## Read the Image File Directory at the given offset and return a
-  ## json dictionary of the entries. The dictionary key is the entry tag,
-  ## and the value is a list of the entry's values.
+    endian: Endianness): IFDInfo =
+  ## Read the Image File Directory at the given offset and return the
+  ## IFD metadata information.
 
   assert(sizeOf(IFDEntry) == 12)
-  var ifd = newJObject()
-  var next:int64 = 0
 
-  # Read the count of entries.
+  # Read all the IFD entries.
   let start = headerOffset + ifdOffset
   file.setFilePos(start)
   var count = (int)readNumber[uint16](file, endian)
   let bufferSize = 12 * count
-  if count > 0:
-    var buffer = newSeq[uint8](bufferSize)
-    if file.readBytes(buffer, 0, bufferSize) != bufferSize:
-      raise newException(IOError, "Unable to read the file.")
-
-    # Loop through the IDF entries.
-    for ix in 0..<count:
-      let entry = getIFDEntry(buffer, endian, ix*12)
-      let list = readValueList(file, entry, endian)
-      ifd[$entry.tag] = list
+  var buffer = newSeq[uint8](bufferSize)
+  if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+    raise newException(IOError, "Unable to read the file.")
 
   # Get the offset to the next IFD.
-  next = (int64)readNumber[uint32](file, endian)
+  let next = readNumber[uint32](file, endian)
 
-  result = (ifd, next)
+  # Loop through the IFD entries and process each one.
 
-  # # Add the IFD to the ranges.
-  # # name, marker, start, finish, known, error
-  # var ranges = newJArray()
-  # var rItem = newJArray()
-  # rItem.add(newJString("ifd"))
-  # rItem.add(newJInt((int)0))
-  # rItem.add(newJInt(start))
-  # rItem.add(newJInt(start+bufferSize))
-  # rItem.add(newJBool(true))
-  # rItem.add(newJString(""))
-  # ranges.add(rItem)
+  var list = newSeq[tuple[name: string, node: JsonNode]]()
+  var ifd = newJObject()
+  list.add(("ifd-" & $ifdOffset, ifd))
+  # Add "next" into the ifd dictionary.
+  ifd["offset"] = newJInt((BiggestInt)start)
+  ifd["next"] = newJInt((BiggestInt)next)
+
+  if count > 0:
+    for ix in 0..<count:
+      let entry = getIFDEntry(buffer, endian, ix*12)
+
+      case entry.tag:
+      of 700'u16:
+        ifd[$entry.tag] = newJString("xmp")
+        var xmp = newJObject()
+        xmp["test"] = newJString("testing")
+        list.add(("xmp", xmp))
+
+      of 34665'u16: # exif
+        var exif = newJObject()
+        exif["testexit"] = newJString("exiftttt")
+        ifd[$entry.tag] = newJString("exif")
+        list.add(("exif", exif))
+
+      of 330'u16: # SubIFDs
+        # SubIFDs is a list of offsets to low res ifds.
+        let jArray = readValueList(file, entry, endian)
+        ifd[$entry.tag] = jArray
+        var ix = 0
+        for jInt in jArray.items():
+          let ifdOffset = (int64)jInt.getInt()
+          let moreInfo = readIFD(file, headerOffset, ifdOffset, endian)
+          for info in moreInfo.list:
+            let (name, node) = info
+            list.add(("ifd-" & $ifdOffset, node))
+          ix += 1
+
+      else:
+        let jArray = readValueList(file, entry, endian)
+        ifd[$entry.tag] = jArray
+
+  result = IFDInfo(list: list)
