@@ -557,7 +557,7 @@ precision: 8, width: 150, height: 100, num components: 3
 
     test "test readSections shortest":
       # Shortest file we identify as a "jpeg". It passes and does not
-      # return UnknownFormatError, but it will fail later wtih
+      # return UnknownFormatError, but it will fail later with
       # NotSupportedError.
       let bytes = @[0xff'u8, 0xd8, 0xff, 0xda, 0, 2]
 

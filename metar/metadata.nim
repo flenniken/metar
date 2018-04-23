@@ -17,11 +17,12 @@ type
   ## image is recognized quickly by looking at the first few bytes of
   ## the file.
 
-  NotSupportedError* = object of Exception ## \
-  ## The reader recognized the image but it cannot handle it.  The
-  ## image might be corrupt.  NotSupportedError is raised when the
-  ## reader cannot continue. Readers are forgiving, they skip sections
-  ## they do not understand.
+  NotSupportedError* = object of Exception ## \ The reader recognized
+  ## the image but it cannot handle it.  The image might be corrupt or
+  ## the reader cannot decode the file.  NotSupportedError is raised
+  ## when the reader cannot continue. Readers are forgiving, they skip
+  ## sections they do not understand and mark the unknown sections in
+  ## the ranges.
 
   Metadata* = JsonNode ## \
   ## Representation of the metadata using a subset of json.

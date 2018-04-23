@@ -31,7 +31,7 @@ proc keyNameTiff(section: string, key: string): string {.tpub.} =
 proc addSection(metadata: var Metadata, dups: var Table[string, int],
                 sectionName: string, info: JsonNode) {.tpub.}  =
   ## Add the section to the given metadata.  If the section already
-  ## exists in the metadata, put the dups in an array.
+  ## exists in the metadata, put it in an array.
 
   if sectionName in dups:
     # More than one, store them in an array.

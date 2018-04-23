@@ -73,8 +73,6 @@ bytes. Whether the Value fits within 4 bytes is determined by the Type
 ]#
 
 
-
-
 proc tagName*(tag: uint16): string =
   ## Return the name of the given tag or "" when not known.
 
@@ -318,10 +316,26 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
   ## 700 and its value is "xmp".
 
 
+proc readValueListMax(file: File, entry: IFDEntry, endian: Endianness,
+    maximumCount:Natural=20, maximumSize:Natural=1000): JsonNode =
+  # Read the entry's value list. For big lists, return a short string
+  # instead.
+
+  let bufferSize: Natural = kindSize(entry.kind) * (Natural)entry.count
+  if ((Natural)entry.count) <= maximumCount and bufferSize <= maximumSize:
+    let jArray = readValueList(file, entry, endian)
+    result = jArray
+  else:
+    # 135 longs starting at 23456.
+    let start = length[uint32](entry.packed, 0, endian)
+    let str = "$1 $2 starting at $3" % [$entry.count, $entry.kind, $start]
+    result = newJString(str)
+
+
 proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
     endian: Endianness): seq[tuple[name: string, node: JsonNode]] =
   ## Read the Image File Directory at the given offset and return the
-  ## IFD metadata information.
+  ## IFD metadata information as a list of named nodes.
 
   assert(sizeOf(IFDEntry) == 12)
 
@@ -350,9 +364,11 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
       case entry.tag:
       of 700'u16:
-        # The name xmp is common between image formats.  The user can
-        # find it by name.
-        # todo: what if there are two of xmp?
+        # The name xmp, exif, iptc are common between image formats.  The user can
+        # find them by name.
+
+        # Add "xmp" to the IFD and create a new top level object for
+        # the xmp info.
         let name = "xmp"
         ifd[$entry.tag] = newJString(name)
         var xmp = newJObject()
@@ -360,21 +376,15 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
         result.add((name, xmp))
 
       of 34665'u16: # exif
-        # let name = "exif-" & $ifdOffset
         let name = "exif"
         ifd[$entry.tag] = newJString(name)
         var exif = newJObject()
         exif["testexit"] = newJString("exiftttt")
         result.add((name, exif))
 
-      # todo: turn these into image sections.
-      of 324'u16: # TileOffsets
-        let value = $entry.count & " offsets"
-        ifd[$entry.tag] = newJString(value)
-
-      of 325'u16: # TileByteCounts
-        let value = $entry.count & " counts"
-        ifd[$entry.tag] = newJString(value)
+      # todo: add image section.
+      of 324'u16, 325'u16: # TileOffsets, TileByteCounts
+        ifd[$entry.tag] = readValueListMax(file, entry, endian, 20)
 
       of 330'u16: # SubIFDs
         # SubIFDs is a list of offsets to low res ifds.
@@ -384,14 +394,12 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
           let ifdOffset = (int64)jInt.getInt()
           let moreInfo = readIFD(file, headerOffset, ifdOffset, endian)
           for info in moreInfo:
+            # todo: support other sections besides ifd.
+
+            # todo: use dup logic like jpg does.  Store the offset in
+            # the ifd so you can tell them apart.
             let (name, node) = info
             result.add(("ifd-" & $ifdOffset, node))
 
       else:
-        let bufferSize: int = kindSize(entry.kind) * (int)entry.count
-        if bufferSize < 1000:
-          let jArray = readValueList(file, entry, endian)
-          ifd[$entry.tag] = jArray
-        else:
-          let value = "too big: " & $entry.count & " " & $entry.kind
-          ifd[$entry.tag] = newJString(value)
+        ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
