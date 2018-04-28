@@ -688,10 +688,15 @@ suite "test tiff.nim":
     let (ifdOffset, endian) = readHeader(file, headerOffset)
 
     let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
+
+    # IFDInfo* = object
+    #   nodeList: seq[tuple[name: string, node: JsonNode]]
+    #   nextList: seq[uint32] ## Node list contains the ifd section and
+
     # echo $ifdInfo.list
     # check(ifdInfo.next == 0)
 
-    for info in ifdInfo:
+    for info in ifdInfo.nodeList:
       let (name, node) = info
       # echo "name = " & $name
       # echo "node = " & $node
