@@ -358,30 +358,40 @@ proc readValueListMax(file: File, entry: IFDEntry, endian: Endianness,
     result = newJString(str)
 
 
-proc getImageNode(imageData: Table[string, int]): JsonNode =
+proc getImage(imageData: Table[string, seq[uint32]], headerOffset: int64): JsonNode =
   ## Return an image node from the imageData.
 
-  var width, height, start, finish: int
+  var width, height, starts, counts, offset: seq[uint32]
   try:
     width = imageData["width"]
     height = imageData["height"]
-    start = imageData["start"]
-    finish = imageData["finish"]
+    starts = imageData["starts"]
+    counts = imageData["counts"]
+    offset = imageData["ifd_offset"]
   except:
     raise newException(NotSupportedError, "Tiff: IFD without all image parameters.")
 
-  var image = newJObject()
-  image["width"] = newJInt((int)width)
-  image["height"] = newJInt((int)height)
-  var part = newJArray()
-  part.add(newJInt(start))
-  part.add(newJInt(finish))
+  if width.len != 1 or height.len != 1 or
+     starts.len < 1 or counts.len < 1 or starts.len != counts.len:
+    raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
+    
+  result = newJObject()
+  result["ifd_offset"] = newJInt((BiggestInt)offset[0])
+  result["width"] = newJInt((BiggestInt)width[0])
+  result["height"] = newJInt((BiggestInt)height[0])
+
+  # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
-  pixels.add(part)
-  image["pixels"] = pixels
-  var images = newJArray()
-  images.add(image)
-  result["images"] = images
+  for ix, start in starts:
+    let begin = ((int64)start)+headerOffset
+    let finish = begin+(int64)counts[ix]
+    var part = newJArray()
+    part.add(newJInt(begin))
+    part.add(newJInt(finish))
+    pixels.add(part)
+
+  result["pixels"] = pixels
+
 
 
 #   # Read the Strip or Tile offsets and make an sequence of start offsets.
@@ -444,12 +454,10 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
   # The imageData table contains information collected across multiple
   # sections used to build the images metadata section. It gets filled
-  # in with the image width, height, start and end pixel offsets.
-  var imageData = initTable[string, int]()
-
-  # Create lists containing the position of the pixels in the file.
-  var pixelStarts: seq[uint32]
-  var pixelCounts: seq[uint32]
+  # in with the image width, height, pixel starts and pixel counts.
+  var imageData = initTable[string, seq[uint32]]()
+  # todo: down casting int64 to uint32
+  imageData["ifd_offset"] = @[(uint32)ifdOffset]
 
   # Read all the IFD bytes into a memory buffer.
   let start = headerOffset + ifdOffset
@@ -481,10 +489,9 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
       case entry.tag:
       of 256'u16, 257'u16: # ImageWidth, ImageLength
+        ifd[$entry.tag] = readValueListMax(file, entry, endian, 10)
         let name = if entry.tag == 256'u16: "width" else: "height"
-        let jArray = getOneInteger(file, entry, endian)
-        imageData[name] = (int)jArray[0].getInt()
-        ifd[$entry.tag] = jArray
+        imageData[name] = readLongs(file, entry, endian)
 
       of 700'u16:
         # The name xmp, exif, iptc are common between image formats.  The user can
@@ -507,11 +514,11 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
       of 273'u16, 324'u16: # StripOffsets, TileOffsets
         ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
-        pixelStarts = readLongs(file, entry, endian):
+        imageData["starts"] = readLongs(file, entry, endian)
 
       of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
         ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
-        pixelCounts = readLongs(file, entry, endian):
+        imageData["counts"] = readLongs(file, entry, endian)
 
       of 330'u16: # SubIFDs
         # SubIFDs is a list of offsets to low res ifds. Add them to
@@ -526,8 +533,8 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
         ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
 
   # Add the image node to the list of nodes.
-  # let imageNode = getImageNode(imageData)
-  # nodeList.add(("image", imageNode))
+  let image = getImage(imageData, headerOffset)
+  nodeList.add(("image", image))
 
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
 
