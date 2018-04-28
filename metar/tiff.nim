@@ -65,18 +65,12 @@ IFDEntry types.
 
   IFDInfo* = object
     nodeList*: seq[tuple[name: string, node: JsonNode]]
-    nextList*: seq[uint32] ## Node list contains the ifd section and
-    ## any other optional nodes. The next list contains ifd offsets
-    ## found.
+    nextList*: seq[uint32] ## \\
+    ## Node list contains the ifd section and any other optional
+    ## nodes. The next list contains ifd offsets found.  The first
+    ## item is the offset to the next IFD (which may be 0), following
+    ## that are subifds if there are any.
 
-#[
-To save time and space the Value Offset (packed) contains the Value
-instead of pointing to the Value if and only if the Value fits into 4
-bytes. If the Value is shorter than 4 bytes, it is left-justified
-within the 4-byte Value Offset, i.e., stored in the lower-numbered
-bytes. Whether the Value fits within 4 bytes is determined by the Type
-(kind) and Count of the field.
-]#
 
 
 proc tagName*(tag: uint16): string =
@@ -333,15 +327,6 @@ proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
         result.add(newJFloat(number))
 
 
-
-  ## list of json dictionaries. The first dictionary is the ifd and
-  ## the optional other dictionaries are for special items found in
-  ## the idf, like xmp, exif, etc. The "next" return value is the
-  ## offset to the next ifd. The ifd dictionary key is the entry tag,
-  ## and the value is a list of the entry's values. The key for xmp is
-  ## 700 and its value is "xmp".
-
-
 proc readValueListMax(file: File, entry: IFDEntry, endian: Endianness,
     maximumCount:Natural=20, maximumSize:Natural=1000): JsonNode =
   # Read the entry's value list. For big lists, return a short string
@@ -391,50 +376,6 @@ proc getImage(imageData: Table[string, seq[uint32]], headerOffset: int64): JsonN
     pixels.add(part)
 
   result["pixels"] = pixels
-
-
-
-#   # Read the Strip or Tile offsets and make an sequence of start offsets.
-#   # Read the byte counts and make a sequence of end offsets.
-
-# proc addPixelRanges(file: File, entry: IFDEntry, endian: Endianness, headerOffset: uint16) =
-#   ## Add strip or tile ranges to the given ifd.
-
-#   start = header_offset + offset
-#   end = start + byte_counts[ix]
-
-#   # (StripOffsets, StripByteCounts), (TileOffsets, TileByteCounts)
-#   tups = [('strip', 273, 279), ('tile', 324, 325)]
-
-#   for name, tag_offset, tag_byte_counts in tups:
-#     offsets = ifd.get(tag_offset)
-#     byte_counts = ifd.get(tag_byte_counts)
-#     if offsets and byte_counts:
-#       if len(offsets) != len(byte_counts):
-#         raise NotSupported("The number of offsets is not the same as the number of byte counts.")
-#       for ix, offset in enumerate(offsets):
-#         value_range_name = "range_{}{}".format(name, ix)
-#         start = header_offset + offset
-#         end = start + byte_counts[ix]
-#         ifd[value_range_name] = (start, end)
-
-
-proc getOneInteger(file: File, entry: IFDEntry, endian: Endianness, minimum:int=1): JsonNode =
-  ## Get one integer from the entry. Return a Json array with one JInt.
-
-  if entry.count != 1:
-    raise newException(NotSupportedError, "Tiff: IFD expected one value.")
-
-  case entry.kind:
-    of Kind.bytes, Kind.shorts, Kind.longs, Kind.sbytes, Kind.sshorts, Kind.slongs:
-      discard
-    else:
-      raise newException(NotSupportedError, "Tiff: IFD entry is not an integer.")
-
-  result = readValueList(file, entry, endian)
-  let jNumber = result[0]
-  if jNumber.getInt() < minimum:
-    raise newException(NotSupportedError, "Tiff: IFD invalid image dimension.")
 
 
 proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
