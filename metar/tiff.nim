@@ -9,6 +9,9 @@ import strutils
 import tpub
 import macros
 import json
+import readerJpeg # remove this
+import xmpparser
+
 
 #[
 The following links are good references for the Tiff format.
@@ -65,11 +68,12 @@ IFDEntry types.
 
   IFDInfo* = object
     nodeList*: seq[tuple[name: string, node: JsonNode]]
-    nextList*: seq[uint32] ## \\
-    ## Node list contains the ifd section and any other optional
-    ## nodes. The next list contains ifd offsets found.  The first
-    ## item is the offset to the next IFD (which may be 0), following
-    ## that are subifds if there are any.
+    nextList*: seq[tuple[name: string, offset: uint32]] ## \\ Node
+    ## list contains the ifd section and any other optional nodes. The
+    ## next list contains ifd offsets found and their associated name.
+    ## The first item is the offset to the next IFD (which may be 0),
+    ## following that are subifds or exif if there are any. The
+    ## nextList name overrides the nodeList name if it is not "".
 
 
 
@@ -216,15 +220,36 @@ proc parseStrings(buffer: openArray[uint8]): JsonNode {.tpub.} =
     if start >= buffer.len:
       break
 
+# todo: move file, endian and header offset into IFDEntry?
+
+proc readBlob*(file: File, entry: IFDEntry, endian: Endianness,
+               headerOffset: int64 = 0): seq[uint8] =
+  ## Read and return the entry's value list as a list of uint8s. The
+  ## item kind must be bytes or blob.
+
+  assert(file != nil)
+  assert(entry.kind == Kind.bytes or entry.kind == Kind.blob)
+
+  let count = (int)entry.count
+  result = newSeq[uint8](count)
+  if file.readBytes(result, 0, count) != count:
+    raise newException(UnknownFormatError, "Tiff: Unable to read all the bytes.")
+
+
 proc readLongs*(file: File, entry: IFDEntry, endian: Endianness,
-               headerOffset: int64 = 0): seq[uint32] =
+                headerOffset: int64 = 0, maximum: Natural = 100): seq[uint32] =
   ## Read and return the entry's value list as a list of uint32s. The
-  ## item kind must be longs.
+  ## item kind must be longs. The maximum parameter limits the number
+  ## of items to read. An error is raised when it exceeds the maximum.
 
   assert(file != nil)
   assert(entry.kind == Kind.longs)
 
   let count = (int)entry.count
+  if count > maximum:
+    let message = "Tiff: too many longs, got: $1 max: $2." % [$count, $maximum]
+    raise newException(NotSupportedError, message)
+
   result = newSeq[uint32](count)
   let start = length[uint32](entry.packed, 0, endian)
   case count:
@@ -236,7 +261,7 @@ proc readLongs*(file: File, entry: IFDEntry, endian: Endianness,
       file.setFilePos(((int64)start) + headerOffset)
       for ix in 0..<count:
         result[ix] = readNumber[uint32](file, endian)
-    
+
 
 proc readValueList*(file: File, entry: IFDEntry, endian: Endianness,
                headerOffset: int64 = 0): JsonNode =
@@ -354,17 +379,19 @@ proc getImage(imageData: Table[string, seq[uint32]], headerOffset: int64): JsonN
     counts = imageData["counts"]
     offset = imageData["offset"]
   except:
-    raise newException(NotSupportedError, "Tiff: IFD without all image parameters.")
+    # exif ifd doesn't have an image.
+    return nil
 
   if width.len != 1 or height.len != 1 or
      starts.len < 1 or counts.len < 1 or starts.len != counts.len:
     raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
-    
+
   result = newJObject()
   result["offset"] = newJInt((BiggestInt)offset[0])
   result["width"] = newJInt((BiggestInt)width[0])
   result["height"] = newJInt((BiggestInt)height[0])
 
+  # todo: should we merge offsets next to each other?
   # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
   for ix, start in starts:
@@ -390,8 +417,8 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
   # Create a list of offsets to IFDs found. The first item in the list
   # is the offset to the next IFD (which may be 0), following that are
-  # subifds if there are any.
-  var nextList = newSeq[uint32]()
+  # subifds or exif if there are any.
+  var nextList = newSeq[tuple[name: string, offset: uint32]]()
 
   # The imageData table contains information collected across multiple
   # sections used to build the images metadata section. It gets filled
@@ -414,14 +441,14 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
 
   # Create an ifd node and add it to the list of nodes.
   var ifd = newJObject()
-  nodeList.add(("ifd-" & $ifdOffset, ifd))
+  nodeList.add(("ifd", ifd))
 
   # Add start and next offset into the ifd node dictionary.
   let next = readNumber[uint32](file, endian)
   ifd["offset"] = newJInt((BiggestInt)start)
   ifd["next"] = newJInt((BiggestInt)next)
   if next != 0'u32:
-    nextList.add(next)
+    nextList.add( ("", next))
 
   # Loop through the IFD entries and process each one.
   if numberEntries > 0:
@@ -432,34 +459,35 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
       of 256'u16, 257'u16: # ImageWidth, ImageLength
         ifd[$entry.tag] = readValueListMax(file, entry, endian, 10)
         let name = if entry.tag == 256'u16: "width" else: "height"
-        imageData[name] = readLongs(file, entry, endian)
+        imageData[name] = readLongs(file, entry, endian, headerOffset, 1)
 
       of 700'u16:
         # The name xmp, exif, iptc are common between image formats.  The user can
         # find them by name.
 
-        # Create an xmp node and add it to the node list.
         let name = "xmp"
         ifd[$entry.tag] = newJString(name)
-        var xmp = newJObject()
-        xmp["test"] = newJString("testing")
+
+        let blob = readBlob(file, entry, endian, headerOffset)
+        let xml = bytesToString(blob, 0, blob.len-1)
+        let xmp = xmpParser(xml)
         nodeList.add((name, xmp))
 
       of 34665'u16: # exif
-        # Create an xmp node and add it to the node list.
-        let name = "exif"
-        ifd[$entry.tag] = newJString(name)
-        var exif = newJObject()
-        exif["testexit"] = newJString("exiftttt")
-        nodeList.add((name, exif))
+        ifd[$entry.tag] = newJString("exif")
+
+        let tempList = readLongs(file, entry, endian, 1)
+        if tempList.len != 1:
+          raise newException(NotSupportedError, "Tiff: more than one exif.")
+        nextList.add( ("exif", tempList[0]))
 
       of 273'u16, 324'u16: # StripOffsets, TileOffsets
-        ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
-        imageData["starts"] = readLongs(file, entry, endian)
+        ifd[$entry.tag] = readValueListMax(file, entry, endian, 100)
+        imageData["starts"] = readLongs(file, entry, endian, headerOffset, 10000)
 
       of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
-        ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
-        imageData["counts"] = readLongs(file, entry, endian)
+        ifd[$entry.tag] = readValueListMax(file, entry, endian, 100)
+        imageData["counts"] = readLongs(file, entry, endian, headerOffset, 10000)
 
       of 330'u16: # SubIFDs
         # SubIFDs is a list of offsets to low res ifds. Add them to
@@ -468,15 +496,14 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
         ifd[$entry.tag] = jArray
         for jInt in jArray.items():
           let ifdOffset = (uint32)jInt.getInt()
-          nextList.add(ifdOffset)
+          nextList.add( ("", ifdOffset))
 
       else:
         ifd[$entry.tag] = readValueListMax(file, entry, endian, 1000)
 
   # Add the image node to the list of nodes.
   let image = getImage(imageData, headerOffset)
-  nodeList.add(("image", image))
+  if image != nil:
+    nodeList.add(("image", image))
 
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
-
-# todo: use an array for the ifd items instead of appending a number to them.

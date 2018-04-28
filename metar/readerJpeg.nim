@@ -166,7 +166,7 @@ proc stripInvalidUtf8(str: string): string {.tpub.} =
     if start > str.len:
       break
 
-
+#todo: move bytesToString to its own module
 proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
                    length: Natural=0): string {.tpub.} =
   # Create a string from bytes in a buffer.  Use bytes starting at the
