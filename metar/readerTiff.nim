@@ -58,7 +58,7 @@ proc readTiff(file: File): Metadata {.tpub.} =
   var ranges = newJArray()
   var dups = initTable[string, int]()
 
-  const headerOffset:int64 = 0
+  const headerOffset:uint32 = 0
   let (ifdOffset, endian) = readHeader(file, headerOffset)
 
   let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
@@ -68,7 +68,7 @@ proc readTiff(file: File): Metadata {.tpub.} =
   for nextTup in ifdInfo.nextList:
     let (nextName, offset) = nextTup
     if offset != 0:
-      let ifdInfo = readIFD(file, headerOffset, (int64)offset, endian)
+      let ifdInfo = readIFD(file, headerOffset, offset, endian)
       for item in ifdInfo.nodeList:
         var (name, node) = item
         # If the nextName is not empty is used instead of the ifd name.
