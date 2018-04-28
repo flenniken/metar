@@ -37,7 +37,7 @@ suite "test tiff.nim":
       removeFile(filename)
 
     let (offset, endian) = readHeader(file, 0)
-    check(offset == (int64)0x12345678)
+    check(offset == (uint32)0x12345678)
     check(endian == bigEndian)
 
   test "test readHeader little":
@@ -49,7 +49,7 @@ suite "test tiff.nim":
       removeFile(filename)
 
     let (offset, endian) = readHeader(file, 0)
-    check(offset == 0x12345678'i64)
+    check(offset == 0x12345678'u32)
     check(endian == littleEndian)
 
   test "test readHeader non-zero offset":
@@ -61,7 +61,7 @@ suite "test tiff.nim":
       removeFile(filename)
 
     let (offset, endian) = readHeader(file, 3)
-    check(offset == 0x12345678'i64)
+    check(offset == 0x12345678'u32)
     check(endian == bigEndian)
 
   test "test readHeader invalid order":
@@ -118,7 +118,7 @@ suite "test tiff.nim":
     var file = openTestFile("testfiles/image.tif")
     defer: file.close()
     let (offset, endian) = readHeader(file, 0)
-    check(offset == 0x08'i64)
+    check(offset == 0x08'u32)
     check(endian == littleEndian)
 
 
@@ -138,7 +138,7 @@ suite "test tiff.nim":
     var file = openTestFile("testfiles/image.tif")
     defer: file.close()
     let (ifdOffset, endian) = readHeader(file, 0)
-    check(ifdOffset == 0x08'i64)
+    check(ifdOffset == 0x08'u32)
     check(endian == littleEndian)
 
     # Read the number of IFD entries.
@@ -151,13 +151,13 @@ suite "test tiff.nim":
     if file.readBytes(buffer, 0, bufferSize) != bufferSize:
       raise newException(IOError, "Unable to read the file.")
 
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     let expected = "NewSubfileType(254, 00FEh), 1 longs, packed: 00 00 00 00"
     check($entry == expected)
 
     # Loop through the 14 IDF entries.
     for ix in 0..14-1:
-      let entry = getIFDEntry(buffer, endian, ix*12)
+      let entry = getIFDEntry(buffer, endian, 0, ix*12)
       # echo $entry
 
 
@@ -166,7 +166,7 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     let expected = "NewSubfileType(254, 00FEh), 5 longs, packed: 00 01 02 03"
     check($entry == expected)
     # echo $entry
@@ -176,7 +176,7 @@ suite "test tiff.nim":
       0x00'u8, 0x00, 0x00, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian, 2)
+    let entry = getIFDEntry(buffer, bigEndian, 0, 2)
     let expected = "NewSubfileType(254, 00FEh), 5 longs, packed: 00 01 02 03"
     check($entry == expected)
     # echo $entry
@@ -188,7 +188,7 @@ suite "test tiff.nim":
     ]
     var gotException = false
     try:
-      discard getIFDEntry(buffer, bigEndian, 2)
+      discard getIFDEntry(buffer, bigEndian, 0, 2)
     except NotSupportedError:
       # echo getCurrentExceptionMsg()
       gotException = true
@@ -201,7 +201,7 @@ suite "test tiff.nim":
     ]
     var gotException = false
     try:
-      discard getIFDEntry(buffer, bigEndian)
+      discard getIFDEntry(buffer, bigEndian, 0)
     except NotSupportedError:
       # echo getCurrentExceptionMsg()
       gotException = true
@@ -215,7 +215,7 @@ suite "test tiff.nim":
     ]
     var gotException = false
     try:
-      discard getIFDEntry(buffer, bigEndian)
+      discard getIFDEntry(buffer, bigEndian, 0)
     except NotSupportedError:
       # echo getCurrentException().name
       # echo getCurrentExceptionMsg()
@@ -229,7 +229,7 @@ suite "test tiff.nim":
     ]
     var gotException = false
     try:
-      discard getIFDEntry(buffer, bigEndian)
+      discard getIFDEntry(buffer, bigEndian, 0)
     except NotSupportedError:
       # echo getCurrentException().name
       # echo getCurrentExceptionMsg()
@@ -259,10 +259,10 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, bigEndian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check(toHex((uint32)list[0].getInt()) == "00010203")
 
@@ -271,9 +271,9 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x09, 0x00, 0x00, 0x00, 0x01,
       0xff, 0xff, 0xff, 0xff,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     var file: File
-    var list = readValueList(file, entry, bigEndian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check(list[0].getInt() == -1)
 
@@ -284,9 +284,9 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = littleEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check(toHex((uint32)list[0].getInt()) == "03020100")
 
@@ -296,10 +296,10 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, bigEndian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check(toHex((uint16)list[0].getInt()) == "0001")
 
@@ -308,10 +308,10 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01,
       0xff, 0xff, 0xff, 0xff,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, bigEndian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check(list[0].getInt() == -1)
 
@@ -322,10 +322,10 @@ suite "test tiff.nim":
       0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, bigEndian)
+    var list = readValueList(file, entry)
     check(list.len == 2)
     check(toHex((uint16)list[0].getInt()) == "0001")
     check(toHex((uint16)list[1].getInt()) == "0203")
@@ -337,9 +337,9 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = littleEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 2)
     check(toHex((uint16)list[0].getInt()) == "0100")
     check(toHex((uint16)list[1].getInt()) == "0302")
@@ -351,10 +351,10 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[0]")
 
@@ -364,10 +364,10 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 2)
     check($list == "[0,1]")
 
@@ -377,10 +377,10 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 3)
     check($list == "[0,1,2]")
 
@@ -390,10 +390,10 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 4)
     check($list == "[0,1,2,3]")
@@ -404,9 +404,9 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = littleEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 4)
     check($list == "[0,1,2,3]")
@@ -418,10 +418,10 @@ suite "test tiff.nim":
       0x00, 0x00, 0x00, 0x00,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 1)
     check($list == "[0.0]")
@@ -434,10 +434,10 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 1)
     check($list == "[0]")
@@ -451,10 +451,10 @@ suite "test tiff.nim":
     # The count field is the number of bytes in all the strings and
     # their ending 0.
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 1)
     check($list == """["e"]""")
@@ -467,10 +467,10 @@ suite "test tiff.nim":
     # The count field is the number of bytes in all the strings and
     # their ending 0.
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 2)
     check($list == """["A","B"]""")
@@ -483,9 +483,9 @@ suite "test tiff.nim":
     # The count field is the number of bytes in all the strings and
     # their ending 0.
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     var file: File
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == """["efg"]""")
 
@@ -574,8 +574,8 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian)
-    var list = readValueList(file, entry, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
     check(list.len == 5)
     check($list == "[0,1,2,3,4]")
 
@@ -590,8 +590,8 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian)
-    var list = readValueList(file, entry, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[0.0]")
 
@@ -607,8 +607,8 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian)
-    var list = readValueList(file, entry, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[[1,2]]")
 
@@ -624,8 +624,8 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian)
-    var list = readValueList(file, entry, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[[-1,2]]")
 
@@ -641,9 +641,9 @@ suite "test tiff.nim":
       removeFile(filename)
 
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian)
+    let entry = getIFDEntry(buffer, endian, 0)
     # echo $entry
-    var list = readValueList(file, entry, endian)
+    var list = readValueList(file, entry)
     # echo $list
     check(list.len == 2)
     check($list == "[0.0,0.0]")
@@ -660,8 +660,8 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian)
-    var list = readValueList(file, entry, bigEndian)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
     check(list.len == 2)
     check($list == "[[1,2],[3,4]]")
 
@@ -684,40 +684,32 @@ suite "test tiff.nim":
   test "test readIFD":
     var file = openTestFile("testfiles/image.dng")
     defer: file.close()
-    const headerOffset:int64 = 0
+    const headerOffset:uint32 = 0
     let (ifdOffset, endian) = readHeader(file, headerOffset)
+    check(ifdOffset == 8)
+    check(endian == littleEndian)
 
     let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
+    check(ifdInfo.nodeList.len == 3)
+    check(ifdInfo.nodeList[0].name == "ifd")
+    check(ifdInfo.nodeList[1].name == "xmp")
+    check(ifdInfo.nodeList[2].name == "image")
 
-    # IFDInfo* = object
-    #   nodeList: seq[tuple[name: string, node: JsonNode]]
-    #   nextList: seq[uint32] ## Node list contains the ifd section and
+    check(ifdInfo.nextList.len == 3)
+    check(ifdInfo.nextList[0].name == "")
+    check(ifdInfo.nextList[1].name == "")
+    check(ifdInfo.nextList[2].name == "exif")
 
-    # echo $ifdInfo.list
-    # check(ifdInfo.next == 0)
+    let image = ifdInfo.nodeList[2].node
+    # echo $image
 
-    for info in ifdInfo.nodeList:
-      let (name, node) = info
-      # echo "name = " & $name
-      # echo "node = " & $node
+    check(image["offset"].getInt() == 8)
+    check(image["width"].getInt() == 256)
+    check(image["height"].getInt() == 171)
+    check($image["pixels"] == "[[37312,168640]]")
 
-      var metadata = newJObject()
-      metadata[name] = node
-      echo readable(metadata, "tiff")
-
-    # echo $ifd
-    # echo $next
-    # var metadata = newJObject()
-    # metadata["ifd"] = ifd
-    # echo readable(metadata, "tiff")
-
-    # {"254":[0],"256":[124],"257":[124],"258":[8,8,8],"259":[1],
-    # "262":[2],"273":[243,20703,41163],"277":[3],"278":[55],
-    # "279":[20460,20460,5208],"282":[[31,1]],"283":[[31,1]],
-    # "296":[2],"305":["?"]}
-
-    # check(ifd.len == 14)
-    # check($ifd["254"] == "[0]")
-    # check($ifd["296"] == "[2]")
-    # check($ifd["258"] == "[8,8,8]")
-    # check(next == 243)
+    # for info in ifdInfo.nodeList:
+    #   let (name, node) = info
+    #   var metadata = newJObject()
+    #   metadata[name] = node
+    #   echo readable(metadata, "tiff")
