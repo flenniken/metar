@@ -352,7 +352,7 @@ proc getImage(imageData: Table[string, seq[uint32]], headerOffset: int64): JsonN
     height = imageData["height"]
     starts = imageData["starts"]
     counts = imageData["counts"]
-    offset = imageData["ifd_offset"]
+    offset = imageData["offset"]
   except:
     raise newException(NotSupportedError, "Tiff: IFD without all image parameters.")
 
@@ -361,7 +361,7 @@ proc getImage(imageData: Table[string, seq[uint32]], headerOffset: int64): JsonN
     raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
     
   result = newJObject()
-  result["ifd_offset"] = newJInt((BiggestInt)offset[0])
+  result["offset"] = newJInt((BiggestInt)offset[0])
   result["width"] = newJInt((BiggestInt)width[0])
   result["height"] = newJInt((BiggestInt)height[0])
 
@@ -398,7 +398,7 @@ proc readIFD*(file: File, headerOffset: int64, ifdOffset: int64,
   # in with the image width, height, pixel starts and pixel counts.
   var imageData = initTable[string, seq[uint32]]()
   # todo: down casting int64 to uint32
-  imageData["ifd_offset"] = @[(uint32)ifdOffset]
+  imageData["offset"] = @[(uint32)ifdOffset]
 
   # Read all the IFD bytes into a memory buffer.
   let start = headerOffset + ifdOffset
