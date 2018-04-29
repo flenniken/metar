@@ -72,6 +72,7 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
           let item = one & two
           let last = if node.len == parts.len-1: 2 else: 7
           if lenParts + parts.len*2 + item.len + last > maxLen:
+            # parts.add("...($1)" % $node.len)
             parts.add("...")
             break
           lenParts += item.len
@@ -89,6 +90,7 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
           let item = getLeafString(value, maxLen)
           let last = if node.len == parts.len-1: 2 else: 7
           if lenParts + parts.len*2 + item.len + last > maxLen:
+            # parts.add("...($1)" % $node.len)
             parts.add("...")
             break
           lenParts += item.len
