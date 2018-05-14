@@ -690,20 +690,21 @@ suite "test tiff.nim":
     check(endian == littleEndian)
 
     let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
-    check(ifdInfo.nodeList.len == 3)
+    check(ifdInfo.nodeList.len == 4)
     check(ifdInfo.nodeList[0].name == "ifd")
     check(ifdInfo.nodeList[1].name == "xmp")
     check(ifdInfo.nodeList[2].name == "image")
+    check(ifdInfo.nodeList[3].name == "ranges")
 
     check(ifdInfo.nextList.len == 3)
-    check(ifdInfo.nextList[0].name == "")
-    check(ifdInfo.nextList[1].name == "")
+    check(ifdInfo.nextList[0].name == "ifd")
+    check(ifdInfo.nextList[1].name == "ifd")
     check(ifdInfo.nextList[2].name == "exif")
 
     let image = ifdInfo.nodeList[2].node
     # echo $image
 
-    check(image["offset"].getInt() == 8)
+    check(image["name"].getStr() == "8")
     check(image["width"].getInt() == 256)
     check(image["height"].getInt() == 171)
     check($image["pixels"] == "[[37312,168640]]")
@@ -713,3 +714,95 @@ suite "test tiff.nim":
     #   var metadata = newJObject()
     #   metadata[name] = node
     #   echo readable(metadata, "tiff")
+
+  test "test mergeRanges empty":
+    let list: seq[tuple[start: uint32, finish: uint32]] = @[]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 0)
+    check(gapList.len == 0)
+
+  test "test mergeRanges 1":
+    let list = @[(5'u32, 10'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == list)
+
+  test "test mergeRanges 2":
+    let list = @[(5'u32, 10'u32), (10'u32, 30'u32)]
+    let expected = @[(5'u32, 30'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == expected)
+
+  test "test mergeRanges 3":
+    let list = @[(5'u32, 10'u32), (20'u32, 30'u32)]
+    let expectedGap = @[(10'u32, 20'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 2)
+    check(gapList.len == 1)
+    check(minList == list)
+    check(gapList == expectedGap)
+
+  test "test mergeRanges 4":
+    let list = @[(0'u32, 0'u32), (20'u32, 30'u32)]
+    let expectedMin = @[(20'u32, 30'u32)]
+    let expectedGap = @[(0'u32, 20'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 1)
+    check(minList == expectedMin)
+    check(gapList == expectedGap)
+
+  test "test mergeRanges 5":
+    let list = @[(20'u32, 30'u32), (40'u32, 40'u32)]
+    let expectedMin = @[(20'u32, 30'u32)]
+    let expectedGap = @[(30'u32, 40'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 1)
+    check(minList == expectedMin)
+    check(gapList == expectedGap)
+
+  test "test mergeRanges 6":
+    let list = @[(0'u32, 0'u32), (20'u32, 30'u32), (40'u32, 40'u32)]
+    let expectedMin = @[(20'u32, 30'u32)]
+    let expectedGap = @[(0'u32, 20'u32), (30'u32, 40'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 2)
+    check(minList == expectedMin)
+    check(gapList == expectedGap)
+
+  test "test mergeRanges 7":
+    let list = @[(0'u32, 40'u32), (20'u32, 45'u32), (40'u32, 60'u32)]
+    let expectedMin = @[(0'u32, 60'u32)]
+    let (minList, gapList) = mergeRanges(list)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == expectedMin)
+
+  test "test mergeRanges padding 1":
+    let list = @[(0'u32, 39'u32), (40'u32, 45'u32)]
+    let expectedMin = @[(0'u32, 45'u32)]
+    let (minList, gapList) = mergeRanges(list, maxPadding=1)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == expectedMin)
+
+  test "test mergeRanges padding 2":
+    let list = @[(0'u32, 39'u32), (40'u32, 45'u32)]
+    let expectedMin = @[(0'u32, 45'u32)]
+    let (minList, gapList) = mergeRanges(list, maxPadding=2)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == expectedMin)
+
+  test "test mergeRanges padding 3":
+    let list = @[(0'u32, 37'u32), (40'u32, 45'u32)]
+    let expectedMin = @[(0'u32, 45'u32)]
+    let (minList, gapList) = mergeRanges(list, maxPadding=3)
+    check(minList.len == 1)
+    check(gapList.len == 0)
+    check(minList == expectedMin)

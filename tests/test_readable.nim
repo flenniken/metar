@@ -40,7 +40,7 @@ height = 0
 
       let str = getRangeString(node)
       # echo str
-      check(str == "*section_name(23) (1234, 4321) error string")
+      check(str == "*section_name() (1234, 4321) error string")
 
 
     test "test ellipsize":

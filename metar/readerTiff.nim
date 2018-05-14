@@ -46,8 +46,17 @@ proc addSection(metadata: var Metadata, dups: var Table[string, int],
     metadata[sectionName] = info
   dups[sectionName] = 1
 
-# proc readTiff(file: File): Metadata {.tpub.} =
-#   result = newJObject()
+proc appendRanges(ranges: JsonNode, node: JsonNode) =
+  ## Append the range node items to the bottom of the ranges list.
+
+  assert(ranges.kind == JArray)
+  assert(node.kind == JArray)
+
+  for row in node.items():
+    assert(row.kind == JArray)
+    assert(row.len == 6)
+    ranges.add(row)
+
 
 proc readTiff(file: File): Metadata {.tpub.} =
   ## Read the given Tiff file and return its metadata.  Return
@@ -60,35 +69,27 @@ proc readTiff(file: File): Metadata {.tpub.} =
 
   const headerOffset:uint32 = 0
   let (ifdOffset, endian) = readHeader(file, headerOffset)
+  ranges.add(getRange("header", "", (int64)headerOffset, ((int64)headerOffset)+8'i64, true, ""))
 
   let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
   for item in ifdInfo.nodeList:
     let (name, node) = item
-    addSection(result, dups, name, node)
+    if name == "ranges":
+      appendRanges(ranges, node)
+    else:
+      addSection(result, dups, name, node)
   for nextTup in ifdInfo.nextList:
     let (nextName, offset) = nextTup
     if offset != 0:
-      let ifdInfo = readIFD(file, headerOffset, offset, endian)
+      let ifdInfo = readIFD(file, headerOffset, offset, endian, nextName)
       for item in ifdInfo.nodeList:
         var (name, node) = item
-        # If the nextName is not empty is used instead of the ifd name.
-        if nextName != "":
-          name = nextName
-        addSection(result, dups, name, node)
+        if name == "ranges":
+          appendRanges(ranges, node)
+        else:
+          addSection(result, dups, name, node)
 
-#todo support ranges
-
-  # # Add the IFD to the ranges.
-  # # name, marker, start, finish, known, error
-  # var ranges = newJArray()
-  # var rItem = newJArray()
-  # rItem.add(newJString("ifd"))
-  # rItem.add(newJInt((int)0))
-  # rItem.add(newJInt(start))
-  # rItem.add(newJInt(start+bufferSize))
-  # rItem.add(newJBool(true))
-  # rItem.add(newJString(""))
-  # ranges.add(rItem)
+  addSection(result, dups, "ranges", ranges)
 
 
 const reader* = (read: readTiff, keyName: keyNameTiff)

@@ -104,15 +104,16 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
   assert(node.kind == JArray)
   assert(node.len == 6)
 
+  let name = node[0].getStr()
+  let marker = node[1].getStr()
+  let start = node[2].getInt()
+  let finish = node[3].getInt()
+  let known = node[4].getBool()
+  let error = node[5].getStr()
+
   # known, name, marker, start, finish, error
-  # 0,     1,    2,      3,     4,      5
   result = "$1$2($3) ($4, $5) $6" % [
-    if node[4].getBool(): "" else: "*",
-    node[0].getStr(),
-    $node[1].getInt(),
-    $node[2].getInt(),
-    $node[3].getInt(),
-    node[5].getStr()
+    if known: "" else: "*", name, marker, $start, $finish, error
   ]
 
 

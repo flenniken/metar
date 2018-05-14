@@ -11,6 +11,7 @@ import macros
 import json
 import readerJpeg # remove this
 import xmpparser
+import algorithm
 
 
 #[
@@ -367,54 +368,152 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
     result = newJString(str)
 
 
-proc getImage(imageData: Table[string, seq[uint32]], headerOffset: uint32): JsonNode =
-  ## Return an image node from the imageData.
+proc getRange*(name: string, marker: string, start: int64, finish: int64,
+              known: bool, error: string): JsonNode =
+  ## Add a range to the ranges list.
 
-  var width, height, starts, counts, offset: seq[uint32]
+  result = newJArray()
+  result.add(newJString(name))
+  result.add(newJString(marker))
+  result.add(newJInt(start))
+  result.add(newJInt(finish))
+  result.add(newJBool(known))
+  result.add(newJString(error))
+
+
+type
+  RangeList = seq[tuple[start: uint32, finish: uint32]]
+
+# todo: determine padding automatically.
+
+proc mergeRanges*(ranges: RangeList, maxPadding: Natural = 0):
+    tuple[minList: RangeList, gapList: RangeList] =
+  ## Given a list of ranges, merge them into the smallest set of
+  ## contiguous ranges. Return the new list of ranges. Also return a
+  ## list of ranges that cover the gaps.  You can add the ranges (0,0)
+  ## or (totalSize, totalSize) to the range list to cover the
+  ## beginning and end of the file. The maxPadding number is the
+  ## maxium number of bytes of padding at the end of a range.
+
+  var minList = newSeq[tuple[start: uint32, finish: uint32]]()
+  var gapList = newSeq[tuple[start: uint32, finish: uint32]]()
+
+  if ranges.len == 0:
+    result = (minList, gapList)
+    return
+
+  # Sort the pixels by the start offset.
+  let sortedRanges = ranges.sortedByIt(it.start)
+
+  # ranges = (5, 10), (10, 15), (20, 25), (22, 28), (30, 40), (30, 50), (50, 50) ==>
+  # rangeList = (5, 15), (20, 28), (30, 50), gapList = (0, 5), (15, 20), (28, 30)
+
+  var start = ranges[0].start
+  var finish = ranges[0].finish
+
+  # echo "start, finish = " & $start & ", " & $finish
+
+  for ix in 1..sortedRanges.len-1:
+    let (r_start, r_finish) = sortedRanges[ix]
+    let gap = ((int64)r_start) - (int64)finish
+    if gap > (int64)maxPadding:
+      # Found a gap
+      if start < finish:
+        minList.add((start, finish))
+      gapList.add((finish, r_start))
+      start = r_start
+      finish = r_finish
+    else:
+      # Contiguous or ovelapping range, merge.
+      if r_finish > finish:
+        finish = r_finish
+
+  if start < finish:
+    minList.add((start, finish))
+  result = (minList, gapList)
+
+
+proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset: uint32):
+    seq[JsonNode] =
+  ## Return image and range nodes from the imageData or nil when no image.
+
+  result = newSeq[JsonNode]()
+  var width, height, starts, counts: seq[uint32]
   try:
     width = imageData["width"]
     height = imageData["height"]
     starts = imageData["starts"]
     counts = imageData["counts"]
-    offset = imageData["offset"]
   except:
     # exif ifd doesn't have an image.
-    return nil
+    return
 
   if width.len != 1 or height.len != 1 or
      starts.len < 1 or counts.len < 1 or starts.len != counts.len:
     raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
 
-  result = newJObject()
-  result["offset"] = newJInt((BiggestInt)offset[0])
-  result["width"] = newJInt((BiggestInt)width[0])
-  result["height"] = newJInt((BiggestInt)height[0])
+  var imageNode = newJObject()
+  result.add(imageNode)
+  imageNode["name"] = newJString(name)
+  imageNode["width"] = newJInt((BiggestInt)width[0])
+  imageNode["height"] = newJInt((BiggestInt)height[0])
 
-  # todo: should we merge offsets next to each other?
+  var rawSections = newSeq[tuple[start: uint32, finish: uint32]](starts.len)
+  for ix in 0..<starts.len:
+    rawSections[ix] = (starts[ix], starts[ix] + counts[ix])
+
+  let (sections, _) = mergeRanges(rawSections, 7)
+
   # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
-  for ix, start in starts:
-    let begin = ((int64)start)+(int64)headerOffset
-    let finish = begin+(int64)counts[ix]
+  for section in sections:
     var part = newJArray()
-    part.add(newJInt(begin))
-    part.add(newJInt(finish))
+    part.add(newJInt((BiggestInt)section.start))
+    part.add(newJInt((BiggestInt)section.finish))
     pixels.add(part)
+  imageNode["pixels"] = pixels
 
-  result["pixels"] = pixels
+  for imageStart, imageFinish in sections.items():
+    let rangeNode = getRange("image", "", (int64)imageStart, (int64)imageFinish, true, "")
+    result.add(rangeNode)
+
+
+
+proc getEntryStart(entry: IFDEntry): int64 =
+  # Get the start offset of the entry, if the entry is outside
+  # itself. If inside, return -1.
+
+  let bufferSize: int = kindSize(entry.kind) * (int)entry.count
+  if bufferSize <= 4:
+    return 0'i64
+  result = (int64)length[uint32](entry.packed, 0, entry.endian)
+
+
+proc getEntryFinish(entry: IFDEntry): int64 =
+  # Get the start offset of the entry, if the entry is outside
+  # itself. If inside, return -1.
+
+  let bufferSize: int = kindSize(entry.kind) * (int)entry.count
+  if bufferSize <= 4:
+    return 0'i64
+
+  let start = (int64)length[uint32](entry.packed, 0, entry.endian)
+  return start + (int64)bufferSize
 
 
 proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
-    endian: Endianness): IFDInfo =
+              endian: Endianness, nodeName: string = "ifd"): IFDInfo =
   ## Read the Image File Directory at the given offset and return the
   ## IFD metadata information which contains a list of named
-  ## nodes. The list contains at least an IFD node.  It may contain
+  ## nodes. The list contains at least an IFD node and it may contain
   ## other nodes as well. The IFDInfo also contains a list of offsets
   ## to other IFDs found in the entries.
 
+  # Ranges divides the file into a list of offset ranges.
+  var ranges = newJArray()
 
-  # Create a list of offsets to IFDs found. The first item in the list
-  # is the offset to the next IFD (which may be 0), following that are
+  # Create a list of IFD offsets found. The first item in the list is
+  # the offset to the next IFD (which may be 0), following that are
   # subifds or exif if there are any.
   var nextList = newSeq[tuple[name: string, offset: uint32]]()
 
@@ -422,42 +521,54 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
   # sections used to build the images metadata section. It gets filled
   # in with the image width, height, pixel starts and pixel counts.
   var imageData = initTable[string, seq[uint32]]()
-  # todo: down casting int64 to uint32
-  imageData["offset"] = @[ifdOffset]
 
   # Read all the IFD bytes into a memory buffer.
-  let start = headerOffset + ifdOffset
-  file.setFilePos((int64)start)
+  let start: int64 = ((int64)headerOffset) + (int64)ifdOffset
+  file.setFilePos(start)
   var numberEntries = (int)readNumber[uint16](file, endian)
   let bufferSize = 12 * numberEntries
+  let finish:int64 = start + (int64)bufferSize
+
   var buffer = newSeq[uint8](bufferSize)
   if file.readBytes(buffer, 0, bufferSize) != bufferSize:
     raise newException(IOError, "Unable to read the file.")
+  ranges.add(getRange(nodeName, "", start, finish, true, ""))
+  # todo: change finish to include the outside items.
+  # todo: sort the ranges.
+  # todo: format the ranges with the ranges first.
 
   # Create a list to hold the ifd's list of nodes.
   var nodeList = newSeq[tuple[name: string, node: JsonNode]]()
 
   # Create an ifd node and add it to the list of nodes.
   var ifd = newJObject()
-  nodeList.add(("ifd", ifd))
+  nodeList.add((nodeName, ifd))
 
   # Add start and next offset into the ifd node dictionary.
   let next = readNumber[uint32](file, endian)
   ifd["offset"] = newJInt((BiggestInt)start)
   ifd["next"] = newJInt((BiggestInt)next)
   if next != 0'u32:
-    nextList.add( ("", next))
+    nextList.add( ("ifd", next))
+
+  var entryStart: int64
+  var entryFinish: int64
 
   # Loop through the IFD entries and process each one.
   if numberEntries > 0:
     for ix in 0..<numberEntries:
       let entry = getIFDEntry(buffer, endian, headerOffset, ix*12)
+      if entryStart == 0:
+        entryStart = getEntryStart(entry)
+      let temp = getEntryFinish(entry)
+      if temp != 0:
+        entryFinish = temp
 
       case entry.tag:
       of 256'u16, 257'u16: # ImageWidth, ImageLength
         ifd[$entry.tag] = readValueListMax(file, entry, 10)
-        let name = if entry.tag == 256'u16: "width" else: "height"
-        imageData[name] = readLongs(file, entry, 1)
+        let widthHeight = if entry.tag == 256'u16: "width" else: "height"
+        imageData[widthHeight] = readLongs(file, entry, 1)
 
       of 700'u16:
         # The name xmp, exif, iptc are common between image formats.  The user can
@@ -466,10 +577,12 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
         let name = "xmp"
         ifd[$entry.tag] = newJString(name)
 
+        let start = file.getFilePos()
         let blob = readBlob(file, entry)
         let xml = bytesToString(blob, 0, blob.len-1)
         let xmp = xmpParser(xml)
         nodeList.add((name, xmp))
+        ranges.add(getRange("xmp", "", start, start+(int64)blob.len, true, ""))
 
       of 34665'u16: # exif
         ifd[$entry.tag] = newJString("exif")
@@ -494,14 +607,20 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
         ifd[$entry.tag] = jArray
         for jInt in jArray.items():
           let ifdOffset = (uint32)jInt.getInt()
-          nextList.add( ("", ifdOffset))
+          nextList.add( ("ifd", ifdOffset))
 
       else:
         ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
-  # Add the image node to the list of nodes.
-  let image = getImage(imageData, headerOffset)
-  if image != nil:
-    nodeList.add(("image", image))
+
+  # Add the image node to the list of nodes and the ranges to the list
+  # of ranges.
+  let nodes = getImage($ifdOffset, imageData, headerOffset)
+  if nodes.len > 0:
+    nodeList.add(("image", nodes[0]))
+    for ix in 1..<nodes.len:
+      ranges.add(nodes[ix])
+
+  nodeList.add(("ranges", ranges))
 
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
