@@ -476,7 +476,7 @@ proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset:
   for ix in 0..<starts.len:
     rawSections[ix] = (starts[ix], starts[ix] + counts[ix])
 
-  let (sections, _) = mergeRanges(rawSections, checkPadding=false)
+  let (sections, _) = mergeRanges(rawSections, checkPadding=true)
 
   # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
