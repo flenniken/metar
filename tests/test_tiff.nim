@@ -783,26 +783,40 @@ suite "test tiff.nim":
     check(gapList.len == 0)
     check(minList == expectedMin)
 
+  # padding is on even byte boundries.
+
   test "test mergeRanges padding 1":
-    let list = @[(0'u32, 39'u32), (40'u32, 45'u32)]
-    let expectedMin = @[(0'u32, 45'u32)]
-    let (minList, gapList) = mergeRanges(list, maxPadding=1)
-    check(minList.len == 1)
-    check(gapList.len == 0)
+    # Not on padding value.
+    let list = @[(0'u32, 39'u32), (41'u32, 45'u32)]
+    let expectedMin = @[(0'u32, 39'u32), (41'u32, 45'u32)]
+    let expectedGap = @[(39'u32, 41'u32)]
+    let (minList, gapList) = mergeRanges(list, checkPadding=true)
+    check(minList.len == 2)
+    check(gapList.len == 1)
     check(minList == expectedMin)
+    check(gapList == expectedGap)
 
   test "test mergeRanges padding 2":
-    let list = @[(0'u32, 39'u32), (40'u32, 45'u32)]
-    let expectedMin = @[(0'u32, 45'u32)]
-    let (minList, gapList) = mergeRanges(list, maxPadding=2)
+    # On padding value.
+    let list = @[(0'u32, 39'u32), (40'u32, 49'u32)]
+    let expectedMin = @[(0'u32, 49'u32)]
+    let (minList, gapList) = mergeRanges(list, checkPadding=true)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
 
   test "test mergeRanges padding 3":
-    let list = @[(0'u32, 37'u32), (40'u32, 45'u32)]
-    let expectedMin = @[(0'u32, 45'u32)]
-    let (minList, gapList) = mergeRanges(list, maxPadding=3)
-    check(minList.len == 1)
-    check(gapList.len == 0)
+    # Not on padding
+    let list = @[(0'u32, 37'u32), (49'u32, 55'u32)]
+    let expectedMin = list
+    let expectedGap = @[(37'u32, 49'u32)]
+    let (minList, gapList) = mergeRanges(list, checkPadding=true)
+    check(minList.len == 2)
+    check(gapList.len == 1)
     check(minList == expectedMin)
+    check(gapList == expectedGap)
+
+  # test "test boundry":
+  #   for finish in 0..33:
+  #     let boundry = ((finish shr 3) + 1) shl 3
+  #     echo "finish = " & $finish & " boundry = " & $boundry

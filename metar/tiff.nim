@@ -17,6 +17,7 @@ import algorithm
 #[
 The following links are good references for the Tiff format.
 
+* https://www.fileformat.info/format/tiff/egff.htm
 * https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
 * https://web.archive.org/web/20150503034412/http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
 
@@ -29,6 +30,7 @@ This is the layout of a Tiff file:
 * IFD.SubIFDs = [->IFD, ->IFD,...]
 * IFD.Exif_IFD -> IFD
 
+Tags are always found in contiguous groups within each IFD.
 ]#
 
 type
@@ -386,7 +388,7 @@ type
 
 # todo: determine padding automatically.
 
-proc mergeRanges*(ranges: RangeList, maxPadding: Natural = 0):
+proc mergeRanges*(ranges: RangeList, checkPadding: bool = false):
     tuple[minList: RangeList, gapList: RangeList] =
   ## Given a list of ranges, merge them into the smallest set of
   ## contiguous ranges. Return the new list of ranges. Also return a
@@ -415,18 +417,30 @@ proc mergeRanges*(ranges: RangeList, maxPadding: Natural = 0):
 
   for ix in 1..sortedRanges.len-1:
     let (r_start, r_finish) = sortedRanges[ix]
+
+    # If the gap matches the padding to the next boundry, add the
+    # gap/padding to the range.
+
     let gap = ((int64)r_start) - (int64)finish
-    if gap > (int64)maxPadding:
+
+    # let boundry = finish + 0x9 & 0x10
+    var boundry: uint32
+    if checkPadding:
+      const paddingShift = 1
+      boundry = ((finish shr paddingShift) + 1) shl paddingShift
+      # echo "boundry = " & $boundry
+
+    if finish >= r_start or (checkPadding and boundry == r_start):
+      # Contiguous, ovelapping range or padding, merge.
+      if r_finish > finish:
+        finish = r_finish
+    else:
       # Found a gap
       if start < finish:
         minList.add((start, finish))
       gapList.add((finish, r_start))
       start = r_start
       finish = r_finish
-    else:
-      # Contiguous or ovelapping range, merge.
-      if r_finish > finish:
-        finish = r_finish
 
   if start < finish:
     minList.add((start, finish))
@@ -462,7 +476,7 @@ proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset:
   for ix in 0..<starts.len:
     rawSections[ix] = (starts[ix], starts[ix] + counts[ix])
 
-  let (sections, _) = mergeRanges(rawSections, 7)
+  let (sections, _) = mergeRanges(rawSections, checkPadding=false)
 
   # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
