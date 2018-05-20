@@ -83,11 +83,11 @@ IFDEntry types.
 
 
   Range* = object
-    start: uint32
-    finish: uint32
-    name: string
-    message: string
-    known: bool  ## \\
+    start*: uint32
+    finish*: uint32
+    name*: string
+    message*: string
+    known*: bool  ## \\
     ## A range describes a section of the file.  The start is the
     ## offset of the beginning of the section and finish is one past
     ## the end. The known field is true when the section format is
@@ -526,15 +526,14 @@ proc getEntryFinish(entry: IFDEntry): int64 =
 
 
 proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
-              endian: Endianness, nodeName: string = "ifd"): IFDInfo =
+              endian: Endianness, nodeName: string,
+              ranges: var seq[Range]): IFDInfo =
   ## Read the Image File Directory at the given offset and return the
   ## IFD metadata information which contains a list of named
   ## nodes. The list contains at least an IFD node and it may contain
   ## other nodes as well. The IFDInfo also contains a list of offsets
-  ## to other IFDs found in the entries.
-
-  # Ranges divides the file into a list of offset ranges.
-  var ranges = newSeq[Range]()
+  ## to other IFDs found in the entries. The rangeList is filled in
+  ## with the ranges found in the IFD.
 
   # Create a list of IFD offsets found. The first item in the list is
   # the offset to the next IFD (which may be 0), following that are
@@ -644,11 +643,5 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
     nodeList.add(("image", imageNode))
     for item in imageRanges:
       ranges.add(item)
-
-  # Create a ranges node from the ranges list.
-  var rangesNodes = newJArray()
-  for item in ranges:
-    rangesNodes.add(getRangeNode(item.name, item.start, item.finish, item.known, item.message))
-  nodeList.add(("ranges", rangesNodes))
 
   result = IFDInfo(nodeList: nodeList, nextList: nextList)

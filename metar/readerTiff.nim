@@ -63,33 +63,31 @@ proc readTiff(file: File): Metadata {.tpub.} =
   ## UnknownFormatError when the file format is unknown. May return
   ## NotSupportedError exception.
 
+  var ranges = newSeq[Range]()
   result = newJObject()
-  var ranges = newJArray()
   var dups = initTable[string, int]()
 
+  # Read the header.
   const headerOffset:uint32 = 0
   let (ifdOffset, endian) = readHeader(file, headerOffset)
-  ranges.add(getRangeNode("header", headerOffset, headerOffset+8'u32, true, ""))
+  ranges.add(Range(name: "header", start: headerOffset, finish: headerOffset+8'u32,
+                   known: true, message:""))
 
-  let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
-  for item in ifdInfo.nodeList:
-    let (name, node) = item
-    if name == "ranges":
-      appendRanges(ranges, node)
-    else:
-      addSection(result, dups, name, node)
-  for nextTup in ifdInfo.nextList:
-    let (nextName, offset) = nextTup
+  # Read all the IFDs.
+  let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian, "ifd", ranges)
+  for name, node in ifdInfo.nodeList.items():
+    addSection(result, dups, name, node)
+  for ifdName, offset in ifdInfo.nextList.items():
     if offset != 0:
-      let ifdInfo = readIFD(file, headerOffset, offset, endian, nextName)
-      for item in ifdInfo.nodeList:
-        var (name, node) = item
-        if name == "ranges":
-          appendRanges(ranges, node)
-        else:
-          addSection(result, dups, name, node)
+      let ifdInfo = readIFD(file, headerOffset, offset, endian, ifdName, ranges)
+      for nodeName, node in ifdInfo.nodeList.items():
+        addSection(result, dups, nodeName, node)
 
-  addSection(result, dups, "ranges", ranges)
+  # Create a ranges node from the ranges list.
+  var rangesNodes = newJArray()
+  for item in ranges:
+    rangesNodes.add(getRangeNode(item.name, item.start, item.finish, item.known, item.message))
+  addSection(result, dups, "ranges", rangesNodes)
 
 
 const reader* = (read: readTiff, keyName: keyNameTiff)

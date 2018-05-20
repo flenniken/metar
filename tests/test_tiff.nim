@@ -689,12 +689,23 @@ suite "test tiff.nim":
     check(ifdOffset == 8)
     check(endian == littleEndian)
 
-    let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
-    check(ifdInfo.nodeList.len == 4)
-    check(ifdInfo.nodeList[0].name == "ifd")
+    var ranges = newSeq[Range]()
+    let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian, "test", ranges)
+    check(ifdInfo.nodeList.len == 3)
+    check(ifdInfo.nodeList[0].name == "test")
     check(ifdInfo.nodeList[1].name == "xmp")
     check(ifdInfo.nodeList[2].name == "image")
-    check(ifdInfo.nodeList[3].name == "ranges")
+    # for range in ranges:
+    #   echo $range
+# (start: 8, finish: 500, name: "test", message: "", known: true)
+# (start: 568, finish: 7537, name: "xmp", message: "", known: true)
+# (start: 37312, finish: 168640, name: "image", message: "", known: true)
+    check(ranges.len == 3)
+    check(ranges[0].name == "test")
+    check(ranges[0].start == 8)
+    check(ranges[0].finish == 500)
+    check(ranges[1].name == "xmp")
+    check(ranges[2].name == "image")
 
     check(ifdInfo.nextList.len == 3)
     check(ifdInfo.nextList[0].name == "ifd")
