@@ -1006,7 +1006,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     # name, marker, start, finish, known, error
     var rItem = newJArray()
     rItem.add(newJString(sectionName))
-    rItem.add(newJInt((int)section.marker))
+    # rItem.add(newJInt((int)section.marker))
     rItem.add(newJInt(section.start))
     rItem.add(newJInt(section.finish))
     rItem.add(newJBool(known))

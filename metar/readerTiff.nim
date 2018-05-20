@@ -54,7 +54,7 @@ proc appendRanges(ranges: JsonNode, node: JsonNode) =
 
   for row in node.items():
     assert(row.kind == JArray)
-    assert(row.len == 6)
+    assert(row.len == 5)
     ranges.add(row)
 
 
@@ -69,7 +69,7 @@ proc readTiff(file: File): Metadata {.tpub.} =
 
   const headerOffset:uint32 = 0
   let (ifdOffset, endian) = readHeader(file, headerOffset)
-  ranges.add(getRange("header", "", (int64)headerOffset, ((int64)headerOffset)+8'i64, true, ""))
+  ranges.add(getRangeNode("header", headerOffset, headerOffset+8'u32, true, ""))
 
   let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian)
   for item in ifdInfo.nodeList:

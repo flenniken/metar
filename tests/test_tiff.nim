@@ -715,102 +715,102 @@ suite "test tiff.nim":
     #   metadata[name] = node
     #   echo readable(metadata, "tiff")
 
-  test "test mergeRanges empty":
+  test "test mergeOffsets empty":
     let list: seq[tuple[start: uint32, finish: uint32]] = @[]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 0)
     check(gapList.len == 0)
 
-  test "test mergeRanges 1":
+  test "test mergeOffsets 1":
     let list = @[(5'u32, 10'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == list)
 
-  test "test mergeRanges 2":
+  test "test mergeOffsets 2":
     let list = @[(5'u32, 10'u32), (10'u32, 30'u32)]
     let expected = @[(5'u32, 30'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expected)
 
-  test "test mergeRanges 3":
+  test "test mergeOffsets 3":
     let list = @[(5'u32, 10'u32), (20'u32, 30'u32)]
     let expectedGap = @[(10'u32, 20'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == list)
     check(gapList == expectedGap)
 
-  test "test mergeRanges 4":
+  test "test mergeOffsets 4":
     let list = @[(0'u32, 0'u32), (20'u32, 30'u32)]
     let expectedMin = @[(20'u32, 30'u32)]
     let expectedGap = @[(0'u32, 20'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeRanges 5":
+  test "test mergeOffsets 5":
     let list = @[(20'u32, 30'u32), (40'u32, 40'u32)]
     let expectedMin = @[(20'u32, 30'u32)]
     let expectedGap = @[(30'u32, 40'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeRanges 6":
+  test "test mergeOffsets 6":
     let list = @[(0'u32, 0'u32), (20'u32, 30'u32), (40'u32, 40'u32)]
     let expectedMin = @[(20'u32, 30'u32)]
     let expectedGap = @[(0'u32, 20'u32), (30'u32, 40'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 2)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeRanges 7":
+  test "test mergeOffsets 7":
     let list = @[(0'u32, 40'u32), (20'u32, 45'u32), (40'u32, 60'u32)]
     let expectedMin = @[(0'u32, 60'u32)]
-    let (minList, gapList) = mergeRanges(list)
+    let (minList, gapList) = mergeOffsets(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
 
   # padding is on even byte boundries.
 
-  test "test mergeRanges padding 1":
+  test "test mergeOffsets padding 1":
     # Not on padding value.
     let list = @[(0'u32, 39'u32), (41'u32, 45'u32)]
     let expectedMin = @[(0'u32, 39'u32), (41'u32, 45'u32)]
     let expectedGap = @[(39'u32, 41'u32)]
-    let (minList, gapList) = mergeRanges(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeRanges padding 2":
+  test "test mergeOffsets padding 2":
     # On padding value.
     let list = @[(0'u32, 39'u32), (40'u32, 49'u32)]
     let expectedMin = @[(0'u32, 49'u32)]
-    let (minList, gapList) = mergeRanges(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
 
-  test "test mergeRanges padding 3":
+  test "test mergeOffsets padding 3":
     # Not on padding
     let list = @[(0'u32, 37'u32), (49'u32, 55'u32)]
     let expectedMin = list
     let expectedGap = @[(37'u32, 49'u32)]
-    let (minList, gapList) = mergeRanges(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)
