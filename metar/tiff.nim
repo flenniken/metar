@@ -415,28 +415,16 @@ proc mergeOffsets*(ranges: OffsetList, checkPadding: bool = false):
   # Sort the pixels by the start offset.
   let sortedRanges = ranges.sortedByIt(it.start)
 
-  # ranges = (5, 10), (10, 15), (20, 25), (22, 28), (30, 40), (30, 50), (50, 50) ==>
-  # rangeList = (5, 15), (20, 28), (30, 50), gapList = (0, 5), (15, 20), (28, 30)
-
   var start = ranges[0].start
   var finish = ranges[0].finish
-
-  # echo "start, finish = " & $start & ", " & $finish
 
   for ix in 1..sortedRanges.len-1:
     let (r_start, r_finish) = sortedRanges[ix]
 
-    # If the gap matches the padding to the next boundry, add the
-    # gap/padding to the range.
-
-    let gap = ((int64)r_start) - (int64)finish
-
-    # let boundry = finish + 0x9 & 0x10
     var boundry: uint32
     if checkPadding:
       const paddingShift = 1
       boundry = ((finish shr paddingShift) + 1) shl paddingShift
-      # echo "boundry = " & $boundry
 
     if finish >= r_start or (checkPadding and boundry == r_start):
       # Contiguous, ovelapping range or padding, merge.

@@ -17,6 +17,7 @@ import strutils
 import tiff
 import tables
 import json
+import algorithm
 
 proc keyNameTiff(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
@@ -83,9 +84,21 @@ proc readTiff(file: File): Metadata {.tpub.} =
       for nodeName, node in ifdInfo.nodeList.items():
         addSection(result, dups, nodeName, node)
 
+  # Add in the gaps and sort the ranges.
+  var offsetList = newSeq[tuple[start: uint32, finish: uint32]](ranges.len)
+  for ix, item in ranges:
+    offsetList[ix] = (item.start, item.finish)
+  let fileSize = (uint32)file.getFileSize()
+  offsetList.add((fileSize, fileSize))
+  let (_, gaps) = mergeOffsets(offsetList)
+  for start, finish in gaps.items():
+    ranges.add(Range(name: "gap", start: start, finish: finish,
+                   known: false, message:""))
+  let sortedRanges = ranges.sortedByIt(it.start)
+
   # Create a ranges node from the ranges list.
   var rangesNodes = newJArray()
-  for item in ranges:
+  for item in sortedRanges:
     rangesNodes.add(getRangeNode(item.name, item.start, item.finish, item.known, item.message))
   addSection(result, dups, "ranges", rangesNodes)
 
