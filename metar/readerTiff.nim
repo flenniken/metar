@@ -89,6 +89,7 @@ proc readTiff(file: File): Metadata {.tpub.} =
   for ix, item in ranges:
     offsetList[ix] = (item.start, item.finish)
   let fileSize = (uint32)file.getFileSize()
+  offsetList.add((0'u32, 0'u32))
   offsetList.add((fileSize, fileSize))
   let (_, gaps) = mergeOffsets(offsetList)
   for start, finish in gaps.items():
