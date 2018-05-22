@@ -261,7 +261,10 @@ proc readLongs*(file: File, entry: IFDEntry, maximum: Natural): seq[uint32] =
   ## of items to read. An error is raised when it exceeds the maximum.
 
   assert(file != nil)
-  assert(entry.kind == Kind.longs)
+  if entry.kind != Kind.longs:
+    let message = "Tiff: expected longs, got: $1." % [$entry.kind]
+    raise newException(NotSupportedError, message)
+  # assert(entry.kind == Kind.longs)
 
   let count = (int)entry.count
   if count > maximum:
@@ -396,7 +399,7 @@ proc getRangeNode*(name: string, start: uint32, finish: uint32,
   result.add(newJString(error))
 
 
-proc mergeOffsets*(ranges: OffsetList, checkPadding: bool = false):
+proc mergeOffsets*(ranges: OffsetList, paddingShift: Natural = 0):
     tuple[minList: OffsetList, gapList: OffsetList] =
   ## Given a list of ranges, merge them into the smallest set of
   ## contiguous ranges. Return the new list of ranges. Also return a
@@ -422,11 +425,10 @@ proc mergeOffsets*(ranges: OffsetList, checkPadding: bool = false):
     let (r_start, r_finish) = sortedRanges[ix]
 
     var boundry: uint32
-    if checkPadding:
-      const paddingShift = 1
+    if paddingShift > 0:
       boundry = ((finish shr paddingShift) + 1) shl paddingShift
 
-    if finish >= r_start or (checkPadding and boundry == r_start):
+    if finish >= r_start or (paddingShift > 0 and boundry == r_start):
       # Contiguous, ovelapping range or padding, merge.
       if r_finish > finish:
         finish = r_finish
@@ -471,7 +473,7 @@ proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset:
   for ix in 0..<starts.len:
     offsets[ix] = (starts[ix], starts[ix] + counts[ix])
 
-  let (sections, _) = mergeOffsets(offsets, checkPadding=true)
+  let (sections, _) = mergeOffsets(offsets, paddingShift = 1)
 
   # Create a pixels array of start end offsets: [(start, end), (start, end),...]
   var pixels = newJArray()
@@ -491,29 +493,30 @@ proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset:
   result = (true, imageNode, ranges)
 
 
-proc getEntryStart(entry: IFDEntry): int64 =
+proc getEntryStart(entry: IFDEntry): uint32 =
   # Get the start offset of the entry, if the entry is outside
-  # itself. If inside, return -1.
+  # itself. If inside, return 0.
 
   let bufferSize: int = kindSize(entry.kind) * (int)entry.count
   if bufferSize <= 4:
-    return 0'i64
-  result = (int64)length[uint32](entry.packed, 0, entry.endian)
+    return 0'u32
+  result = length[uint32](entry.packed, 0, entry.endian)
 
 
-proc getEntryFinish(entry: IFDEntry): int64 =
+proc getEntryFinish(entry: IFDEntry): uint32 =
   # Get the start offset of the entry, if the entry is outside
-  # itself. If inside, return -1.
+  # itself. If inside, return 0.
 
   let bufferSize: int = kindSize(entry.kind) * (int)entry.count
   if bufferSize <= 4:
-    return 0'i64
+    return 0'u32
 
-  let start = (int64)length[uint32](entry.packed, 0, entry.endian)
-  return start + (int64)bufferSize
+  let start = length[uint32](entry.packed, 0, entry.endian)
+  return start + (uint32)bufferSize
 
+# todo: range handle errors
 
-proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
+proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
               ranges: var seq[Range]): IFDInfo =
   ## Read the Image File Directory at the given offset and return the
@@ -522,6 +525,9 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
   ## other nodes as well. The IFDInfo also contains a list of offsets
   ## to other IFDs found in the entries. The rangeList is filled in
   ## with the ranges found in the IFD.
+
+  # IFD ranges
+  var externals = newSeq[tuple[start: uint32, finish: uint32]]()
 
   # Create a list of IFD offsets found. The first item in the list is
   # the offset to the next IFD (which may be 0), following that are
@@ -540,14 +546,13 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
   let bufferSize = 12 * numberEntries
   let finish:uint32 = start + (uint32)bufferSize
 
+  externals.add((start, finish))
+
   var buffer = newSeq[uint8](bufferSize)
   if file.readBytes(buffer, 0, bufferSize) != bufferSize:
     raise newException(IOError, "Unable to read the file.")
-  ranges.add(Range(name: nodeName, start: start, finish: finish, known: true, message: ""))
 
   # todo: change finish to include the outside items.
-  # todo: sort the ranges.
-  # todo: format the ranges with the ranges first.
 
   # Create a list to hold the ifd's list of nodes.
   var nodeList = newSeq[tuple[name: string, node: JsonNode]]()
@@ -563,8 +568,12 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
   if next != 0'u32:
     nextList.add( ("ifd", next))
 
-  var entryStart: int64
-  var entryFinish: int64
+  var entryStart: uint32
+  var entryFinish: uint32
+
+  # todo: make a handleEntry method and put a try except around it to
+  # support error strings at this level.
+  # add a range for each outside item of the IFD?
 
   # Loop through the IFD entries and process each one.
   if numberEntries > 0:
@@ -575,6 +584,7 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
       let temp = getEntryFinish(entry)
       if temp != 0:
         entryFinish = temp
+        externals.add((entryStart, entryFinish))
 
       case entry.tag:
       of 256'u16, 257'u16: # ImageWidth, ImageLength
@@ -624,6 +634,11 @@ proc readIFD*(file: File, headerOffset: uint32, ifdOffset: uint32,
 
       else:
         ifd[$entry.tag] = readValueListMax(file, entry, 1000)
+
+  # Merge the IFD ranges and add them to the ranges list.
+  let (sections, _) = mergeOffsets(externals, paddingShift = 2)
+  for start, finish in sections.items():
+    ranges.add(Range(name: nodeName & $id, start: start, finish: finish, known: true, message: ""))
 
   # If the image exists, Add its node and ranges.
   let (image, imageNode, imageRanges) = getImage($ifdOffset, imageData, headerOffset)

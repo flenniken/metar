@@ -75,12 +75,15 @@ proc readTiff(file: File): Metadata {.tpub.} =
                    known: true, message:""))
 
   # Read all the IFDs.
-  let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian, "ifd", ranges)
+  var id = 1
+  let ifdInfo = readIFD(file, id, headerOffset, ifdOffset, endian, "ifd", ranges)
+  id = id + 1
   for name, node in ifdInfo.nodeList.items():
     addSection(result, dups, name, node)
   for ifdName, offset in ifdInfo.nextList.items():
     if offset != 0:
-      let ifdInfo = readIFD(file, headerOffset, offset, endian, ifdName, ranges)
+      let ifdInfo = readIFD(file, id, headerOffset, offset, endian, ifdName, ranges)
+      id = id + 1
       for nodeName, node in ifdInfo.nodeList.items():
         addSection(result, dups, nodeName, node)
 

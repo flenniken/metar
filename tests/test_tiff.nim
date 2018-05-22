@@ -690,22 +690,26 @@ suite "test tiff.nim":
     check(endian == littleEndian)
 
     var ranges = newSeq[Range]()
-    let ifdInfo = readIFD(file, headerOffset, ifdOffset, endian, "test", ranges)
+    let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "test", ranges)
     check(ifdInfo.nodeList.len == 3)
     check(ifdInfo.nodeList[0].name == "test")
     check(ifdInfo.nodeList[1].name == "xmp")
     check(ifdInfo.nodeList[2].name == "image")
+
     # for range in ranges:
     #   echo $range
-# (start: 8, finish: 500, name: "test", message: "", known: true)
 # (start: 568, finish: 7537, name: "xmp", message: "", known: true)
+# (start: 8, finish: 500, name: "test1", message: "", known: true)
+# (start: 506, finish: 16387, name: "test1", message: "", known: true)
 # (start: 37312, finish: 168640, name: "image", message: "", known: true)
-    check(ranges.len == 3)
-    check(ranges[0].name == "test")
-    check(ranges[0].start == 8)
-    check(ranges[0].finish == 500)
-    check(ranges[1].name == "xmp")
-    check(ranges[2].name == "image")
+
+    check(ranges.len == 4)
+    check(ranges[0].name == "xmp")
+    check(ranges[0].start == 568)
+    check(ranges[0].finish == 7537)
+    check(ranges[1].name == "test1")
+    check(ranges[2].name == "test1")
+    check(ranges[3].name == "image")
 
     check(ifdInfo.nextList.len == 3)
     check(ifdInfo.nextList[0].name == "ifd")
@@ -801,7 +805,7 @@ suite "test tiff.nim":
     let list = @[(0'u32, 39'u32), (41'u32, 45'u32)]
     let expectedMin = @[(0'u32, 39'u32), (41'u32, 45'u32)]
     let expectedGap = @[(39'u32, 41'u32)]
-    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)
@@ -811,7 +815,7 @@ suite "test tiff.nim":
     # On padding value.
     let list = @[(0'u32, 39'u32), (40'u32, 49'u32)]
     let expectedMin = @[(0'u32, 49'u32)]
-    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
@@ -821,7 +825,7 @@ suite "test tiff.nim":
     let list = @[(0'u32, 37'u32), (49'u32, 55'u32)]
     let expectedMin = list
     let expectedGap = @[(37'u32, 49'u32)]
-    let (minList, gapList) = mergeOffsets(list, checkPadding=true)
+    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)

@@ -56,8 +56,11 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
     of JFloat:
       result = ellipsize($node.getFloat(), maxLen)
     of JString:
+      var value = node.getStr()
+      if value == nil:
+        value = ""
       let length = if maxLen < maxStringLength: maxLen else: maxStringLength
-      result = ellipsize("\"" & $node.getStr() & "\"", length)
+      result = ellipsize("\"" & value & "\"", length)
     of JObject:
       if maxLen < 2:
         result = ""
@@ -113,6 +116,7 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
   if not known:
     name = name & "*"
   result = "$1 ($2, $3) $4" % [alignLeft(name, 6), $start, $finish, message]
+  # result = "$1 ($2, $3) $4" % [alignLeft(name, 6), toHex(start), toHex(finish), message]
 
 
 proc keyNameDefault(readerName: string, section: string,
