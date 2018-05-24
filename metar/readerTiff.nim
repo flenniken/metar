@@ -18,6 +18,7 @@ import tiff
 import tables
 import json
 import algorithm
+import hexDump
 
 proc keyNameTiff(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
@@ -58,6 +59,31 @@ proc appendRanges(ranges: JsonNode, node: JsonNode) =
     assert(row.len == 5)
     ranges.add(row)
 
+proc readGap(file: File, start: uint32, finish: uint32): string =
+  ## Read the range of the file and return the hex representation.
+
+  let count = (int)(finish - start)
+  var readCount: int
+  if count > 8:
+     readCount = 8
+  else:
+    readCount = count
+  var buffer = newSeq[uint8](readCount)
+  if file.readBytes(buffer, 0, readCount) != readCount:
+    raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
+
+  result = "bytes:"
+  for item in buffer:
+    result.add(" $1" % [toHex(item)])
+  if count != readCount:
+    result.add("...")
+  result.add("  ")
+  for ascii in buffer:
+    if ascii >= 0x20'u8 and ascii <= 0x7f'u8:
+      result.add($char(ascii))
+    else:
+      result.add(".")
+
 
 proc readTiff(file: File): Metadata {.tpub.} =
   ## Read the given Tiff file and return its metadata.  Return
@@ -96,8 +122,9 @@ proc readTiff(file: File): Metadata {.tpub.} =
   offsetList.add((fileSize, fileSize))
   let (_, gaps) = mergeOffsets(offsetList)
   for start, finish in gaps.items():
+    let gapHex = readGap(file, start, finish)
     ranges.add(Range(name: "gap", start: start, finish: finish,
-                   known: false, message:""))
+                   known: false, message:gapHex))
   let sortedRanges = ranges.sortedByIt(it.start)
 
   # Create a ranges node from the ranges list.

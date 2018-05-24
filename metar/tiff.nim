@@ -445,7 +445,7 @@ proc mergeOffsets*(ranges: OffsetList, paddingShift: Natural = 0):
   result = (minList, gapList)
 
 
-proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset: uint32):
+proc getImage(name: string, id: string, imageData: Table[string, seq[uint32]], headerOffset: uint32):
     tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
   ## Return image node and associated ranges from the imageData or nil when no image.
 
@@ -487,7 +487,7 @@ proc getImage(name: string, imageData: Table[string, seq[uint32]], headerOffset:
   var ranges = newSeq[Range](sections.len)
   for ix, item in sections:
     let (imageStart, imageFinish) = item
-    ranges[ix] = Range(name: "image", start: imageStart, finish: imageFinish,
+    ranges[ix] = Range(name: "image" & $id, start: imageStart, finish: imageFinish,
                        known: true, message: "")
 
   result = (true, imageNode, ranges)
@@ -636,12 +636,12 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
         ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
   # Merge the IFD ranges and add them to the ranges list.
-  let (sections, _) = mergeOffsets(externals, paddingShift = 2)
+  let (sections, _) = mergeOffsets(externals, paddingShift = 0)
   for start, finish in sections.items():
     ranges.add(Range(name: nodeName & $id, start: start, finish: finish, known: true, message: ""))
 
   # If the image exists, Add its node and ranges.
-  let (image, imageNode, imageRanges) = getImage($ifdOffset, imageData, headerOffset)
+  let (image, imageNode, imageRanges) = getImage($ifdOffset, $id, imageData, headerOffset)
   if image:
     nodeList.add(("image", imageNode))
     for item in imageRanges:
