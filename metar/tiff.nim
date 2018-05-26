@@ -649,11 +649,14 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
         entryFinish = temp
         externals.add((entryStart, entryFinish))
 
-      handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
-
-
-
-
+      try:
+        handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
+      except: # NotSupportedError:
+        error = getCurrentExceptionMsg()
+        # Add the failed entry as unknown to the ranges list.
+        ranges.add(Range(name: "tag" & $entry.tag, start: entryStart,
+          finish: entryFinish, known: false, message: "error: " & error))
+        
   # Merge the IFD ranges and add them to the ranges list.
   let (sections, _) = mergeOffsets(externals, paddingShift = 0)
   for start, finish in sections.items():
