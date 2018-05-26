@@ -514,7 +514,70 @@ proc getEntryFinish(entry: IFDEntry): uint32 =
   let start = length[uint32](entry.packed, 0, entry.endian)
   return start + (uint32)bufferSize
 
-# todo: range handle errors
+
+proc handle_entry(file: File,
+    entry: IfdEntry,
+    endian: Endianness,
+    ifd: var JsonNode,
+    nodeList: var seq[tuple[name: string, node: JsonNode]],
+    nextList: var seq[tuple[name: string, offset: uint32]],
+    imageData: var Table[string, seq[uint32]],
+    ranges: var seq[Range]) =
+
+  ## Handle the given IFD entry and add to the provided lists.
+
+
+
+  case entry.tag:
+
+  of 256'u16, 257'u16: # ImageWidth, ImageLength
+    ifd[$entry.tag] = readValueListMax(file, entry, 10)
+    let widthHeight = if entry.tag == 256'u16: "width" else: "height"
+    imageData[widthHeight] = readLongs(file, entry, 1)
+
+  of 700'u16:
+    # The name xmp, exif, iptc are common between image formats.  The user can
+    # find them by name.
+
+    let name = "xmp"
+    ifd[$entry.tag] = newJString(name)
+
+    let start = (uint32)file.getFilePos()
+    let blob = readBlob(file, entry)
+    let xml = bytesToString(blob, 0, blob.len-1)
+    let xmp = xmpParser(xml)
+    nodeList.add((name, xmp))
+    ranges.add(Range(name: "xmp", start: start, finish: start+(uint32)blob.len,
+                     known: true, message: ""))
+
+  of 34665'u16: # exif
+    ifd[$entry.tag] = newJString("exif")
+
+    let tempList = readLongs(file, entry, 1)
+    if tempList.len != 1:
+      raise newException(NotSupportedError, "Tiff: more than one exif.")
+    nextList.add( ("exif", tempList[0]))
+
+  of 273'u16, 324'u16: # StripOffsets, TileOffsets
+    ifd[$entry.tag] = readValueListMax(file, entry, 100)
+    imageData["starts"] = readLongs(file, entry, 10000)
+
+  of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
+    ifd[$entry.tag] = readValueListMax(file, entry, 100)
+    imageData["counts"] = readLongs(file, entry, 10000)
+
+  of 330'u16: # SubIFDs
+    # SubIFDs is a list of offsets to low res ifds. Add them to
+    # the next list.
+    let jArray = readValueList(file, entry)
+    ifd[$entry.tag] = jArray
+    for jInt in jArray.items():
+      let ifdOffset = (uint32)jInt.getInt()
+      nextList.add( ("ifd", ifdOffset))
+
+  else:
+    ifd[$entry.tag] = readValueListMax(file, entry, 1000)
+
 
 proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
@@ -561,7 +624,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   var ifd = newJObject()
   nodeList.add((nodeName, ifd))
 
-  # Add start and next offset into the ifd node dictionary.
+  # Add IFD start and the next offset into the ifd node dictionary.
   let next = readNumber[uint32](file, endian)
   ifd["offset"] = newJInt((BiggestInt)start)
   ifd["next"] = newJInt((BiggestInt)next)
@@ -586,54 +649,10 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
         entryFinish = temp
         externals.add((entryStart, entryFinish))
 
-      case entry.tag:
-      of 256'u16, 257'u16: # ImageWidth, ImageLength
-        ifd[$entry.tag] = readValueListMax(file, entry, 10)
-        let widthHeight = if entry.tag == 256'u16: "width" else: "height"
-        imageData[widthHeight] = readLongs(file, entry, 1)
+      handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
 
-      of 700'u16:
-        # The name xmp, exif, iptc are common between image formats.  The user can
-        # find them by name.
 
-        let name = "xmp"
-        ifd[$entry.tag] = newJString(name)
 
-        let start = (uint32)file.getFilePos()
-        let blob = readBlob(file, entry)
-        let xml = bytesToString(blob, 0, blob.len-1)
-        let xmp = xmpParser(xml)
-        nodeList.add((name, xmp))
-        ranges.add(Range(name: "xmp", start: start, finish: start+(uint32)blob.len,
-                         known: true, message: ""))
-
-      of 34665'u16: # exif
-        ifd[$entry.tag] = newJString("exif")
-
-        let tempList = readLongs(file, entry, 1)
-        if tempList.len != 1:
-          raise newException(NotSupportedError, "Tiff: more than one exif.")
-        nextList.add( ("exif", tempList[0]))
-
-      of 273'u16, 324'u16: # StripOffsets, TileOffsets
-        ifd[$entry.tag] = readValueListMax(file, entry, 100)
-        imageData["starts"] = readLongs(file, entry, 10000)
-
-      of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
-        ifd[$entry.tag] = readValueListMax(file, entry, 100)
-        imageData["counts"] = readLongs(file, entry, 10000)
-
-      of 330'u16: # SubIFDs
-        # SubIFDs is a list of offsets to low res ifds. Add them to
-        # the next list.
-        let jArray = readValueList(file, entry)
-        ifd[$entry.tag] = jArray
-        for jInt in jArray.items():
-          let ifdOffset = (uint32)jInt.getInt()
-          nextList.add( ("ifd", ifdOffset))
-
-      else:
-        ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
   # Merge the IFD ranges and add them to the ranges list.
   let (sections, _) = mergeOffsets(externals, paddingShift = 0)

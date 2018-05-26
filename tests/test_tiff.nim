@@ -709,7 +709,7 @@ suite "test tiff.nim":
     check(ranges[0].finish == 7537)
     check(ranges[1].name == "test1")
     check(ranges[2].name == "test1")
-    check(ranges[3].name == "image")
+    check(ranges[3].name == "image1")
 
     check(ifdInfo.nextList.len == 3)
     check(ifdInfo.nextList[0].name == "ifd")
