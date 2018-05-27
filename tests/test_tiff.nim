@@ -698,18 +698,21 @@ suite "test tiff.nim":
 
     # for range in ranges:
     #   echo $range
-# (start: 568, finish: 7537, name: "xmp", message: "", known: true)
-# (start: 8, finish: 500, name: "test1", message: "", known: true)
-# (start: 506, finish: 16387, name: "test1", message: "", known: true)
-# (start: 37312, finish: 168640, name: "image", message: "", known: true)
 
-    check(ranges.len == 4)
+# (start: 568, finish: 7537, name: "xmp", message: "", known: true)
+# (start: 8, finish: 500, name: "test", message: "", known: true)
+# (start: 506, finish: 7537, name: "test", message: "", known: true)
+# (start: 7538, finish: 16387, name: "test", message: "", known: true)
+# (start: 37312, finish: 168640, name: "image1", message: "", known: true)
+
+    check(ranges.len == 5)
     check(ranges[0].name == "xmp")
     check(ranges[0].start == 568)
     check(ranges[0].finish == 7537)
-    check(ranges[1].name == "test1")
-    check(ranges[2].name == "test1")
-    check(ranges[3].name == "image1")
+    check(ranges[1].name == "test")
+    check(ranges[2].name == "test")
+    check(ranges[3].name == "test")
+    check(ranges[4].name == "image1")
 
     check(ifdInfo.nextList.len == 3)
     check(ifdInfo.nextList[0].name == "ifd")

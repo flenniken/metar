@@ -96,6 +96,13 @@ IFDEntry types.
 
   OffsetList = seq[tuple[start: uint32, finish: uint32]]
 
+  ImageData* = object
+    width*: int32
+    height*: int32
+    starts*: seq[uint32]
+    counts*: seq[uint32] ## \\
+    ## Image metadata for the image section.
+
 
 proc tagName*(tag: uint16): string =
   ## Return the name of the given tag or "" when not known.
@@ -253,6 +260,40 @@ proc readBlob*(file: File, entry: IFDEntry): seq[uint8] =
   result = newSeq[uint8](count)
   if file.readBytes(result, 0, count) != count:
     raise newException(UnknownFormatError, "Tiff: Unable to read all the bytes.")
+
+
+proc readOneNumber*(file: File, entry: IFDEntry): int32 =
+  ## Read one entry number and return it as an int.  It can be a long,
+  ## slong, short or sshort. If the number is a uint32, it must be
+  ## less than the maximum int32.
+
+  assert(file != nil)
+
+  let count = (int)entry.count
+  if count != 1:
+    let message = "Tiff: expected one number, got: $1." % [$count]
+    raise newException(NotSupportedError, message)
+
+  case entry.kind:
+    of Kind.longs:
+      let number = length[uint32](entry.packed, 0, entry.endian)
+      if number > (uint32)high(int32):
+        let message = "Tiff: unsigned number too big, got: $1." % [$number]
+        raise newException(NotSupportedError, message)
+      result = (int32)number
+    of Kind.slongs:
+      result = length[int32](entry.packed, 0, entry.endian)
+    of Kind.shorts:
+      result = (int32)length[uint16](entry.packed, 0, entry.endian)
+    of Kind.sshorts:
+      result = (int32)length[int16](entry.packed, 0, entry.endian)
+    of Kind.bytes:
+      result = (int32)length[uint8](entry.packed, 0, entry.endian)
+    of Kind.sbytes:
+      result = (int32)length[int8](entry.packed, 0, entry.endian)
+    else:
+      let message = "Tiff: unexpected number type: $1." % [$entry.kind]
+      raise newException(NotSupportedError, message)
 
 
 proc readLongs*(file: File, entry: IFDEntry, maximum: Natural): seq[uint32] =
@@ -445,33 +486,30 @@ proc mergeOffsets*(ranges: OffsetList, paddingShift: Natural = 0):
   result = (minList, gapList)
 
 
-proc getImage(name: string, id: string, imageData: Table[string, seq[uint32]], headerOffset: uint32):
+proc getImage(name: string, id: string, imageData: ImageData, headerOffset: uint32):
     tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
   ## Return image node and associated ranges from the imageData or nil when no image.
 
-  var width, height, starts, counts: seq[uint32]
-  try:
-    width = imageData["width"]
-    height = imageData["height"]
-    starts = imageData["starts"]
-    counts = imageData["counts"]
-  except:
-    # exif ifd doesn't have an image.
+  let im = imageData
+
+  # Make sure the imageData has all its fields filled in.
+  if im.width == -1 or im.height == -1 or im.starts.len == 0 or
+     im.counts.len == 0:
+    # ifd doesn't have an image. (exif)
     result = (false, nil, nil)
     return
 
-  if width.len != 1 or height.len != 1 or
-     starts.len < 1 or counts.len < 1 or starts.len != counts.len:
+  if im.starts.len < 1 or im.counts.len < 1 or im.starts.len != im.counts.len:
     raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
 
   var imageNode = newJObject()
   imageNode["name"] = newJString(name)
-  imageNode["width"] = newJInt((BiggestInt)width[0])
-  imageNode["height"] = newJInt((BiggestInt)height[0])
+  imageNode["width"] = newJInt((BiggestInt)im.width)
+  imageNode["height"] = newJInt((BiggestInt)im.height)
 
-  var offsets = newSeq[tuple[start: uint32, finish: uint32]](starts.len)
-  for ix in 0..<starts.len:
-    offsets[ix] = (starts[ix], starts[ix] + counts[ix])
+  var offsets = newSeq[tuple[start: uint32, finish: uint32]](im.starts.len)
+  for ix in 0..<im.starts.len:
+    offsets[ix] = (im.starts[ix], im.starts[ix] + im.counts[ix])
 
   let (sections, _) = mergeOffsets(offsets, paddingShift = 1)
 
@@ -499,7 +537,7 @@ proc handle_entry(file: File,
     ifd: var JsonNode,
     nodeList: var seq[tuple[name: string, node: JsonNode]],
     nextList: var seq[tuple[name: string, offset: uint32]],
-    imageData: var Table[string, seq[uint32]],
+    imageData: var ImageData,
     ranges: var seq[Range]) =
 
   ## Handle the given IFD entry and add to the provided lists.
@@ -508,10 +546,13 @@ proc handle_entry(file: File,
 
   case entry.tag:
 
-  of 256'u16, 257'u16: # ImageWidth, ImageLength
+  of 256'u16: # ImageWidth
     ifd[$entry.tag] = readValueListMax(file, entry, 10)
-    let widthHeight = if entry.tag == 256'u16: "width" else: "height"
-    imageData[widthHeight] = readLongs(file, entry, 1)
+    imageData.width = readOneNumber(file, entry)
+
+  of 257'u16: # ImageLength
+    ifd[$entry.tag] = readValueListMax(file, entry, 10)
+    imageData.height = readOneNumber(file, entry)
 
   of 700'u16:
     # The name xmp, exif, iptc are common between image formats.  The user can
@@ -538,11 +579,11 @@ proc handle_entry(file: File,
 
   of 273'u16, 324'u16: # StripOffsets, TileOffsets
     ifd[$entry.tag] = readValueListMax(file, entry, 100)
-    imageData["starts"] = readLongs(file, entry, 10000)
+    imageData.starts = readLongs(file, entry, 10000)
 
   of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
     ifd[$entry.tag] = readValueListMax(file, entry, 100)
-    imageData["counts"] = readLongs(file, entry, 10000)
+    imageData.counts = readLongs(file, entry, 10000)
 
   of 330'u16: # SubIFDs
     # SubIFDs is a list of offsets to low res ifds. Add them to
@@ -575,10 +616,11 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   # subifds or exif if there are any.
   var nextList = newSeq[tuple[name: string, offset: uint32]]()
 
-  # The imageData table contains information collected across multiple
+  # The imageData contains information collected across multiple
   # sections used to build the images metadata section. It gets filled
   # in with the image width, height, pixel starts and pixel counts.
-  var imageData = initTable[string, seq[uint32]]()
+  var imageData = ImageData(width: -1, height: -1, starts: newSeq[uint32](),
+                            counts : newSeq[uint32]())
 
   # Read all the IFD bytes into a memory buffer.
   let start: uint32 = headerOffset + ifdOffset
