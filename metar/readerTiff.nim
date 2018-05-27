@@ -72,7 +72,11 @@ proc readGap(file: File, start: uint32, finish: uint32): string =
   if file.readBytes(buffer, 0, readCount) != readCount:
     raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
 
-  result = $count & " gap bytes:"
+  if count == 1:
+    result = $count & " gap byte:"
+  else:
+    result = $count & " gap bytes:"
+
   for item in buffer:
     result.add(" $1" % [toHex(item)])
   if count != readCount:
@@ -113,12 +117,12 @@ proc readTiff(file: File): Metadata {.tpub.} =
         addSection(result, dups, nodeName, node)
 
   # Add in the gaps and sort the ranges.
-  var offsetList = newSeq[tuple[start: uint32, finish: uint32]](ranges.len)
+  var offsetList = newSeq[Range](ranges.len)
   for ix, item in ranges:
-    offsetList[ix] = (item.start, item.finish)
+    offsetList[ix] = newRange(item.start, item.finish)
   let fileSize = (uint32)file.getFileSize()
-  offsetList.add((0'u32, 0'u32))
-  offsetList.add((fileSize, fileSize))
+  offsetList.add(newRange(0'u32, 0'u32))
+  offsetList.add(newRange(fileSize, fileSize))
   let (_, gaps) = mergeOffsets(offsetList)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
