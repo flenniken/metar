@@ -493,28 +493,6 @@ proc getImage(name: string, id: string, imageData: Table[string, seq[uint32]], h
   result = (true, imageNode, ranges)
 
 
-proc getEntryStart(entry: IFDEntry): uint32 =
-  # Get the start offset of the entry, if the entry is outside
-  # itself. If inside, return 0.
-
-  let bufferSize: int = kindSize(entry.kind) * (int)entry.count
-  if bufferSize <= 4:
-    return 0'u32
-  result = length[uint32](entry.packed, 0, entry.endian)
-
-
-proc getEntryFinish(entry: IFDEntry): uint32 =
-  # Get the start offset of the entry, if the entry is outside
-  # itself. If inside, return 0.
-
-  let bufferSize: int = kindSize(entry.kind) * (int)entry.count
-  if bufferSize <= 4:
-    return 0'u32
-
-  let start = length[uint32](entry.packed, 0, entry.endian)
-  return start + (uint32)bufferSize
-
-
 proc handle_entry(file: File,
     entry: IfdEntry,
     endian: Endianness,
@@ -631,36 +609,41 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   if next != 0'u32:
     nextList.add( ("ifd", next))
 
-  var entryStart: uint32
-  var entryFinish: uint32
-
-  # todo: make a handleEntry method and put a try except around it to
-  # support error strings at this level.
-  # add a range for each outside item of the IFD?
-
   # Loop through the IFD entries and process each one.
   if numberEntries > 0:
     for ix in 0..<numberEntries:
       let entry = getIFDEntry(buffer, endian, headerOffset, ix*12)
-      if entryStart == 0:
-        entryStart = getEntryStart(entry)
-      let temp = getEntryFinish(entry)
-      if temp != 0:
-        entryFinish = temp
-        externals.add((entryStart, entryFinish))
+
+      let entryStart = headerOffset + ifdOffset + (uint32)(ix * 12)
+      let entrySize  = (uint32)(kindSize(entry.kind) * (int)entry.count)
+      var externalStart: uint32
+      var externalFinish: uint32
+      if entrySize > 4'u32:
+        externalStart = length[uint32](entry.packed, 0, entry.endian)
+        externalFinish = externalStart + entrySize
+        externals.add((externalStart, externalFinish))
 
       try:
         handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
-      except: # NotSupportedError:
-        error = getCurrentExceptionMsg()
+      except NotSupportedError:
         # Add the failed entry as unknown to the ranges list.
-        ranges.add(Range(name: "tag" & $entry.tag, start: entryStart,
-          finish: entryFinish, known: false, message: "error: " & error))
-        
+        let error = getCurrentExceptionMsg()
+        let name = nodeName & "-e"
+        let message = "tag-" & $entry.tag & " " & error
+        var start, finish: uint32
+        if entrySize > 4'u32:
+          start = externalStart
+          finish = externalFinish
+        else:
+          start = entryStart
+          finish = start + 12
+        ranges.add(Range(name: name, start: start,
+          finish: finish, known: false, message: message))
+
   # Merge the IFD ranges and add them to the ranges list.
   let (sections, _) = mergeOffsets(externals, paddingShift = 0)
   for start, finish in sections.items():
-    ranges.add(Range(name: nodeName & $id, start: start, finish: finish, known: true, message: ""))
+    ranges.add(Range(name: nodeName, start: start, finish: finish, known: true, message: ""))
 
   # If the image exists, Add its node and ranges.
   let (image, imageNode, imageRanges) = getImage($ifdOffset, $id, imageData, headerOffset)

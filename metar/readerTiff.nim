@@ -72,7 +72,7 @@ proc readGap(file: File, start: uint32, finish: uint32): string =
   if file.readBytes(buffer, 0, readCount) != readCount:
     raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
 
-  result = "bytes:"
+  result = $count & " gap bytes:"
   for item in buffer:
     result.add(" $1" % [toHex(item)])
   if count != readCount:
@@ -102,14 +102,13 @@ proc readTiff(file: File): Metadata {.tpub.} =
 
   # Read all the IFDs.
   var id = 1
-  let ifdInfo = readIFD(file, id, headerOffset, ifdOffset, endian, "ifd", ranges)
-  id = id + 1
+  let ifdInfo = readIFD(file, id, headerOffset, ifdOffset, endian, "ifd1", ranges)
   for name, node in ifdInfo.nodeList.items():
     addSection(result, dups, name, node)
   for ifdName, offset in ifdInfo.nextList.items():
     if offset != 0:
-      let ifdInfo = readIFD(file, id, headerOffset, offset, endian, ifdName, ranges)
       id = id + 1
+      let ifdInfo = readIFD(file, id, headerOffset, offset, endian, ifdName & $id, ranges)
       for nodeName, node in ifdInfo.nodeList.items():
         addSection(result, dups, nodeName, node)
 

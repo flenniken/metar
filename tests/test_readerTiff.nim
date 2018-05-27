@@ -57,7 +57,7 @@ suite "Test readerTiff.nim":
   # and select the images you want to be included in the tif.
 
   test "test readTiff":
-    var file = openTestFile("testfiles/image.dng")
+    var file = openTestFile("testfiles/MARBLES.TIF")
     defer: file.close()
 
     let metadata = readTiff(file)
