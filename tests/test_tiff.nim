@@ -691,47 +691,32 @@ suite "test tiff.nim":
 
     var ranges = newSeq[Range]()
     let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "test", ranges)
+
+    # echo ""
+    # for node in ifdInfo.nodeList:
+    #    echo node.name
+    # echo ""
+    # for next in ifdInfo.nextList:
+    #    echo "$1 $2" % [next.name, $next.offset]
+
     check(ifdInfo.nodeList.len == 3)
     check(ifdInfo.nodeList[0].name == "test")
     check(ifdInfo.nodeList[1].name == "xmp")
     check(ifdInfo.nodeList[2].name == "image")
 
-    # for range in ranges:
-    #   echo $range
-
-# (start: 568, finish: 7537, name: "xmp", message: "", known: true)
-# (start: 8, finish: 500, name: "test", message: "", known: true)
-# (start: 506, finish: 7537, name: "test", message: "", known: true)
-# (start: 7538, finish: 16387, name: "test", message: "", known: true)
-# (start: 37312, finish: 168640, name: "image1", message: "", known: true)
-
-    # check(ranges.len == 5)
-    # check(ranges[0].name == "xmp")
-    # check(ranges[0].start == 568)
-    # check(ranges[0].finish == 7537)
-    # check(ranges[1].name == "test")
-    # check(ranges[2].name == "test")
-    # check(ranges[3].name == "test")
-    # check(ranges[4].name == "image1")
-
     check(ifdInfo.nextList.len == 3)
     check(ifdInfo.nextList[0].name == "ifd")
+    check(ifdInfo.nextList[0].offset == 16388)
     check(ifdInfo.nextList[1].name == "ifd")
+    check(ifdInfo.nextList[1].offset == 36698)
     check(ifdInfo.nextList[2].name == "exif")
+    check(ifdInfo.nextList[2].offset == 36962)
 
-    let image = ifdInfo.nodeList[2].node
-    # echo $image
+    # for range in ranges:
+    #    echo $range
 
-    check(image["name"].getStr() == "8")
-    check(image["width"].getInt() == 256)
-    check(image["height"].getInt() == 171)
-    check($image["pixels"] == "[[37312,168640]]")
-
-    # for info in ifdInfo.nodeList:
-    #   let (name, node) = info
-    #   var metadata = newJObject()
-    #   metadata[name] = node
-    #   echo readable(metadata, "tiff")
+    check(ranges.len > 1)
+      
 
   test "test mergeOffsets empty":
     var list = newSeq[Range]()

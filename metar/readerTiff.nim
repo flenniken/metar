@@ -48,16 +48,6 @@ proc addSection(metadata: var Metadata, dups: var Table[string, int],
     metadata[sectionName] = info
   dups[sectionName] = 1
 
-proc appendRanges(ranges: JsonNode, node: JsonNode) =
-  ## Append the range node items to the bottom of the ranges list.
-
-  assert(ranges.kind == JArray)
-  assert(node.kind == JArray)
-
-  for row in node.items():
-    assert(row.kind == JArray)
-    assert(row.len == 5)
-    ranges.add(row)
 
 proc readGap(file: File, start: uint32, finish: uint32): string =
   ## Read the range of the file and return the hex representation.

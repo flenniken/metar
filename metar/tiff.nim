@@ -568,14 +568,10 @@ proc handle_entry(file: File,
 
     let name = "xmp"
     ifd[$entry.tag] = newJString(name)
-
-    let start = (uint32)file.getFilePos()
     let blob = readBlob(file, entry)
     let xml = bytesToString(blob, 0, blob.len-1)
     let xmp = xmpParser(xml)
     nodeList.add((name, xmp))
-    # ranges.add(Range(name: "xmp", start: start, finish: start+(uint32)blob.len,
-    #                  known: true, message: ""))
 
   of 34665'u16: # exif
     ifd[$entry.tag] = newJString("exif")
@@ -609,12 +605,11 @@ proc handle_entry(file: File,
 proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
               ranges: var seq[Range]): IFDInfo =
-  ## Read the Image File Directory at the given offset and return the
-  ## IFD metadata information which contains a list of named
-  ## nodes. The list contains at least an IFD node and it may contain
-  ## other nodes as well. The IFDInfo also contains a list of offsets
-  ## to other IFDs found in the entries. The rangeList is filled in
-  ## with the ranges found in the IFD.
+  ## Read the Image File Directory at the given offset and return its
+  ## metadata information as a list of named nodes. The list contains
+  ## at least an IFD node and it may contain other nodes as well. Also
+  ## return a list of offsets to other IFDs found. The rangeList is
+  ## filled in with the ranges found in the IFD.
 
   # IFD ranges
   var externals = newSeq[Range]()
@@ -642,8 +637,6 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   var buffer = newSeq[uint8](bufferSize)
   if file.readBytes(buffer, 0, bufferSize) != bufferSize:
     raise newException(IOError, "Unable to read the file.")
-
-  # todo: change finish to include the outside items.
 
   # Create a list to hold the ifd's list of nodes.
   var nodeList = newSeq[tuple[name: string, node: JsonNode]]()
