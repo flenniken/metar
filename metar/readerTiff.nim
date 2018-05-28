@@ -19,6 +19,7 @@ import tables
 import json
 import algorithm
 import hexDump
+import tiffTags
 
 proc keyNameTiff(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or

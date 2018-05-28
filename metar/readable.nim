@@ -156,7 +156,6 @@ iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
         if nestedNode.kind == JObject:
           yield("-- $1 --" % [$num])
           for key, node in nestedNode.pairs():
-            # todo: pass reader not jpeg
             var name = keyNameDefault(readerName, section, key)
             var leafString = getLeafString(node, maxLineLength)
             yield("$1 = $2" % [name, leafString])

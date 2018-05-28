@@ -7,7 +7,6 @@ import metadata
 import tiffTags
 import strutils
 import tpub
-import macros
 import json
 import xmpparser
 import algorithm
@@ -100,14 +99,6 @@ IFDEntry types.
     starts*: seq[uint32]
     counts*: seq[uint32] ## \\
     ## Image metadata for the image node.
-
-
-proc tagName*(tag: uint16): string =
-  ## Return the name of the given tag or "" when not known.
-
-  result = tagToString.getOrDefault(tag)
-  if result == nil:
-    result = ""
 
 
 proc `$`*(entry: IFDEntry): string =
@@ -207,7 +198,7 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
                     endian: endian, headerOffset: headerOffset)
 
 
-iterator items*[T](a: openArray[T], start: Natural = 0): T {.inline.} =
+iterator items[T](a: openArray[T], start: Natural = 0): T {.inline.} =
   ## Iterate over each item of the array starting at the given index.
 
   var i = start

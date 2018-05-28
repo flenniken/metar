@@ -1,4 +1,5 @@
 import tables
+import strutils
 
 #[
 http://www.digitalpreservation.gov/formats/content/tiff_tags.shtml
@@ -20,7 +21,7 @@ for (i = 0; i < one.length; i++) {
 }
 ]#
 
-const tagToString* = {
+const tagToString = {
   254'u16: "NewSubfileType",
   255'u16: "SubfileType",
   256'u16: "ImageWidth",
@@ -372,3 +373,20 @@ const tagToString* = {
   51125'u16: "DefaultUserCrop",
 }.toOrderedTable
 
+
+proc tagName*(tag: uint16): string =
+  ## Return the name of the given tag or "" when not known.
+
+  result = tagToString.getOrDefault(tag)
+  if result == nil:
+    result = ""
+
+proc tagName*(tagString: string): string =
+  ## Return the name of the given tag or "" when not known. The
+  ## tagString parameter is a number string.
+
+  try:
+    let tag = (uint16)parseInt(tagString)
+    return tagName(tag)
+  except:
+    return ""

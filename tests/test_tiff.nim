@@ -11,7 +11,8 @@ import strutils
 import json
 import readable
 import xmpparser
-import readerJpeg # todo: remove this by moving dependent methods out
+import tiffTags
+
 
 proc dumpTestFile(filename: string, startOffset: int64, length: Natural) =
   ## Hex dump a section of the given file.
@@ -120,7 +121,6 @@ suite "test tiff.nim":
     let (offset, endian) = readHeader(file, 0)
     check(offset == 0x08'u32)
     check(endian == littleEndian)
-
 
   test "test tagName":
     check(tagName((uint16)254) == "NewSubfileType")

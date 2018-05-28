@@ -22,6 +22,8 @@ import unicode
 import json
 import xmpparser
 import bytesToString
+# import tiff
+import tiffTags
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -725,10 +727,8 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
       return iptc_name(cast[uint8](parseUInt(key)))
     elif section == "ranges":
       return jpeg_section_name(cast[uint8](parseUInt(key)))
-    # todo: add back exif
-    # elif section == "exif":
-    #   from .tiff import tag_name
-    #   return tag_name(key)
+    elif section == "exif":
+      return tagName(key)
   except:
     discard
   result = ""
