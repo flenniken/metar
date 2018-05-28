@@ -79,6 +79,18 @@ proc readGap(file: File, start: uint32, finish: uint32): string =
       result.add(".")
 
 
+proc getRangeNode(name: string, start: uint32, finish: uint32,
+              known: bool, error: string): JsonNode =
+  ## Add a range to the ranges list.
+
+  result = newJArray()
+  result.add(newJString(name))
+  result.add(newJInt((BiggestInt)start))
+  result.add(newJInt((BiggestInt)finish))
+  result.add(newJBool(known))
+  result.add(newJString(error))
+
+
 proc readTiff(file: File): Metadata {.tpub.} =
   ## Read the given Tiff file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown. May return

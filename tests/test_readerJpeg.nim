@@ -10,6 +10,7 @@ import tables
 import json
 import readable
 import testFile
+import bytesToString
 
 
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =

@@ -716,7 +716,7 @@ suite "test tiff.nim":
     #    echo $range
 
     check(ranges.len > 1)
-      
+
 
   test "test mergeOffsets empty":
     var list = newSeq[Range]()
@@ -804,7 +804,7 @@ suite "test tiff.nim":
     check(gapList.len == 0)
     check(minList == expectedMin)
 
-  # padding is on even byte boundries.
+  # padding is on even byte boundaries.
 
   test "test mergeOffsets padding 1":
     # Not on padding value.
@@ -842,8 +842,3 @@ suite "test tiff.nim":
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
-
-  # test "test boundry":
-  #   for finish in 0..33:
-  #     let boundry = ((finish shr 3) + 1) shl 3
-  #     echo "finish = " & $finish & " boundry = " & $boundry
