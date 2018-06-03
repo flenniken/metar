@@ -21,7 +21,7 @@ suite "Test readerTiff.nim":
     check(keyName("tiff", "ifd", "253") == "")
     check(keyName("tiff", "ifd", "254") == "NewSubfileType(254)")
     check(keyName("tiff", "ifd", "256") == "ImageWidth(256)")
-    check(keyName("tiff", "ifd", "257") == "ImageLength(257)")
+    check(keyName("tiff", "ifd", "257") == "ImageHeight(257)")
     check(keyName("tiff", "ifd", "four") == "")
     check(keyName("tiff", "ifd", "51125") == "DefaultUserCrop(51125)")
 

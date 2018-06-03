@@ -1,5 +1,8 @@
 import unittest
 import tiffTags
+import tables
+import strutils
+import algorithm
 
 suite "Test test_tiffTags.nim":
 
@@ -22,3 +25,41 @@ suite "Test test_tiffTags.nim":
     check(tagName("0") == "0")
     check(tagName("253") == "253")
     check(tagName("abc") == "abc")
+
+  # test "sort tag table":
+  #   # create a seq of keys then sort them.
+  #   var vector = newSeq[uint16](tagToString.len)
+  #   var ix = 0
+  #   for key in tagToString.keys():
+  #     vector[ix] = key
+  #     ix += 1
+
+  #   sort(vector, system.cmp[uint16])
+
+  #   for key in vector:
+  #     let name = tagToString[key]
+  #     echo """  $1'u16: "$2",""" % [$key, name]
+
+
+  test "validate table":
+    var found = false
+    var dups = initTable[string, int]()
+    for value in tagToString.values():
+      if "_" in value:
+        echo "underscore value: "  & value
+        found = true
+      if "-" in value:
+        echo "minus value: "  & value
+        found = true
+      if value in dups:
+        echo "dup value: " & value
+        found = true
+      else:
+        dups[value] = 1
+    check(found == false)
+    var lastKey = 0'u16
+    for key in tagToString.keys():
+      if key <= lastKey:
+        check(key <= lastKey)
+        break
+      lastKey = key

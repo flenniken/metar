@@ -572,3 +572,11 @@ precision: 8, width: 150, height: 100, num components: 3
     var metadata = readJpeg(file)
     # discard metadata
     echo readable(metadata, "jpeg")
+
+
+  # test "dump file":
+  #   var file = openTestFile("testfiles/IMG_6093.JPG")
+  #   defer: file.close()
+
+  #   # 59932 = "2060 byte blob starting at 122"
+  #   hexDumpFileRange(file, 122, 122 + 2060)

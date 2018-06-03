@@ -18,6 +18,8 @@ The following links are good references for the Tiff format.
 * https://www.fileformat.info/format/tiff/egff.htm
 * https://www.loc.gov/preservation/digital/formats/fdd/fdd000022.shtml
 * https://web.archive.org/web/20150503034412/http://partners.adobe.com/public/developer/en/tiff/TIFF6.pdf
+* https://www.sno.phy.queensu.ca/~phil/exiftool/TagNames/EXIF.html
+* http://www.cipa.jp/std/documents/e/DC-008-Translation-2016-E.pdf
 
 This is the layout of a Tiff file:
 
@@ -542,7 +544,7 @@ proc handle_entry(file: File,
     ifd[$entry.tag] = readValueListMax(file, entry, 10)
     imageData.width = readOneNumber(file, entry)
 
-  of 257'u16: # ImageLength
+  of 257'u16: # ImageHeight
     ifd[$entry.tag] = readValueListMax(file, entry, 10)
     imageData.height = readOneNumber(file, entry)
 

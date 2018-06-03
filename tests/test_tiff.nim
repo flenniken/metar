@@ -14,19 +14,6 @@ import xmpparser
 import tiffTags
 
 
-proc dumpTestFile(filename: string, startOffset: int64, length: Natural) =
-  ## Hex dump a section of the given file.
-
-  var file = openTestFile(filename)
-  defer: file.close()
-  var buffer = newSeq[uint8](length)
-  file.setFilePos(startOffset)
-  if file.readBytes(buffer, 0, length) != length:
-    raise newException(IOError, "Unable to read the file.")
-  echo hexDump(buffer, (uint16)startOffset)
-  # echo hexDumpSource(buffer)
-
-
 suite "test tiff.nim":
 
   test "test readHeader big":
@@ -126,7 +113,7 @@ suite "test tiff.nim":
     check(tagName((uint16)254) == "NewSubfileType(254)")
     check(tagName((uint16)255) == "SubfileType(255)")
     check(tagName((uint16)256) == "ImageWidth(256)")
-    check(tagName((uint16)257) == "ImageLength(257)")
+    check(tagName((uint16)257) == "ImageHeight(257)")
 
     check(tagName((uint16)0) == "0")
     check(tagName((uint16)60123) == "60123")
