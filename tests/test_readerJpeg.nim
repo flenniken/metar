@@ -54,14 +54,6 @@ todo: write generic tests for each reader.
 
 suite "Test readerJpeg.nim":
 
-  test "test readJpeg":
-    var file = openTestFile("testfiles/IMG_6093.JPG")
-    defer: file.close()
-    var metadata = readJpeg(file)
-    discard metadata
-    # echo readable(metadata)
-
-
   test "keyNameJpeg iptc Title":
     check(keyNameJpeg("iptc", "5") == "Title")
 
@@ -82,6 +74,9 @@ suite "Test readerJpeg.nim":
 
   test "keyNameJpeg ranges invalid":
     check(keyNameJpeg("ranges", "xxyzj") == "")
+
+  test "keyNameJpeg exif":
+    check(keyNameJpeg("exif", "700") == "XMP(700)")
 
   when not defined(release):
 
@@ -570,3 +565,10 @@ precision: 8, width: 150, height: 100, num components: 3
       # for section in sections:
       #   echo $section
       check(sections.len == 4)
+
+  test "test readJpeg":
+    var file = openTestFile("testfiles/IMG_6093.JPG")
+    defer: file.close()
+    var metadata = readJpeg(file)
+    # discard metadata
+    echo readable(metadata, "jpeg")

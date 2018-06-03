@@ -11,7 +11,7 @@ suite "test readable.nim":
   test "test readable image.jpg":
     let filename = "testfiles/image.jpg"
     let metadata = getMetadata(filename)
-    let str = readable(metadata)
+    let str = readable(metadata, "jpeg")
     # echo str
     let expected = """
 ========== jfif ==========
@@ -149,7 +149,7 @@ height = 0
       xmp["a"] = list
       metadata["xmp"] = xmp
 
-      let str = readable(metadata)
+      let str = readable(metadata, "")
 
       let expected = """
 ========== xmp ==========

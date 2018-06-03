@@ -21,15 +21,16 @@ import algorithm
 import hexDump
 import tiffTags
 
+
 proc keyNameTiff(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
-  var tag: uint16
-  try:
-    tag = (uint16)key.parseUInt()
-  except:
-    return ""
-  result = tagName(tag)
+  let name = tagName(key)
+  if name == key:
+    result = ""
+  else:
+    result = name
+
 
 proc addSection(metadata: var Metadata, dups: var Table[string, int],
                 sectionName: string, info: JsonNode) {.tpub.}  =
@@ -48,36 +49,6 @@ proc addSection(metadata: var Metadata, dups: var Table[string, int],
   else:
     metadata[sectionName] = info
   dups[sectionName] = 1
-
-
-proc readGap(file: File, start: uint32, finish: uint32): string =
-  ## Read the range of the file and return the hex representation.
-
-  let count = (int)(finish - start)
-  var readCount: int
-  if count > 8:
-     readCount = 8
-  else:
-    readCount = count
-  var buffer = newSeq[uint8](readCount)
-  if file.readBytes(buffer, 0, readCount) != readCount:
-    raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
-
-  if count == 1:
-    result = $count & " gap byte:"
-  else:
-    result = $count & " gap bytes:"
-
-  for item in buffer:
-    result.add(" $1" % [toHex(item)])
-  if count != readCount:
-    result.add("...")
-  result.add("  ")
-  for ascii in buffer:
-    if ascii >= 0x20'u8 and ascii <= 0x7f'u8:
-      result.add($char(ascii))
-    else:
-      result.add(".")
 
 
 proc getRangeNode(name: string, start: uint32, finish: uint32,

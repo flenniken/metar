@@ -123,13 +123,13 @@ suite "test tiff.nim":
     check(endian == littleEndian)
 
   test "test tagName":
-    check(tagName((uint16)254) == "NewSubfileType")
-    check(tagName((uint16)255) == "SubfileType")
-    check(tagName((uint16)256) == "ImageWidth")
-    check(tagName((uint16)257) == "ImageLength")
+    check(tagName((uint16)254) == "NewSubfileType(254)")
+    check(tagName((uint16)255) == "SubfileType(255)")
+    check(tagName((uint16)256) == "ImageWidth(256)")
+    check(tagName((uint16)257) == "ImageLength(257)")
 
-    check(tagName((uint16)0) == "")
-    check(tagName((uint16)60123) == "")
+    check(tagName((uint16)0) == "0")
+    check(tagName((uint16)60123) == "60123")
 
   # test "test dump tiff":
   #   dumpTestFile("testfiles/image.tif", 0, 20)
@@ -152,7 +152,7 @@ suite "test tiff.nim":
       raise newException(IOError, "Unable to read the file.")
 
     let entry = getIFDEntry(buffer, endian, 0)
-    let expected = "NewSubfileType(254, 00FEh), 1 longs, packed: 00 00 00 00"
+    let expected = "NewSubfileType(254), 1 longs, packed: 00 00 00 00"
     check($entry == expected)
 
     # Loop through the 14 IDF entries.
@@ -167,7 +167,7 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let entry = getIFDEntry(buffer, bigEndian, 0)
-    let expected = "NewSubfileType(254, 00FEh), 5 longs, packed: 00 01 02 03"
+    let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
     check($entry == expected)
     # echo $entry
 
@@ -177,7 +177,7 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let entry = getIFDEntry(buffer, bigEndian, 0, 2)
-    let expected = "NewSubfileType(254, 00FEh), 5 longs, packed: 00 01 02 03"
+    let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
     check($entry == expected)
     # echo $entry
 

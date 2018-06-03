@@ -50,7 +50,7 @@ proc readMetadata*(filename: string): string
   ## readable string. Return an empty string when the file is not
   ## recognized.
   try:
-    result = getMetadata(filename).readable()
+    result = getMetadata(filename).readable("")
   except UnknownFormatError:
     result = ""
 

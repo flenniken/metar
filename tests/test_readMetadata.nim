@@ -12,19 +12,26 @@ suite "Test readMetadata.nim":
 
   # proc keyName*(readerName: string, section: string, key: string): string =
   test "keyName invalid name":
-    require(keyName("missing", "xmp", "key") == "")
+    check(keyName("missing", "xmp", "key") == "")
 
   test "keyName invalid section":
-    require(keyName("jpeg", "missing", "key") == "")
-    require(keyName("dng", "missing", "key") == "")
-    require(keyName("tiff", "missing", "key") == "")
+    check(keyName("jpeg", "missing", "key") == "")
+    check(keyName("dng", "missing", "key") == "")
+    check(keyName("tiff", "missing", "key") == "")
 
   test "keyName invalid key":
-    require(keyName("jpeg", "xmp", "missing") == "")
-    require(keyName("dng", "xmp", "missing") == "")
-    require(keyName("tiff", "xmp", "missing") == "")
+    check(keyName("jpeg", "xmp", "missing") == "")
+    check(keyName("dng", "xmp", "missing") == "")
+    check(keyName("tiff", "xmp", "missing") == "")
 
-  # todo: test keyNames basic working case
+  test "keyName xmp":
+    check(keyName("jpeg", "xmp", "crs:Temperature") == "")
+
+  test "keyName tiff 258":
+    check(keyName("tiff", "ifd1", "258") == "BitsPerSample(258)")
+
+  test "keyName jpeg":
+    check(keyName("jpeg", "exif", "258") == "BitsPerSample(258)")
 
   test "test getMetaInfo":
     var problems = newSeq[tuple[reader: string, message: string]]()
@@ -72,7 +79,7 @@ suite "Test readMetadata.nim":
 
   test "test getMetadata":
     let filename = "testfiles/image.jpg"
-    let str = getMetadata(filename).readable()
+    let str = getMetadata(filename).readable("jpeg")
     let expected = """
 ========== jfif ==========
 major = 1

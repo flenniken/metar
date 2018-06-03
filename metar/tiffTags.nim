@@ -375,18 +375,22 @@ const tagToString = {
 
 
 proc tagName*(tag: uint16): string =
-  ## Return the name of the given tag or "" when not known.
+  ## Return the human readable name of the given tag.
 
-  result = tagToString.getOrDefault(tag)
-  if result == nil:
-    result = ""
+  let name = tagToString.getOrDefault(tag)
+  if name != nil:
+    result = "$1($2)" % [name, $tag]
+  else:
+    result = $tag
+
 
 proc tagName*(tagString: string): string =
-  ## Return the name of the given tag or "" when not known. The
-  ## tagString parameter is a number string.
+  ## Return the human readable name of the given tag. The tagString
+  ## parameter is an unsigned number string.
 
+  var tag: uint16
   try:
-    let tag = (uint16)parseInt(tagString)
-    return tagName(tag)
+    tag = (uint16)parseUint(tagString)
   except:
-    return ""
+    return tagString
+  result = tagName(tag)

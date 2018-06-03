@@ -22,8 +22,9 @@ import unicode
 import json
 import xmpparser
 import bytesToString
-# import tiff
+import tiff
 import tiffTags
+import algorithm
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -388,13 +389,13 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
     "xmp": "http://ns.adobe.com/xap/1.0/",
   }.toOrderedTable
 
-  result = ("", nil)
   for name, value in mtypes:
     if compareBytes(buffer, 4, value):
       let start = 4 + value.len + 1
       let length = buffer.len - start
       let data = buffer[start..<start+length]
-      result = (name, data)
+      return (name, data)
+  result = ("", nil)
 
 
 proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
@@ -803,7 +804,6 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # # One-byte color transform code
   # result["transform"] = newJInt((int)buffer[16])
 
-
 proc handle_section(file: File, section: Section, extra: var Table[string, int]):
     tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
   ## Handle the jpeg section of the file. Return the sectionName,
@@ -850,34 +850,10 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int])
       info = xmpParser(xml)
 
     elif sectionKind.name == "exif":
+      # Parse the exif.
       sectionName = "exif"
-      known = false
-
-      # todo: support exif
-#[
-      # Parse the exif. It is stored as a tiff file.
-      from .tiff import read_header, read_ifd, print_ifd
-      header_offset = start+4+len("exif\x00")+1
-      ifd_offset, endian = read_header(file, header_offset)
-      if ifd_offset is not nil:
-        # print("ifd_offset = {}".format(ifd_offset))
-        # print("endian = {}".format(endian))
-        ifd = read_ifd(file, header_offset, endian, ifd_offset)
-        # print_ifd("exif", ifd)
-        process_exif(ifd)
-
-        # Move the range_ keys to the ranges dictionary.
-        delete_keys = []
-        for key, value in ifd.items():
-          if isinstance(key, str) and key.startswith("range_"):
-            ranges[key] = value
-            delete_keys.add(key)
-        for key in delete_keys:
-          del ifd[key]
-
-        result["exif"] = ifd
-        name = "APP1({})(range_exif)".format(marker)
-]#
+      let headerOffset = (uint32)start + 10
+      info = readExif(file, headerOffset, (uint32)finish)
 
   of 0xc0:
     # SOF0(192) 0xc0
@@ -1005,4 +981,5 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   images.add(image)
   result["images"] = images
 
-const reader* = (read: readJpeg, keyName: keyNameJpeg)
+const reader* = (read: readJpeg, keyName: keyNameJpeg
+)

@@ -104,8 +104,8 @@ IFDEntry types.
 proc `$`*(entry: IFDEntry): string =
   ## Return a string representation of the IFDEntry.
 
-  "$1($2, $3h), $4 $5, packed: $6 $7 $8 $9"  %
-    [tagName(entry.tag), $entry.tag, toHex(entry.tag),
+  "$1, $2 $3, packed: $4 $5 $6 $7"  %
+    [tagName(entry.tag),
     $entry.count, $entry.kind,
     toHex(entry.packed[0]), toHex(entry.packed[1]),
     toHex(entry.packed[2]), toHex(entry.packed[3])]
@@ -422,7 +422,11 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
   else:
     # example string: 135 longs starting at 23456.
     let start = length[uint32](entry.packed, 0, entry.endian)
-    let str = "$1 $2 starting at $3" % [$entry.count, $entry.kind, $start]
+    var str: string
+    if entry.kind == Kind.blob:
+      str = "$1 byte blob starting at $2" % [$entry.count, $start]
+    else:
+      str = "$1 $2 starting at $3" % [$entry.count, $entry.kind, $start]
     result = newJString(str)
 
 
@@ -581,13 +585,52 @@ proc handle_entry(file: File,
     ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
 
+proc readGap*(file: File, start: uint32, finish: uint32): string =
+  ## Read the range of the file and return a short hex representation.
+
+  let count = (int)(finish - start)
+  var readCount: int
+  if count > 8:
+     readCount = 8
+  else:
+    readCount = count
+  var buffer = newSeq[uint8](readCount)
+  if file.readBytes(buffer, 0, readCount) != readCount:
+    raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
+
+  if count == 1:
+    result = $count & " gap byte:"
+  else:
+    result = $count & " gap bytes:"
+
+  for item in buffer:
+    result.add(" $1" % [toHex(item)])
+  if count != readCount:
+    result.add("...")
+  result.add("  ")
+  for ascii in buffer:
+    if ascii >= 0x20'u8 and ascii <= 0x7f'u8:
+      result.add($char(ascii))
+    else:
+      result.add(".")
+
+
+# proc cmpRanges(one: Range, two: Range): int =
+#   if one.start < two.start:
+#     result = -1
+#   elif one.start > two.start:
+#     result = 1
+#   else:
+#     result = 0
+
+
 proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
               ranges: var seq[Range]): IFDInfo =
   ## Read the Image File Directory at the given offset and return its
   ## metadata information as a list of named nodes. The list contains
   ## at least an IFD node and it may contain other nodes as well. Also
-  ## return a list of offsets to other IFDs found. The rangeList is
+  ## return a list of offsets to other IFDs found. The ranges list is
   ## filled in with the ranges found in the IFD.
 
   # Create a list of IFD offsets found. The first item in the list is
@@ -638,10 +681,10 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
       var externalStart: uint32
       var externalFinish: uint32
       if entrySize > 4'u32:
-        let tagName = "$1($2)"  % [tagName(entry.tag), $entry.tag]
         externalStart = length[uint32](entry.packed, 0, entry.endian)
         externalFinish = externalStart + entrySize
-        ranges.add(newRange(externalStart, externalFinish, name=nodeName, message = tagName))
+        ranges.add(newRange(externalStart, externalFinish, name=nodeName,
+                            message=tagName(entry.tag)))
 
       try:
         handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
@@ -667,4 +710,33 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
     for item in imageRanges:
       ranges.add(item)
 
+  # sort(ranges, cmpRanges)
+
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
+
+
+proc readExif*(file: File, headerOffset: uint32, finish: uint32): Metadata =
+  # Parse the exif bytes and return its metadata.
+
+  # let buffer = readSection(file, start, finish)
+  # echo hexDump(buffer)
+  # raise newException(NotSupportedError, "exif: unknown format")
+
+  let (ifdOffset, endian) = readHeader(file, headerOffset)
+  var ranges = newSeq[Range]()
+  let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ranges)
+  if ifdInfo.nodeList.len != 1:
+    raise newException(NotSupportedError, "exif: unknown format")
+  result = ifdInfo.nodeList[0].node
+
+  ranges.add(newRange(headerOffset, headerOffset))
+  ranges.add(newRange((uint32)finish, (uint32)finish))
+  let (_, gaps) = mergeOffsets(ranges)
+  for start, finish in gaps.items():
+    let gapHex = readGap(file, start, finish)
+    ranges.add(Range(name: "gap", start: start, finish: finish,
+                   known: false, message:gapHex))
+  let sortedRanges = ranges.sortedByIt(it.start)
+  # for item in sortedRanges.items():
+  #   # echo "($1, $2)" % [item.start, finish]
+  #   echo $item

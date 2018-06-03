@@ -121,14 +121,13 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
 
 proc keyNameDefault(readerName: string, section: string,
                     key: string): string {.tpub.} =
-  # If the key name exists, return both the key name and key, else
-  # return key.
+  # If the key name doesn't exist, return the key parameter, else return the key name.
 
   var name = keyNameImp(readerName, section, key)
   if name.len == 0:
     result = key
   else:
-    result = "$1($2)" % [name, key]
+    result = name
 
 
 iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
@@ -172,7 +171,7 @@ iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
       raise newException(ValueError, "Expected second level object.")
 
 
-proc readable*(metadata: Metadata, readerName: string = ""): string =
+proc readable*(metadata: Metadata, readerName: string): string =
   ## Return the metadata as a human readable string.
 
   var name = readerName
