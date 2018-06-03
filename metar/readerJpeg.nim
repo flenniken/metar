@@ -851,9 +851,10 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int])
 
     elif sectionKind.name == "exif":
       # Parse the exif.
+      var ifdRanges = newSeq[Range]()
       sectionName = "exif"
       let headerOffset = (uint32)start + 10
-      info = readExif(file, headerOffset, (uint32)finish)
+      info = readExif(file, headerOffset, (uint32)finish, ifdRanges)
 
   of 0xc0:
     # SOF0(192) 0xc0

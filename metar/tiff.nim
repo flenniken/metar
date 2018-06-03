@@ -717,28 +717,28 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
 
 
-proc readExif*(file: File, headerOffset: uint32, finish: uint32): Metadata =
-  # Parse the exif bytes and return its metadata.
+proc readExif*(file: File, headerOffset: uint32, finish: uint32,
+               ranges: var seq[Range]): Metadata =
+  ## Parse the exif bytes and return its metadata.  The ranges list is
+  ## filled in with the ranges found in the IFD.
 
   # let buffer = readSection(file, start, finish)
   # echo hexDump(buffer)
   # raise newException(NotSupportedError, "exif: unknown format")
 
+  var ifdRanges = newSeq[Range]()
   let (ifdOffset, endian) = readHeader(file, headerOffset)
-  var ranges = newSeq[Range]()
-  let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ranges)
+  let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ifdRanges)
   if ifdInfo.nodeList.len != 1:
-    raise newException(NotSupportedError, "exif: unknown format")
+    raise newException(NotSupportedError, "exif: more than one IFD.")
   result = ifdInfo.nodeList[0].node
 
-  ranges.add(newRange(headerOffset, headerOffset))
-  ranges.add(newRange((uint32)finish, (uint32)finish))
-  let (_, gaps) = mergeOffsets(ranges)
+  ifdRanges.add(newRange(headerOffset, headerOffset))
+  ifdRanges.add(newRange((uint32)finish, (uint32)finish))
+  let (_, gaps) = mergeOffsets(ifdRanges)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
-    ranges.add(Range(name: "gap", start: start, finish: finish,
+    ifdRanges.add(Range(name: "gap", start: start, finish: finish,
                    known: false, message:gapHex))
-  let sortedRanges = ranges.sortedByIt(it.start)
-  # for item in sortedRanges.items():
-  #   # echo "($1, $2)" % [item.start, finish]
-  #   echo $item
+  for range in ifdRanges:
+    ranges.add(range)
