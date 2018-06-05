@@ -11,6 +11,7 @@ import json
 import readable
 import testFile
 import bytesToString
+import ranges
 
 
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =
@@ -96,14 +97,15 @@ suite "Test readerJpeg.nim":
       #   echo "$1 $2: $3" % [$ix, section_name, str]
 
       var extra = initTable[string, int]()
-      var (section_name, info, known) = handle_section(file, sections[1], extra)
+      var ranges = newSeq[Range]()
+      var (section_name, info, known) = handle_section(file, sections[1], extra, ranges)
       let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
       check(section_name == "jfif")
       check($info == expected1)
       check(known == true)
       check(extra.len == 0)
 
-      (section_name, info, known) = handle_section(file, sections[4], extra)
+      (section_name, info, known) = handle_section(file, sections[4], extra, ranges)
       let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
       check(section_name == "SOF0")
       check($info == expected4)

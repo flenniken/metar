@@ -25,6 +25,7 @@ import bytesToString
 import tiff
 import tiffTags
 import algorithm
+import ranges
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -804,7 +805,8 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # # One-byte color transform code
   # result["transform"] = newJInt((int)buffer[16])
 
-proc handle_section(file: File, section: Section, extra: var Table[string, int]):
+proc handle_section(file: File, section: Section, extra: var Table[string, int],
+                    ranges: var seq[Range]):
     tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
   ## Handle the jpeg section of the file. Return the sectionName,
   ## metadata and whether the section is known by this code. The
@@ -851,10 +853,11 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int])
 
     elif sectionKind.name == "exif":
       # Parse the exif.
-      var ifdRanges = newSeq[Range]()
       sectionName = "exif"
       let headerOffset = (uint32)start + 10
-      info = readExif(file, headerOffset, (uint32)finish, ifdRanges)
+      ranges.add(Range(name: sectionName, start: (uint32)start, finish: headerOffset,
+                     known: true, message: "id"))
+      info = readExif(file, headerOffset, (uint32)finish, ranges)
 
   of 0xc0:
     # SOF0(192) 0xc0
@@ -908,54 +911,39 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   ## NotSupportedError exception.
 
   result = newJObject()
-  var ranges = newJArray()
+  var ranges = newSeq[Range]()
   var dups = initTable[string, int]()
   let sections = readSections(file)
+
   # The extra table contains information collected across multiple jpeg
   # sections used to build the images metadata section. It gets filled
   # in with the image width, height, start and end pixel offsets.
   var extra = initTable[string, int]()
  
   for section in sections:
-    var known:bool
     var sectionName = ""
-    var info:Metadata
+    var info: Metadata = nil
+    var known:bool = false
     var error = ""
 
     try:
-      (sectionName, info, known) = handle_section(file, section, extra)
+      (sectionName, info, known) = handle_section(file, section, extra, ranges)
+      assert(sectionName != "")
+      if info != nil:
+        addSection(result, dups, sectionName, info)
     except NotSupportedError:
       sectionName = jpeg_section_name(section.marker)
+      assert(sectionName != "")
       known = false
       error = getCurrentExceptionMsg()
 
-    if info != nil:
-      if sectionName in dups:
-        # More than one, store in an array.
-        var eInfo = result[sectionName]
-        if eInfo.kind != JArray:
-          var jarray = newJArray()
-          jarray.add(eInfo)
-          eInfo = jarray
-        eInfo.add(info)
-        result[sectionName] = eInfo
-      else:
-        result[sectionName] = info
-      dups[sectionName] = 1
+    # todo: remove this test.
+    if sectionName != "exif":
+      ranges.add(Range(name: sectionName, start: (uint32)section.start,
+          finish: (uint32)section.finish, known: known, message: error))
 
-    # Add the section to the ranges.
-    # name, marker, start, finish, known, error
-    var rItem = newJArray()
-    rItem.add(newJString(sectionName))
-    # rItem.add(newJInt((int)section.marker))
-    rItem.add(newJInt(section.start))
-    rItem.add(newJInt(section.finish))
-    rItem.add(newJBool(known))
-    rItem.add(newJString(error))
-    ranges.add(rItem)
-
-  result["ranges"] = ranges
-
+  # todo: use ImageData instead
+    
   # Images metadata section. The images section is a list of
   # objects. Each object has a width, height and pixels element. The
   # pixels element is a list of ranges. The first image is the main
@@ -982,5 +970,9 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   images.add(image)
   result["images"] = images
 
-const reader* = (read: readJpeg, keyName: keyNameJpeg
-)
+  let fileSize = (uint32)file.getFileSize()
+  let rangesNode = createRangesNode(file, 0, fileSize, ranges)
+  addSection(result, dups, "ranges", rangesNode)
+
+
+const reader* = (read: readJpeg, keyName: keyNameJpeg)

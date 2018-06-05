@@ -11,6 +11,7 @@ import json
 import xmpparser
 import algorithm
 import bytesToString
+import ranges
 
 #[
 The following links are good references for the Tiff format.
@@ -81,20 +82,6 @@ IFDEntry types.
     ## following that are subifds or exif if there are any.
 
 
-  Range* = object
-    start*: uint32
-    finish*: uint32
-    name*: string
-    message*: string
-    known*: bool  ## \\
-    ## A range describes a section of the file.  The start is the
-    ## offset of the beginning of the section and finish is one past
-    ## the end. The known field is true when the section format is
-    ## known and handled by the current code, false when the format of
-    ## the section is unknown.
-
-  OffsetList = seq[tuple[start: uint32, finish: uint32]]
-
   ImageData* = object
     width*: int32
     height*: int32
@@ -129,11 +116,6 @@ proc kindSize*(kind: Kind): Natural {.tpub.} =
     of srationals: result = 8
     of floats: result = 4
     of doubles: result = 8
-
-
-proc newRange*(start: uint32, finish: uint32, name: string = "",
-               known: bool = true, message: string = ""): Range =
-  result = Range(start: start, finish: finish, name: name, known: known, message: message)
 
 
 proc readHeader*(file: File, headerOffset: uint32):
@@ -432,55 +414,6 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
     result = newJString(str)
 
 
-proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
-    tuple[minList: OffsetList, gapList: OffsetList] =
-  ## Given a list of ranges, merge them into the smallest set of
-  ## contiguous ranges. Return the new list of ranges. Also return a
-  ## list of ranges that cover the gaps.  You can add the ranges (0,0)
-  ## or (totalSize, totalSize) to the range list to cover the
-  ## beginning and end of the file. The paddingShift number determines
-  ## the end of the padding. 0 is no padding, 1 align on even
-  ## boundaries, 2 align on 4 bit boundaries, etc.
-
-  var minList = newSeq[tuple[start: uint32, finish: uint32]]()
-  var gapList = newSeq[tuple[start: uint32, finish: uint32]]()
-
-  if ranges.len == 0:
-    result = (minList, gapList)
-    return
-
-  # Sort the ranges by the start offset.
-  let sortedRanges = ranges.sortedByIt(it.start)
-
-  var start = ranges[0].start
-  var finish = ranges[0].finish
-
-  for ix in 1..sortedRanges.len-1:
-    let range = sortedRanges[ix]
-    let r_start = range.start
-    let r_finish = range.finish
-
-    var boundary: uint32
-    if paddingShift > 0:
-      boundary = ((finish shr paddingShift) + 1) shl paddingShift
-
-    if finish >= r_start or (paddingShift > 0 and boundary == r_start):
-      # Contiguous, ovelapping range or padding, merge.
-      if r_finish > finish:
-        finish = r_finish
-    else:
-      # Found a gap
-      if start < finish:
-        minList.add((start, finish))
-      gapList.add((finish, r_start))
-      start = r_start
-      finish = r_finish
-
-  if start < finish:
-    minList.add((start, finish))
-  result = (minList, gapList)
-
-
 proc getImage(ifdOffset: uint32, id: string, imageData: ImageData, headerOffset: uint32):
     tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
   ## Return image node and associated ranges from the imageData or nil when no image.
@@ -587,45 +520,6 @@ proc handle_entry(file: File,
     ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
 
-proc readGap*(file: File, start: uint32, finish: uint32): string =
-  ## Read the range of the file and return a short hex representation.
-
-  let count = (int)(finish - start)
-  var readCount: int
-  if count > 8:
-     readCount = 8
-  else:
-    readCount = count
-  var buffer = newSeq[uint8](readCount)
-  if file.readBytes(buffer, 0, readCount) != readCount:
-    raise newException(UnknownFormatError, "Tiff: Unable to read all the gap bytes.")
-
-  if count == 1:
-    result = $count & " gap byte:"
-  else:
-    result = $count & " gap bytes:"
-
-  for item in buffer:
-    result.add(" $1" % [toHex(item)])
-  if count != readCount:
-    result.add("...")
-  result.add("  ")
-  for ascii in buffer:
-    if ascii >= 0x20'u8 and ascii <= 0x7f'u8:
-      result.add($char(ascii))
-    else:
-      result.add(".")
-
-
-# proc cmpRanges(one: Range, two: Range): int =
-#   if one.start < two.start:
-#     result = -1
-#   elif one.start > two.start:
-#     result = 1
-#   else:
-#     result = 0
-
-
 proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
               ranges: var seq[Range]): IFDInfo =
@@ -728,17 +622,22 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
 
   var ifdRanges = newSeq[Range]()
   let (ifdOffset, endian) = readHeader(file, headerOffset)
+  ranges.add(Range(name: "exif", start: headerOffset, finish: headerOffset+8'u32,
+                   known: true, message:"header"))
+
   let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ifdRanges)
   if ifdInfo.nodeList.len != 1:
     raise newException(NotSupportedError, "exif: more than one IFD.")
   result = ifdInfo.nodeList[0].node
 
-  ifdRanges.add(newRange(headerOffset, headerOffset))
-  ifdRanges.add(newRange((uint32)finish, (uint32)finish))
+  # Add in the gaps.
+  ifdRanges.add(newRange(headerOffset, headerOffset, name = "border"))
+  ifdRanges.add(newRange((uint32)finish, (uint32)finish, name = "border"))
   let (_, gaps) = mergeOffsets(ifdRanges)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
     ifdRanges.add(Range(name: "gap", start: start, finish: finish,
                    known: false, message:gapHex))
   for range in ifdRanges:
-    ranges.add(range)
+    if range.name != "border":
+      ranges.add(range)
