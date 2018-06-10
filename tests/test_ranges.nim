@@ -167,6 +167,12 @@ suite "Test ranges":
     let rangesNode = createRangesNode(nil, 0, 1000, ranges)
     check($rangesNode == """[["range1",0,500,true,""],["range2",500,1000,true,""]]""")
 
+  test "createRangesNode u32":
+    var ranges = newSeq[Range]()
+    ranges.add(newRange(0, 500, name="range1"))
+    ranges.add(newRange(500, 1000, name="range2"))
+    let rangesNode = createRangesNode(nil, 0'u32, 1000'u32, ranges)
+    check($rangesNode == """[["range1",0,500,true,""],["range2",500,1000,true,""]]""")
 
   test "createRangesNode gap":
     var file = openTestFile("testfiles/image.tif")

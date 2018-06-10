@@ -21,20 +21,7 @@ type
     ## the section is unknown.
 
 
-proc newRange*(start: int64, finish: int64, name: string = "",
-               known: bool = true, message: string = ""): Range =
-  # Create a new range.
-  result = Range(start: start, finish: finish, name: name, known: known, message: message)
-
-
-proc newRange*(start: uint32, finish: uint32, name: string = "",
-               known: bool = true, message: string = ""): Range =
-  # Create a new range.
-  result = Range(start: (int64)start, finish: (int64)finish,
-                 name: name, known: known, message: message)
-
-
-proc newRange*(start: int, finish: int, name: string = "",
+proc newRange*(start: int | uint32 | int64, finish: int | uint32 | int64, name: string = "",
                known: bool = true, message: string = ""): Range =
   # Create a new range.
   result = Range(start: (int64)start, finish: (int64)finish,
@@ -147,16 +134,20 @@ proc createRangeNode(item: Range): JsonNode {.tpub.} =
   result.add(newJString(item.message))
 
 
-proc createRangesNode*(file: File, start: int64, finish: int64,
+proc createRangesNode*(file: File, start: int | uint32 | int64, finish: int | uint32 | int64,
                        ranges: var seq[Range]): JsonNode =
   ## Create ranges node from a list of ranges. Add in the gaps and
   ## sort the ranges.
 
+
   var offsetList = newSeq[Range](ranges.len)
   for ix, item in ranges:
     offsetList[ix] = newRange(item.start, item.finish)
-  offsetList.add(newRange(start, start))
-  offsetList.add(newRange(finish, finish))
+  let s64 = (int64)start
+  let f64 = (int64)finish
+  offsetList.add(newRange(s64, s64))
+  offsetList.add(newRange(f64, f64))
+
   let (_, gaps) = mergeOffsets(offsetList)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
@@ -168,16 +159,6 @@ proc createRangesNode*(file: File, start: int64, finish: int64,
   result = newJArray()
   for rangeItem in sortedRanges:
     result.add(createRangeNode(rangeItem))
-
-
-proc createRangesNode*(file: File, start: uint32, finish: uint32,
-                       ranges: var seq[Range]): JsonNode =
-    result = createRangesNode(file, (int64)start, (int64)finish, ranges)
-
-
-proc createRangesNode*(file: File, start: int, finish: int,
-                       ranges: var seq[Range]): JsonNode =
-    result = createRangesNode(file, (int64)start, (int64)finish, ranges)
 
 
 proc addSection*(metadata: var Metadata, dups: var Table[string, int],
