@@ -4,14 +4,15 @@ import os
 import strutils
 import unittest
 import metadata
-import readerJpeg
-import hexDump
 import tables
 import json
-import readable
+import hexDump
 import testFile
 import bytesToString
 import ranges
+import readerJpeg
+import imageData
+# import readable
 
 
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =
@@ -76,8 +77,9 @@ suite "Test readerJpeg.nim":
   test "keyNameJpeg ranges invalid":
     check(keyNameJpeg("ranges", "xxyzj") == "")
 
-  test "keyNameJpeg exif":
-    check(keyNameJpeg("exif", "700") == "XMP(700)")
+  when defined(useTiff):
+    test "keyNameJpeg exif":
+      check(keyNameJpeg("exif", "700") == "XMP(700)")
 
   when not defined(release):
 
@@ -96,23 +98,23 @@ suite "Test readerJpeg.nim":
       #     str = $info
       #   echo "$1 $2: $3" % [$ix, section_name, str]
 
-      var extra = initTable[string, int]()
+      var imageData = newImageData()
       var ranges = newSeq[Range]()
-      var (section_name, info, known) = handle_section(file, sections[1], extra, ranges)
+      let sectionInfo = handle_section(file, sections[1], imageData, ranges)
       let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
-      check(section_name == "jfif")
-      check($info == expected1)
-      check(known == true)
-      check(extra.len == 0)
+      check(sectionInfo.name == "jfif")
+      check($sectionInfo.node == expected1)
+      check(sectionInfo.known == true)
 
-      (section_name, info, known) = handle_section(file, sections[4], extra, ranges)
+      let sectionInfo2 = handle_section(file, sections[4], imageData, ranges)
       let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
-      check(section_name == "SOF0")
-      check($info == expected4)
-      check(known == true)
-      check(extra.len == 2)
-      check(extra["height"] == 100)
-      check(extra["width"] == 150)
+      check(sectionInfo2.name == "SOF0")
+      check($sectionInfo2.node == expected4)
+      check(sectionInfo2.known == true)
+      # echo $imageData
+      check(imageData.pixelRanges.len == 0)
+      check(imageData.height == 100)
+      check(imageData.width == 150)
 
 
     test "iptc_name key not found":
@@ -568,13 +570,13 @@ precision: 8, width: 150, height: 100, num components: 3
       #   echo $section
       check(sections.len == 4)
 
-  test "test readJpeg":
-    var file = openTestFile("testfiles/IMG_6093.JPG")
-    defer: file.close()
-    var metadata = readJpeg(file)
-    # discard metadata
-    echo readable(metadata, "jpeg")
-
+  when defined(useTiff):
+    test "test readJpeg":
+      var file = openTestFile("testfiles/IMG_6093.JPG")
+      defer: file.close()
+      var metadata = readJpeg(file)
+      # discard metadata
+      echo readable(metadata, "jpeg")
 
   # test "dump file":
   #   var file = openTestFile("testfiles/IMG_6093.JPG")

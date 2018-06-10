@@ -3,15 +3,14 @@ import json
 import algorithm
 import strutils
 import tables
-
-# todo: use int64 for start and finish.
+import tpub
 
 type
-  OffsetList* = seq[tuple[start: uint32, finish: uint32]]
+  OffsetList* = seq[tuple[start: int64, finish: int64]]
 
   Range* = object
-    start*: uint32
-    finish*: uint32
+    start*: int64
+    finish*: int64
     name*: string
     message*: string
     known*: bool  ## \\
@@ -22,9 +21,24 @@ type
     ## the section is unknown.
 
 
+proc newRange*(start: int64, finish: int64, name: string = "",
+               known: bool = true, message: string = ""): Range =
+  # Create a new range.
+  result = Range(start: start, finish: finish, name: name, known: known, message: message)
+
+
 proc newRange*(start: uint32, finish: uint32, name: string = "",
                known: bool = true, message: string = ""): Range =
-  result = Range(start: start, finish: finish, name: name, known: known, message: message)
+  # Create a new range.
+  result = Range(start: (int64)start, finish: (int64)finish,
+                 name: name, known: known, message: message)
+
+
+proc newRange*(start: int, finish: int, name: string = "",
+               known: bool = true, message: string = ""): Range =
+  # Create a new range.
+  result = Range(start: (int64)start, finish: (int64)finish,
+                 name: name, known: known, message: message)
 
 
 proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
@@ -37,8 +51,8 @@ proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
   ## the end of the padding. 0 is no padding, 1 align on even
   ## boundaries, 2 align on 4 bit boundaries, etc.
 
-  var minList = newSeq[tuple[start: uint32, finish: uint32]]()
-  var gapList = newSeq[tuple[start: uint32, finish: uint32]]()
+  var minList = newSeq[tuple[start: int64, finish: int64]]()
+  var gapList = newSeq[tuple[start: int64, finish: int64]]()
 
   if ranges.len == 0:
     result = (minList, gapList)
@@ -55,7 +69,7 @@ proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
     let r_start = range.start
     let r_finish = range.finish
 
-    var boundary: uint32
+    var boundary: int64
     if paddingShift > 0:
       boundary = ((finish shr paddingShift) + 1) shl paddingShift
 
@@ -76,21 +90,25 @@ proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
   result = (minList, gapList)
 
 
-proc readGap*(file: File, start: uint32, finish: uint32): string =
+proc readGap*(file: File, start: int64, finish: int64): string =
   ## Read the range of the file and return a short hex representation.
 
-  let count = (int)(finish - start)
+  let count = finish - start
+  if count <= 0:
+    raise newException(NotSupportedError, "Invalid gap byte range.")
+
   var readCount: int
   if count > 8:
      readCount = 8
   else:
-    readCount = count
+    readCount = (int)count
   var buffer = newSeq[uint8](readCount)
   file.setFilePos((int64)start)
   if file.readBytes(buffer, 0, readCount) != readCount:
     raise newException(NotSupportedError, "Unable to read all the gap bytes.")
 
-  #todo: remove the error prefix from all error messages.
+  #todo: remove the error prefix from all error messages that are shared between readers.
+  #todo: or remove them from all messages?
 
   if count == 1:
     result = $count & " gap byte:"
@@ -118,7 +136,7 @@ proc readGap*(file: File, start: uint32, finish: uint32): string =
 #     result = 0
 
 
-proc createRangeNode(item: Range): JsonNode =
+proc createRangeNode(item: Range): JsonNode {.tpub.} =
   ## Create a range node from a range.
 
   result = newJArray()
@@ -129,7 +147,7 @@ proc createRangeNode(item: Range): JsonNode =
   result.add(newJString(item.message))
 
 
-proc createRangesNode*(file: File, start: uint32, finish: uint32,
+proc createRangesNode*(file: File, start: int64, finish: int64,
                        ranges: var seq[Range]): JsonNode =
   ## Create ranges node from a list of ranges. Add in the gaps and
   ## sort the ranges.
@@ -150,6 +168,16 @@ proc createRangesNode*(file: File, start: uint32, finish: uint32,
   result = newJArray()
   for rangeItem in sortedRanges:
     result.add(createRangeNode(rangeItem))
+
+
+proc createRangesNode*(file: File, start: uint32, finish: uint32,
+                       ranges: var seq[Range]): JsonNode =
+    result = createRangesNode(file, (int64)start, (int64)finish, ranges)
+
+
+proc createRangesNode*(file: File, start: int, finish: int,
+                       ranges: var seq[Range]): JsonNode =
+    result = createRangesNode(file, (int64)start, (int64)finish, ranges)
 
 
 proc addSection*(metadata: var Metadata, dups: var Table[string, int],

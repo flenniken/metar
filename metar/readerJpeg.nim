@@ -22,10 +22,23 @@ import unicode
 import json
 import xmpparser
 import bytesToString
-import tiff
-import tiffTags
 import algorithm
 import ranges
+import imageData
+import tiff
+import tiffTags
+
+
+type
+  SectionInfo* = object
+    name*: string
+    node*: JsonNode
+    known*: bool
+
+  Section* = tuple[marker: uint8, start: int64, finish: int64] ## \ A
+  ## section of a file. A section contains a byte identifier, the
+  ## start offset and one past the ending offset.
+
 
 # See:
 # http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
@@ -275,11 +288,6 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
       break  # done
 
 
-
-type
-  Section* = tuple[marker: uint8, start: int64, finish: int64] ## \ A
-  ## section of a file. A section contains a byte identifier, the
-  ## start offset and one past the ending offset.
 
 
 proc `$`(section: Section): string {.tpub.} =
@@ -805,18 +813,20 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # # One-byte color transform code
   # result["transform"] = newJInt((int)buffer[16])
 
-proc handle_section(file: File, section: Section, extra: var Table[string, int],
-                    ranges: var seq[Range]):
-    tuple[sectionName: string, info: Metadata, known: bool] {.tpub.} =
-  ## Handle the jpeg section of the file. Return the sectionName,
-  ## metadata and whether the section is known by this code. The
-  ## returned metadata is nil when there isn't any metadata.
+
+#todo: catch errors for a section and mark it unknown.
+proc handle_section(file: File, section: Section, imageData: var ImageData,
+          ranges: var seq[Range]): SectionInfo {.tpub.} =
+  ## Handle a section of the jpeg file. Return the section information
+  ## and fill in the image data and ranges.
 
   var (marker, start, finish) = section
   var sectionName = jpeg_section_name(marker)
-  var info:Metadata
+  var node: JsonNode
   var known = true
-
+  var rangesAdded = false
+  
+  # Read the section into memory, except for a couple of types.
   var buffer: seq[uint8]
   if marker != 0 and marker != 0xe1:
     buffer = readSection(file, start, finish)
@@ -825,8 +835,7 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int],
   of 0:
     # The pixel scan lines.
     sectionName = "scans"
-    extra["start"] = (int)start
-    extra["finish"] = (int)finish
+    imageData.pixelRanges.add((start, finish))
 
   of 0xd8, 0xd9:
     # SOI(216) 0xd8, 0xffd8 header
@@ -839,9 +848,9 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int],
     let iptc_records = getIptcRecords(buffer)
     if iptc_records.len > 0:
       var iptcInfo = getIptcInfo(iptc_records)
-      info = newJObject()
+      node = newJObject()
       for k, v in iptcInfo.pairs():
-        info[k] = newJString(v)
+        node[k] = newJString(v)
 
   of 0xe1:
     # APP1, Could be xmp or exif.
@@ -849,128 +858,89 @@ proc handle_section(file: File, section: Section, extra: var Table[string, int],
     if sectionKind.name == "xmp":
       let xml = bytesToString(sectionKind.data, 0, sectionKind.data.len-1)
       sectionName = "xmp"
-      info = xmpParser(xml)
+      node = xmpParser(xml)
 
     elif sectionKind.name == "exif":
       # Parse the exif.
       sectionName = "exif"
-      let headerOffset = (uint32)start + 10
-      ranges.add(Range(name: sectionName, start: (uint32)start, finish: headerOffset,
+      let headerOffset = start + 10
+      ranges.add(Range(name: sectionName, start: start, finish: headerOffset,
                      known: true, message: "id"))
-      info = readExif(file, headerOffset, (uint32)finish, ranges)
+      #todo: make sure cast to uint32 is ok.
+      node = readExif(file, (uint32)headerOffset, (uint32)finish, ranges)
+      rangesAdded = true
 
   of 0xc0:
     # SOF0(192) 0xc0
     let sofx = getSofInfo(buffer)
-    extra["width"] = (int)sofx.width
-    extra["height"] = (int)sofx.height
-    info = SofInfoToMeta(sofx)
+    imageData.width = (int)sofx.width
+    imageData.height = (int)sofx.height
+    node = SofInfoToMeta(sofx)
 
   of 0xc4:
     # DHT(196) 0xc4, Define Huffman Table
-    info = getHdtInfo(buffer)
+    node = getHdtInfo(buffer)
 
   of 0xe0:
     # APP0(224) 0xe0, jfif metadata
     # todo: support jfxx too:
     # https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format#JFIF_APP0_marker_segment
-    info = getApp0(buffer)
+    node = getApp0(buffer)
     sectionName = "jfif"
 
   of 0xdb:
     # DQT(219) 0xdb, Define Quantization Table
-    info = getDqtInfo(buffer)
+    node = getDqtInfo(buffer)
 
   of 0xda:
     # SOS(218) 0xda
-    info = getSosInfo(buffer)
+    node = getSosInfo(buffer)
 
   of 0xdd:
     # DRI (Define Restart Interval)
-    info = getDriInfo(buffer)
+    node = getDriInfo(buffer)
 
   of 0xee:
     # APPE, Adobe Application-Specific JPEG Marker
     # http://www.lprng.com/RESOURCES/ADOBE/5116.DCT_Filter.pdf
-    info = getAppeInfo(buffer)
+    node = getAppeInfo(buffer)
 
   else:
     # echo "$1($2) 0x$3" % [sectionName, $marker, toHex(marker).toLowerAscii()]
     # let finish = if buffer.len > 200: 200 else: buffer.len-1
     # echo hexDump(buffer[0..finish])
     # echo hexDumpSource(buffer[0..finish])
-
     known = false
 
-  result = (sectionName, info, known)
+  # Add in the overall range when the range hasn't already been handled.
+  if not rangesAdded:
+    ranges.add(newRange(start, finish, sectionName, known, ""))
 
+  result = SectionInfo(name: sectionName, node: node, known: known)
+#todo the range gaps are not being handled.
 
 proc readJpeg(file: File): Metadata {.tpub.} =
   ## Read the given JPEG file and return its metadata.  Return
-  ## UnknownFormatError when the file format is unknown. May return
-  ## NotSupportedError exception.
+  ## UnknownFormatError when the file format is unknown.
 
   result = newJObject()
-  var ranges = newSeq[Range]()
   var dups = initTable[string, int]()
+  var imageData = newImageData()
+  var ranges = newSeq[Range]()
+
   let sections = readSections(file)
-
-  # The extra table contains information collected across multiple jpeg
-  # sections used to build the images metadata section. It gets filled
-  # in with the image width, height, start and end pixel offsets.
-  var extra = initTable[string, int]()
- 
   for section in sections:
-    var sectionName = ""
-    var info: Metadata = nil
-    var known:bool = false
-    var error = ""
+    #todo: rename handle_section to handleSection
+    let sectionInfo = handle_section(file, section, imageData, ranges)
+    if sectionInfo.node != nil:
+      addSection(result, dups, sectionInfo.name, sectionInfo.node)
 
-    try:
-      (sectionName, info, known) = handle_section(file, section, extra, ranges)
-      assert(sectionName != "")
-      if info != nil:
-        addSection(result, dups, sectionName, info)
-    except NotSupportedError:
-      sectionName = jpeg_section_name(section.marker)
-      assert(sectionName != "")
-      known = false
-      error = getCurrentExceptionMsg()
+  let imageNode = createImageNode(imageData)
+  if imageNode == nil:
+    raise newException(NotSupportedError, "image data not found.")
+  addSection(result, dups, "image", imageNode)
 
-    # todo: remove this test.
-    if sectionName != "exif":
-      ranges.add(Range(name: sectionName, start: (uint32)section.start,
-          finish: (uint32)section.finish, known: known, message: error))
-
-  # todo: use ImageData instead
-    
-  # Images metadata section. The images section is a list of
-  # objects. Each object has a width, height and pixels element. The
-  # pixels element is a list of ranges. The first image is the main
-  # high resolution image.
-  var width, height, start, finish: int
-  try:
-    width = extra["width"]
-    height = extra["height"]
-    start = extra["start"]
-    finish = extra["finish"]
-  except:
-    raise newException(NotSupportedError, "Jpeg: no main image.")
-
-  var image = newJObject()
-  image["width"] = newJInt((int)width)
-  image["height"] = newJInt((int)height)
-  var part = newJArray()
-  part.add(newJInt(start))
-  part.add(newJInt(finish))
-  var pixels = newJArray()
-  pixels.add(part)
-  image["pixels"] = pixels
-  var images = newJArray()
-  images.add(image)
-  result["images"] = images
-
-  let fileSize = (uint32)file.getFileSize()
+  let fileSize = file.getFileSize()
   let rangesNode = createRangesNode(file, 0, fileSize, ranges)
   addSection(result, dups, "ranges", rangesNode)
 

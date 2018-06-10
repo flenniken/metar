@@ -82,7 +82,7 @@ IFDEntry types.
     ## following that are subifds or exif if there are any.
 
 
-  ImageData* = object
+  TiffImageData* = object
     width*: int32
     height*: int32
     starts*: seq[uint32]
@@ -413,12 +413,12 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
       str = "$1 $2 starting at $3" % [$entry.count, $entry.kind, $start]
     result = newJString(str)
 
-
-proc getImage(ifdOffset: uint32, id: string, imageData: ImageData, headerOffset: uint32):
+#todo: convert tiffImageData to ImageData then call getImageNode.
+proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, headerOffset: uint32):
     tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
   ## Return image node and associated ranges from the imageData or nil when no image.
 
-  let im = imageData
+  let im = tiffImageData
 
   # Make sure the imageData has all its fields filled in.
   if im.width == -1 or im.height == -1 or im.starts.len == 0 or
@@ -431,6 +431,7 @@ proc getImage(ifdOffset: uint32, id: string, imageData: ImageData, headerOffset:
   if im.starts.len < 1 or im.counts.len < 1 or im.starts.len != im.counts.len:
     raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
 
+  # todo: replace with imageData.
   var imageNode = newJObject()
   imageNode["ifd"] = newJString("ifd" & $id)
   imageNode["width"] = newJInt((BiggestInt)im.width)
@@ -466,7 +467,7 @@ proc handle_entry(file: File,
     ifd: var JsonNode,
     nodeList: var seq[tuple[name: string, node: JsonNode]],
     nextList: var seq[tuple[name: string, offset: uint32]],
-    imageData: var ImageData,
+    tiffImageData: var TiffImageData,
     ranges: var seq[Range]) =
 
   ## Handle the given IFD entry and add to the provided lists.
@@ -475,11 +476,11 @@ proc handle_entry(file: File,
 
   of 256'u16: # ImageWidth
     ifd[$entry.tag] = readValueListMax(file, entry, 10)
-    imageData.width = readOneNumber(file, entry)
+    tiffImageData.width = readOneNumber(file, entry)
 
   of 257'u16: # ImageHeight
     ifd[$entry.tag] = readValueListMax(file, entry, 10)
-    imageData.height = readOneNumber(file, entry)
+    tiffImageData.height = readOneNumber(file, entry)
 
   of 700'u16:
     # Note: The name xmp, exif, iptc are common between image
@@ -501,11 +502,11 @@ proc handle_entry(file: File,
 
   of 273'u16, 324'u16: # StripOffsets, TileOffsets
     ifd[$entry.tag] = readValueListMax(file, entry, 100)
-    imageData.starts = readLongs(file, entry, 10000)
+    tiffImageData.starts = readLongs(file, entry, 10000)
 
   of 279'u16, 325'u16: # StripByteCounts, TileByteCounts
     ifd[$entry.tag] = readValueListMax(file, entry, 100)
-    imageData.counts = readLongs(file, entry, 10000)
+    tiffImageData.counts = readLongs(file, entry, 10000)
 
   of 330'u16: # SubIFDs
     # SubIFDs is a list of offsets to low res ifds. Add them to
@@ -537,7 +538,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   # The imageData contains information collected across multiple
   # entries used to build the image metadata section. It gets filled
   # in with the image width, height, pixel starts and pixel counts.
-  var imageData = ImageData(width: -1, height: -1, starts: newSeq[uint32](),
+  var tiffImageData = TiffImageData(width: -1, height: -1, starts: newSeq[uint32](),
                             counts : newSeq[uint32]())
 
   # Read all the contiguous IFD bytes into a memory buffer.
@@ -583,7 +584,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
                             message=tagName(entry.tag)))
 
       try:
-        handle_entry(file, entry, endian, ifd, nodeList, nextList, imageData, ranges)
+        handle_entry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
       except NotSupportedError:
         # Add the not supported entry as unknown to the ranges list.
         let error = getCurrentExceptionMsg()
@@ -596,11 +597,10 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
         else:
           start = entryStart
           finish = start + 12
-        ranges.add(Range(name: name, start: start,
-          finish: finish, known: false, message: message))
+        ranges.add(newRange(start, finish, name, false, message))
 
   # If the image exists, add its node and ranges.
-  let (image, imageNode, imageRanges) = getImage(ifdOffset, $id, imageData, headerOffset)
+  let (image, imageNode, imageRanges) = getImage(ifdOffset, $id, tiffImageData, headerOffset)
   if image:
     nodeList.add(("image", imageNode))
     for item in imageRanges:
@@ -622,8 +622,7 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
 
   var ifdRanges = newSeq[Range]()
   let (ifdOffset, endian) = readHeader(file, headerOffset)
-  ranges.add(Range(name: "exif", start: headerOffset, finish: headerOffset+8'u32,
-                   known: true, message:"header"))
+  ranges.add(newRange(headerOffset, headerOffset+8'u32, "exif", true, "header"))
 
   let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ifdRanges)
   if ifdInfo.nodeList.len != 1:

@@ -15,7 +15,7 @@ requires "nim >= 0.17.0"
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
-proc build_python_module(ignoreOutput: bool = false) =
+proc build_metar_and_python_module(ignoreOutput: bool = false) =
   var ignore: string
   if ignoreOutput:
     ignore = ">/dev/null 2>&1"
@@ -23,11 +23,11 @@ proc build_python_module(ignoreOutput: bool = false) =
     ignore = ""
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar " & ignore
+  exec r"nim c --out:bin/metar metar/metar" & ignore
 
 
 task m, "Build metar exe and python module":
-  exec "nim c --out:bin/metar metar/metar"
-  build_python_module()
+  build_metar_and_python_module()
 
 proc test_module(filename: string): string =
   ## Test one module.
@@ -55,17 +55,19 @@ proc runTests() =
     let source = test_module(filename)
     exec source
 
-  runShellTests()
-
   # Build the python module and run its tests.
-  build_python_module(true)
+  build_metar_and_python_module(true)
   echo ""
   echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
   # echo "\e[1;32m    [OK] \e[00mtest getAppeInfo\n"
   exec "python python/test_metar.py"
 
+  runShellTests()
+
 
 task shell, "Run tests from the shell":
+  echo "building metar and python module"
+  build_metar_and_python_module(true)
   runShellTests()
 
 

@@ -44,8 +44,7 @@ proc readTiff(file: File): Metadata {.tpub.} =
   # Read the header.
   const headerOffset:uint32 = 0
   let (ifdOffset, endian) = readHeader(file, headerOffset)
-  ranges.add(Range(name: "header", start: headerOffset, finish: headerOffset+8'u32,
-                   known: true, message:""))
+  ranges.add(newRange(headerOffset, headerOffset+8'u32, "header", true, ""))
 
   # Read all the IFDs.
   var id = 1
