@@ -814,8 +814,7 @@ proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # result["transform"] = newJInt((int)buffer[16])
 
 
-#todo: catch errors for a section and mark it unknown.
-proc handle_section(file: File, section: Section, imageData: var ImageData,
+proc handleSection2(file: File, section: Section, imageData: var ImageData,
           ranges: var seq[Range]): SectionInfo {.tpub.} =
   ## Handle a section of the jpeg file. Return the section information
   ## and fill in the image data and ranges.
@@ -866,7 +865,9 @@ proc handle_section(file: File, section: Section, imageData: var ImageData,
       let headerOffset = start + 10
       ranges.add(Range(name: sectionName, start: start, finish: headerOffset,
                      known: true, message: "id"))
-      #todo: make sure cast to uint32 is ok.
+      # Make sure casts to uint32 are ok.
+      if headerOffset > ((int64)high(uint32)) or finish > ((int64)high(uint32)):
+        raise newException(NotSupportedError, "invalid large offset.")
       node = readExif(file, (uint32)headerOffset, (uint32)finish, ranges)
       rangesAdded = true
 
@@ -917,8 +918,20 @@ proc handle_section(file: File, section: Section, imageData: var ImageData,
     ranges.add(newRange(start, finish, sectionName, known, ""))
 
   result = SectionInfo(name: sectionName, node: node, known: known)
-#todo the range gaps are not being handled.
 
+
+proc handleSection(file: File, section: Section, imageData: var ImageData,
+          ranges: var seq[Range]): SectionInfo {.tpub.} =
+
+  # Catch errors for a section and mark it unknown.
+  try:
+    result = handleSection2(file, section, imageData, ranges)
+  except NotSupportedError:
+    let message = getCurrentExceptionMsg()
+    var sectionName = jpeg_section_name(section.marker)
+    ranges.add(newRange(section.start, section.finish, sectionName, false, message))
+
+  
 proc readJpeg(file: File): Metadata {.tpub.} =
   ## Read the given JPEG file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown.
@@ -930,8 +943,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
 
   let sections = readSections(file)
   for section in sections:
-    #todo: rename handle_section to handleSection
-    let sectionInfo = handle_section(file, section, imageData, ranges)
+    let sectionInfo = handleSection(file, section, imageData, ranges)
     if sectionInfo.node != nil:
       addSection(result, dups, sectionInfo.name, sectionInfo.node)
 

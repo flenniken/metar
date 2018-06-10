@@ -12,7 +12,7 @@ import bytesToString
 import ranges
 import readerJpeg
 import imageData
-# import readable
+import readable
 
 
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =
@@ -77,20 +77,19 @@ suite "Test readerJpeg.nim":
   test "keyNameJpeg ranges invalid":
     check(keyNameJpeg("ranges", "xxyzj") == "")
 
-  when defined(useTiff):
-    test "keyNameJpeg exif":
-      check(keyNameJpeg("exif", "700") == "XMP(700)")
+  test "keyNameJpeg exif":
+    check(keyNameJpeg("exif", "700") == "XMP(700)")
 
   when not defined(release):
 
-    test "test handle_section":
+    test "test handleSection":
       var file = openTestFile("testfiles/image.jpg")
       defer: file.close()
       var sections = readSections(file)
       check(sections.len == 12)
 
       # for ix, section in sections:
-      #   var (section_name, info) = handle_section(file, section)
+      #   var (section_name, info) = handleSection(file, section)
       #   var str:string
       #   if info == nil:
       #     str = ""
@@ -100,13 +99,13 @@ suite "Test readerJpeg.nim":
 
       var imageData = newImageData()
       var ranges = newSeq[Range]()
-      let sectionInfo = handle_section(file, sections[1], imageData, ranges)
+      let sectionInfo = handleSection(file, sections[1], imageData, ranges)
       let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
       check(sectionInfo.name == "jfif")
       check($sectionInfo.node == expected1)
       check(sectionInfo.known == true)
 
-      let sectionInfo2 = handle_section(file, sections[4], imageData, ranges)
+      let sectionInfo2 = handleSection(file, sections[4], imageData, ranges)
       let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
       check(sectionInfo2.name == "SOF0")
       check($sectionInfo2.node == expected4)
@@ -570,13 +569,12 @@ precision: 8, width: 150, height: 100, num components: 3
       #   echo $section
       check(sections.len == 4)
 
-  when defined(useTiff):
-    test "test readJpeg":
-      var file = openTestFile("testfiles/IMG_6093.JPG")
-      defer: file.close()
-      var metadata = readJpeg(file)
-      # discard metadata
-      echo readable(metadata, "jpeg")
+  test "test readJpeg":
+    var file = openTestFile("testfiles/IMG_6093.JPG")
+    defer: file.close()
+    var metadata = readJpeg(file)
+    # discard metadata
+    echo readable(metadata, "jpeg")
 
   # test "dump file":
   #   var file = openTestFile("testfiles/IMG_6093.JPG")
