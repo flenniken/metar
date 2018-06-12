@@ -1,5 +1,6 @@
 import tables
 import strutils
+import tpub
 
 const tagToString* = {
   1'u16: "InteropIndex",
@@ -489,3 +490,13 @@ proc tagName*(tagString: string): string =
   except:
     return tagString
   result = tagName(tag)
+
+
+proc keyNameTiff*(section: string, key: string): string {.tpub.} =
+  ## Return the name of the key for the given section of metadata or
+  ## "" when not known.
+  let name = tagName(key)
+  if name == key:
+    result = ""
+  else:
+    result = name

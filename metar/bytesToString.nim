@@ -1,11 +1,4 @@
-import tables
-import strutils
-import metadata
 import tpub
-import readNumber
-import endians
-import sequtils
-import hexDump
 import unicode
 
 

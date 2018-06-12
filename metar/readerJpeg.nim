@@ -17,7 +17,6 @@ import tpub
 import readNumber
 import endians
 import sequtils
-import hexDump
 import unicode
 import json
 import xmpparser
@@ -290,11 +289,11 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
 
 
 
-proc `$`(section: Section): string {.tpub.} =
-  ## Return a string representation of a section.
-  return "section = $1 ($2, $3) $4" % [toHex(section.marker),
-    toHex0(section.start), toHex0(section.finish),
-    toHex0(section.finish-section.start)]
+# proc `$`(section: Section): string {.tpub.} =
+#   ## Return a string representation of a section.
+#   return "section = $1 ($2, $3) $4" % [toHex(section.marker),
+#     toHex0(section.start), toHex0(section.finish),
+#     toHex0(section.finish-section.start)]
 
 
 proc readSectionsRaw(file: File): seq[Section] =
@@ -952,6 +951,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     raise newException(NotSupportedError, "image data not found.")
   addSection(result, dups, "image", imageNode)
 
+  # todo: xmp range should appear in the ranges list not APP1.
   let fileSize = file.getFileSize()
   let rangesNode = createRangesNode(file, 0, fileSize, ranges)
   addSection(result, dups, "ranges", rangesNode)

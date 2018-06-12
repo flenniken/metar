@@ -11,6 +11,7 @@ import json
 import readable
 import testFile
 import readMetadata
+import tiff
 
 const keyName = keyNameImp
 

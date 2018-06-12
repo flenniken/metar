@@ -175,18 +175,18 @@ suite "Test readerJpeg.nim":
       let got = lines.join("\n")
 
       let expected = """
-section = D8 (0, 2) 2
-section = E0 (2, 14) 12
-section = DB (14, 59) 45
-section = DB (59, 9E) 45
-section = C0 (9E, B1) 13
-section = C4 (B1, D2) 21
-section = C4 (D2, 189) B7
-section = C4 (189, 1AA) 21
-section = C4 (1AA, 261) B7
-section = DA (261, 26F) E
-section = 00 (26F, 894) 625
-section = D9 (894, 896) 2"""
+(marker: 216, start: 0, finish: 2)
+(marker: 224, start: 2, finish: 20)
+(marker: 219, start: 20, finish: 89)
+(marker: 219, start: 89, finish: 158)
+(marker: 192, start: 158, finish: 177)
+(marker: 196, start: 177, finish: 210)
+(marker: 196, start: 210, finish: 393)
+(marker: 196, start: 393, finish: 426)
+(marker: 196, start: 426, finish: 609)
+(marker: 218, start: 609, finish: 623)
+(marker: 0, start: 623, finish: 2196)
+(marker: 217, start: 2196, finish: 2198)"""
       check(got == expected)
 
 
