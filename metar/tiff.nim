@@ -12,6 +12,7 @@ import xmpparser
 import algorithm
 import bytesToString
 import ranges
+import imageData
 
 #[
 The following links are good references for the Tiff format.
@@ -413,55 +414,29 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
       str = "$1 $2 starting at $3" % [$entry.count, $entry.kind, $start]
     result = newJString(str)
 
-#todo: convert tiffImageData to ImageData then call getImageNode.
+
 proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, headerOffset: uint32):
     tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
   ## Return image node and associated ranges from the imageData or nil when no image.
 
   let im = tiffImageData
-
-  # Make sure the imageData has all its fields filled in.
-  if im.width == -1 or im.height == -1 or im.starts.len == 0 or
-     im.counts.len == 0:
-    # ifd doesn't have an image. (exif)
+  var imageData = newImageData(im.width, im.height, im.starts, im.counts)
+  if imageData == nil:
     result = (false, nil, nil)
     return
+  
+  let imageNode = createImageNode(imageData)
 
-  # Validate the two list counts.
-  if im.starts.len < 1 or im.counts.len < 1 or im.starts.len != im.counts.len:
-    raise newException(NotSupportedError, "Tiff: IFD invalid image parameters.")
-
-  # todo: replace with imageData.
-  var imageNode = newJObject()
-  imageNode["ifd"] = newJString("ifd" & $id)
-  imageNode["width"] = newJInt((BiggestInt)im.width)
-  imageNode["height"] = newJInt((BiggestInt)im.height)
-
-  var offsets = newSeq[Range](im.starts.len)
-  for ix in 0..<im.starts.len:
-    offsets[ix] = newRange(im.starts[ix], im.starts[ix] + im.counts[ix])
-
-  let (sections, _) = mergeOffsets(offsets, paddingShift = 1)
-
-  # Create a pixels array of start end offsets: [(start, end), (start, end),...]
-  var pixels = newJArray()
-  for section in sections:
-    var part = newJArray()
-    part.add(newJInt((BiggestInt)section.start))
-    part.add(newJInt((BiggestInt)section.finish))
-    pixels.add(part)
-  imageNode["pixels"] = pixels
-
-  var ranges = newSeq[Range](sections.len)
-  for ix, item in sections:
-    let (imageStart, imageFinish) = item
-    ranges[ix] = Range(name: "image" & $id, start: imageStart, finish: imageFinish,
-                                       known: true, message: "")
+  var ranges = newSeq[Range](imageData.pixelOffsets.len)
+  var ix = 0
+  for start, finish in imageData.pixelOffsets.items():
+    ranges[ix] = newRange(start, finish, name = "image")
+    ix += 1
 
   result = (true, imageNode, ranges)
 
 
-proc handle_entry(file: File,
+proc handleEntry(file: File,
     entry: IfdEntry,
     endian: Endianness,
     ifd: var JsonNode,
@@ -584,7 +559,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
                             message=tagName(entry.tag)))
 
       try:
-        handle_entry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
+        handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
       except NotSupportedError:
         # Add the not supported entry as unknown to the ranges list.
         let error = getCurrentExceptionMsg()

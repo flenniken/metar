@@ -834,7 +834,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   of 0:
     # The pixel scan lines.
     sectionName = "scans"
-    imageData.pixelRanges.add((start, finish))
+    imageData.pixelOffsets.add((start, finish))
 
   of 0xd8, 0xd9:
     # SOI(216) 0xd8, 0xffd8 header

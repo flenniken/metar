@@ -111,7 +111,7 @@ suite "Test readerJpeg.nim":
       check($sectionInfo2.node == expected4)
       check(sectionInfo2.known == true)
       # echo $imageData
-      check(imageData.pixelRanges.len == 0)
+      check(imageData.pixelOffsets.len == 0)
       check(imageData.height == 100)
       check(imageData.width == 150)
 
