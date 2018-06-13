@@ -1,3 +1,7 @@
+# See: test_tiffTags.nim(0):
+
+## You use this module to map tiff tag numbers to strings.
+
 import tables
 import strutils
 import tpub

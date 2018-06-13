@@ -110,7 +110,7 @@ task clean, "Delete unneed files":
 
 
 proc doc_module(name: string) =
-  const cmd = "nim doc --index:on --out:docs/$1.html metar/$1.nim"
+  const cmd = "nim doc0 --index:on --out:docs/$1.html metar/$1.nim"
   let source = cmd % name
   exec source
 

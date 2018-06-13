@@ -1,14 +1,7 @@
 # See: test_readerJpeg.nim(0):
-##[
-`Home <index.html>`_
 
-readerJpeg
-==========
-
-The readerJpeg module reads JPEG images and returns its metadata. It
-implements the reader interface.
-
-]##
+## The readerJpeg module reads JPEG images and returns its metadata. It
+## implements the reader interface.
 
 import tables
 import strutils

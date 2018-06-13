@@ -23,8 +23,10 @@ proc stripInvalidUtf8(str: string): string {.tpub.} =
 
 proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
                    length: Natural=0): string {.tpub.} =
-  # Create a string from bytes in a buffer starting at the given index
-  # and use length bytes.
+  ## Create a string from bytes in a buffer starting at the given
+  ## index and using length bytes. It strips out invalid utf8 bytes
+  ## and removes 0s.
+
   if length == 0:
     return ""
 

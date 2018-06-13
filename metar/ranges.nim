@@ -1,3 +1,8 @@
+# See: test_ranges.nim(0):
+
+## You use the ranges modules to hold ranges, merge them and to create a
+## ranges metadata node from a list.
+
 import metadata
 import json
 import algorithm
@@ -9,21 +14,21 @@ type
   OffsetList* = seq[tuple[start: int64, finish: int64]]
 
   Range* = object
-    start*: int64
-    finish*: int64
-    name*: string
-    message*: string
-    known*: bool  ## \\
     ## A range describes a section of the file.  The start is the
     ## offset of the beginning of the section and finish is one past
     ## the end. The known field is true when the section format is
     ## known and handled by the current code, false when the format of
     ## the section is unknown.
+    start*: int64
+    finish*: int64
+    name*: string
+    message*: string
+    known*: bool
 
 
 proc newRange*(start: int | uint32 | int64, finish: int | uint32 | int64, name: string = "",
                known: bool = true, message: string = ""): Range =
-  # Create a new range.
+  ## Create a new range.
   result = Range(start: (int64)start, finish: (int64)finish,
                  name: name, known: known, message: message)
 
@@ -138,7 +143,6 @@ proc createRangesNode*(file: File, start: int | uint32 | int64, finish: int | ui
                        ranges: var seq[Range]): JsonNode =
   ## Create ranges node from a list of ranges. Add in the gaps and
   ## sort the ranges.
-
 
   var offsetList = newSeq[Range](ranges.len)
   for ix, item in ranges:

@@ -1,5 +1,7 @@
 # See: test_tiff.nim(0):
 
+## You use the tiff module to read and parse tiff files.
+
 import tables
 import readNumber
 import endians
@@ -37,6 +39,19 @@ Tags are always found in contiguous groups within each IFD.
 
 type
   Kind* {.size: 2, pure.} = enum
+    ## IFDEntry types.
+    ## 1. bytes, uint8
+    ## 2. strings, one or more ASCII strings each ending with 0. Count includes the 0s.
+    ## 3. shorts, uint16
+    ## 4. longs, uint32
+    ## 5. rationals, two uint32, numerator then denominator.
+    ## 6. sbytes, s stands for signed.
+    ## 7. blob, list of bytes.
+    ## 8. sshorts
+    ## 9. slongs
+    ## 10. srationals
+    ## 11. floats, float32
+    ## 12. doubles, float64
     bytes = 1
     strings
     shorts
@@ -48,24 +63,11 @@ type
     slongs
     srationals
     floats
-    doubles ##[ \
-IFDEntry types.
+    doubles
 
-1, bytes, uint8
-2, strings, One or more ASCII strings each ending with 0. Count includes the 0s.
-3, shorts, uint16
-4, longs, uint32
-5, rationals, Two uint32, numerator then denominator.
-6, sbytes, s stands for signed.
-7, blob, list of bytes.
-8, sshorts
-9, slongs
-10, srationals
-11, floats, float32
-12, doubles, float64
-]##
 
   IFDEntry* = object
+    ## IFD entry data.
     tag: uint16
     kind: Kind
     count: uint32
@@ -75,20 +77,21 @@ IFDEntry types.
 
 
   IFDInfo* = object
+    ## Node list contains the ifd section and any other optional
+    ## nodes. The next list contains ifd offsets found and their
+    ## associated names.  The first item is the offset to the next IFD
+    ## (which may be 0), followed by subifds or exif, if there are
+    ## any.
     nodeList*: seq[tuple[name: string, node: JsonNode]]
-    nextList*: seq[tuple[name: string, offset: uint32]] ## \\ Node
-    ## list contains the ifd section and any other optional nodes. The
-    ## next list contains ifd offsets found and their associated name.
-    ## The first item is the offset to the next IFD (which may be 0),
-    ## following that are subifds or exif if there are any.
-
+    nextList*: seq[tuple[name: string, offset: uint32]]
+    
 
   TiffImageData* = object
+    ## Image metadata for the image node.
     width*: int32
     height*: int32
     starts*: seq[uint32]
-    counts*: seq[uint32] ## \\
-    ## Image metadata for the image node.
+    counts*: seq[uint32]
 
 
 proc `$`*(entry: IFDEntry): string =
@@ -397,8 +400,8 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
 
 proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
                       maximumSize:Natural=1000): JsonNode =
-  # Read the entry's value list. For lists that exceed the maximum,
-  # return a short string instead.
+  ## Read the entry's value list. For lists that exceed the maximum,
+  ## return a short string instead.
 
   let bufferSize: Natural = kindSize(entry.kind) * (Natural)entry.count
   if ((Natural)entry.count) <= maximumCount and bufferSize <= maximumSize:

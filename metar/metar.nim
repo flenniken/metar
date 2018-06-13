@@ -1,13 +1,7 @@
-##[
-`Home <index.html>`_
+# See: test_metar.nim(0):
 
-metar
-=====
-
-The metar module implements the metar command line program and it
-contains the public procedures.
-
-]##
+## The metar module implements the metar command line program and it
+## contains the public procedures.
 
 import os
 import macros
