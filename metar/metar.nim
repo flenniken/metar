@@ -1,7 +1,7 @@
 # See: test_metar.nim(0):
 
 ## The metar module implements the metar command line program and it
-## contains the public procedures.
+## contains the public procedures available in libraries.
 
 import os
 import macros
@@ -14,7 +14,7 @@ import nimpy
 import json
 when not defined(buidingLib):
   import parseopt
-  import parseCommandLine
+
 
 # The keyName proc is here so it will get exported in the python module.
 proc keyName*(readerName: string, section: string, key: string):
@@ -69,39 +69,97 @@ Usage: metar [-j] [-v] file [file...]
 file          Image filename to analyze.
 """
 
+
 # Show the "file: <filename>" of each file before the metadata.
 # Good when there more multiple files and for detecting files that are not images.
 # -f --filename Show filename before the metadata.
 
-iterator processArgs*(args: Args): string =
-  ## Given the command line arguments, return the requested
-  ## information as bunches of lines.
-  ##
-  ## .. code-block:: nim
-  ##   import parseopt
-  ##   var optParser = initOptParser(@["-j", "image.dng"])
-  ##   var args = parseCommandLine(optParser)
-  ##   for str in processArgs(args):
-  ##     echo str
+when not defined(buidingLib):
+  type
+    Args* = tuple
+      ## Command line arguments.  A list of filenames, and booleans for
+      ## json, help and version output.
+      files: seq[string]
+      json: bool
+      help: bool
+      version: bool
 
-  if args.version:
-    yield($versionNumber)
-  elif args.files.len == 0 or args.help:
-    yield(showHelp())
-  else:
-    for filename in args.files:
-      # Show the filename when more than one.
-      if args.files.len > 1:
-        yield("file: " & filename)
+  iterator processArgs*(args: Args): string =
+    ## Given the command line arguments, return the requested
+    ## information as bunches of lines.
+    ##
+    ## .. code-block:: nim
+    ##   import parseopt
+    ##   var optParser = initOptParser(@["-j", "image.dng"])
+    ##   var args = parseCommandLine(optParser)
+    ##   for str in processArgs(args):
+    ##     echo str
 
-      # Show the metadata if any.
-      var str: string
-      if args.json:
-        str = readMetadataJson(filename)
+    if args.version:
+      yield($versionNumber)
+    elif args.files.len == 0 or args.help:
+      yield(showHelp())
+    else:
+      for filename in args.files:
+        # Show the filename when more than one.
+        if args.files.len > 1:
+          yield("file: " & filename)
+
+        # Show the metadata if any.
+        var str: string
+        if args.json:
+          str = readMetadataJson(filename)
+        else:
+          str = readMetadata(filename)
+        if str != "":
+          yield(str)
+
+
+  proc parseCommandLine*(optParser: var OptParser): Args =
+    ## Return the command line parameters.
+    ##
+    ## .. code-block:: nim
+    ##   import parseopt
+    ##   import parseCommandLine
+    ##   var optParser = initOptParser(@["-j", "image.dng"])
+    ##   var args = parseCommandLine(optParser)
+    ##   check(args.help == false)
+    ##   check(args.json == true)
+    ##   check(args.version == false)
+    ##   check(args.files.len == 1)
+    ##   check(args.files[0] == "image.dng")
+
+    var files: seq[string] = @[]
+    var json = false
+    var help = false
+    var version = false
+
+
+    # Iterate over all arguments passed to the cmdline.
+    for kind, key, value in getopt(optParser):
+      case kind
+      of CmdLineKind.cmdShortOption:
+        for ix in 0..key.len-1:
+          if key[ix] == 'j':
+            json = true
+          elif key[ix] == 'h':
+            help = true
+          elif key[ix] == 'v':
+            version = true
+      of CmdLineKind.cmdLongOption:
+        if key == "json":
+          json = true
+        elif key == "help":
+          help = true
+        elif key == "version":
+          version = true
+      of CmdLineKind.cmdArgument:
+        files.add(key)
       else:
-        str = readMetadata(filename)
-      if str != "":
-        yield(str)
+        help = true
+
+    result = (files, json, help, version)
+
 
 when not defined(buidingLib):
   when isMainModule:

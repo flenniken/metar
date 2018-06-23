@@ -1,13 +1,6 @@
-##[
-`Home <index.html>`_
 
-readNumber
-========
-
-The readNumber module implements procedures to read numbers from a file
-or buffer.
-
-]##
+## The readNumber module implements procedures to read numbers from a file
+## or buffer.
 
 import endians
 

@@ -1,6 +1,8 @@
 import strutils
 import tpub
 
+## You can display a sequence of bytes as a hex string and ascii.
+
 iterator iteratorCount(bytes: seq[uint8], count: Natural): seq[uint8] {.tpub.} =
   ## Return count bytes of a sequence at a time.
   var xstart = 0

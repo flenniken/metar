@@ -1,6 +1,8 @@
+
+## You use bytesToString module to create a string from an array of bytes.
+
 import tpub
 import unicode
-
 
 proc stripInvalidUtf8(str: string): string {.tpub.} =
   ## Strip out invalid utf characters and return a new string.

@@ -1,3 +1,7 @@
+
+## You use the readable module to display the metadata in a human
+## readable format.
+
 import Metadata
 import json
 import tpub

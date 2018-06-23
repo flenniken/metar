@@ -1,16 +1,19 @@
-##[
-`Home <index.html>`_
 
-version
-=======
-
-The version module reads the version number from ver.txt and creates
-the versionNumber variable at compile time.
-
-]##
+## The version module reads the version number from ver.txt and creates
+## the versionNumber variable at compile time.
+##
+## .. code-block:: nim
+##   const versionNumber* = "n.n.n"
+##
+## Example usage:
+##
+## .. code-block:: nim
+##   import version
+##   echo "Version number: " & versionNumber
 
 import macros
 import strutils
+
 
 macro buildVersionNumber(filename: string): typed =
   ## Read a file containing the version number and create a version

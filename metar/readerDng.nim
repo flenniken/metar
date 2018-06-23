@@ -1,13 +1,6 @@
-##[
-`Home <index.html>`_
 
-readerDng
-==========
-
-The readerDng module reads DNG images and returns its metadata. It
-implements the reader interface.
-
-]##
+## The readerDng module reads DNG images and returns its metadata. It
+## implements the reader interface.
 
 import metadata
 import tpub

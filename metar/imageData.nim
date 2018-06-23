@@ -2,6 +2,8 @@ import json
 import metadata
 import ranges
 
+## You use imageData to store and work with image width, height and pixel ranges.
+
 type
   ImageData* = ref object
     width*: int

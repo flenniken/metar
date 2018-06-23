@@ -15,6 +15,7 @@ class TestMetar(unittest.TestCase):
     data =  metar.read_metadata_json("testfiles/image.jpg")
     # print data
     start = """{"jfif":{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0},"""
+    self.assertTrue(data.startswith(start))
 
   def test_read_metadata(self):
     data = metar.read_metadata("testfiles/image.jpg")

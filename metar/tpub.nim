@@ -1,13 +1,11 @@
-##[
-`Home <index.html>`_
 
-tpub
-====
-
-The tpub module implements the {.tpub.} macro pragma used to make
-procedures public in debug mode.
-
-]##
+## The tpub module implements the {.tpub.} macro pragma used to make
+## procedures public in debug mode so you can test them in external
+## test files.  Wrap the test code with not release:
+##
+## .. code-block:: nim
+##   when not defined(release):
+##     # test code here
 
 import macros
 

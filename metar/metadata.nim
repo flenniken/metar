@@ -1,13 +1,20 @@
-##[
-`Home <index.html>`_
 
-metadata
-=====
+## The metadata module contains types used by the metadata reader
+## modules.
+##
+## Each metadata reader reads the meatadata from a file of their type
+## and returns the metadata it contains. A reader implements the
+## reader interface.
+##
+## The reader interface contains two procedures called read and keyName.
+## The read procedure takes a file parameter and returns metadata as a
+## JsonNode. The keyName procedure returns the name of a key. A reader module exposes the two procedures in a reader tuple.  For example:
+##
+## .. code-block:: nim
+##   proc readJpeg(file: File): Metadata
+##   proc keyNameJpeg(section: string, key: string): string
+##   const reader* = (read: readJpeg, keyName: keyNameJpeg)
 
-The metadata module contains types used by the metadata reader
-modules. It defines the interface required to be a reader.
-
-]##
 
 import json
 
@@ -42,15 +49,3 @@ type
   ##     "iptc": {}
   ##     "sof": [{},{},...]
   ##   }
-
-  # Read* = proc (file: File): Metadata ## \ Read the given file and
-  # ## return its metadata.  Return UnknownFormatError when the file
-  # ## format is unknown. May return NotSupportedError exception.
-
-  # KeyName* = proc (section: string, key: string): string ## \
-  # ## Return the name of the key for the given section of metadata or
-  # ## "" when not known.
-
-  Args* = tuple[files: seq[string], json: bool, help: bool, version: bool] ## \
-  ## Command line arguments.  A list of filenames, and booleans for
-  ## json, help and version output.

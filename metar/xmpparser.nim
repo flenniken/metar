@@ -1,5 +1,5 @@
 
-## Parses XMP metadata.
+## Parses XMP metadata from an xmp string.
 
 import os
 import streams
