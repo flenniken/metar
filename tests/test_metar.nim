@@ -5,17 +5,7 @@ import metar
 import metadata
 import strutils
 
-type
-  Args* = tuple
-    ## Command line arguments.  A list of filenames, and booleans for
-    ## json, help and version output.
-    files: seq[string]
-    json: bool
-    help: bool
-    version: bool
-
-
-const help = """
+const expectedHelp = """
 Show metadata information for the given image(s).
 Usage: metar [-j] [-v] file [file...]
 -j --json     Output JSON data.
@@ -40,10 +30,10 @@ suite "test_metar.nim":
     for str in processArgs(args):
       strings.add(str)
     let text = strings.join("\n")
-    check(text == help)
+    check(text == expectedHelp)
 
   test "test showHelp":
-    check(showHelp() == help)
+    check(showHelp() == expectedHelp)
 
   test "happy path":
     # Get metadata for image.jpg.

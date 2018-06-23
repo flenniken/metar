@@ -14,6 +14,20 @@
 ##   proc readJpeg(file: File): Metadata
 ##   proc keyNameJpeg(section: string, key: string): string
 ##   const reader* = (read: readJpeg, keyName: keyNameJpeg)
+##
+## The Read procedure reads the given file and returns its
+## metadata. If the file format is unknown the UnknownFormatError is
+## raised.  If the file is the correct type, but it cannot be handled,
+## then NotSupportedError is raised. If the reader can handle the file
+## but it has problem parts, the problems are noted in the "meta"
+## section "problems" key, which is an array of problem strings.
+##
+## The keyName procedure returns the name of a key in the
+## metadata. For example the Tiff reader IFD sections use number
+## strings as keys.  You can translate the numbers to readable
+## strings, "256" to "ImageWidth". Some sections use readable strings,
+## in this case keyName returns the original name. The jpeg SOF
+## section would return "precision" for "precision".
 
 
 import json
@@ -48,4 +62,17 @@ type
   ##     "xmp": {}
   ##     "iptc": {}
   ##     "sof": [{},{},...]
+  ##     "ranges": {}
   ##   }
+  ##
+  ## The meta section is not created by the reader but the reader
+  ## fills in the problems item if it finds problem areas in the file.
+  ##
+  ## Each reader is responsible for creating an images section. It
+  ## contains the images found in the file. Each image has a width,
+  ## height and pixels entry.
+  ##
+  ## Each reader is responsible for creating a ranges section. The
+  ## ranges section discribes each section (range) of the file and
+  ## whether it is known by the reader, where it is in the file, and
+  ## what it is for.
