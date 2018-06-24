@@ -10,9 +10,6 @@ import metadata
 import json
 import tpub
 
-# todo: The start of xml has a unique id. Store that too.
-# <?xpacket begin=' ' id="W5M0MpCehiHzreSzNTczkc9d"?>
-# xpacket_id = W5M0MpCehiHzreSzNTczkc9d
 
 proc parseXpacket(xpacket: string): seq[tuple[key:string, value:string]] {.tpub.}=
   # Parse the xpacket and return a list of key=value pairs.
@@ -25,6 +22,7 @@ proc parseXpacket(xpacket: string): seq[tuple[key:string, value:string]] {.tpub.
       var key = keyValuePair[0].strip()
       var value = keyValuePair[1].strip(chars=WhiteSpace+{'"'})
       result.add(("xpacket:" & key, value))
+
 
 proc parseNamespaces(xmp: string): OrderedTable[string, string] {.tpub.} =
   ## Return a dictionary of the namespace values mapped to their short
@@ -47,7 +45,7 @@ proc parseNamespaces(xmp: string): OrderedTable[string, string] {.tpub.} =
       let key = xmlParser.attrKey
       if key.startsWith("xmlns:"):
         let ns = key[6..key.len-1]
-        result[xmlParser.attrValue] = ns
+        result[ns] = xmlParser.attrValue
     of xmlEof:
       break # end of file reached
     else:
@@ -203,3 +201,8 @@ proc xmpParser*(xmp: string): Metadata =
       break # end of file reached
     else:
       discard # ignore other events
+
+  # Add all the namespaces to the metadata.
+  let namespaces = parseNamespaces(xmp)
+  for k, v in namespaces.pairs:
+    result[k] = newJString(v)

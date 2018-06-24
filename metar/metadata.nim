@@ -2,7 +2,7 @@
 ## The metadata module contains types used by the metadata reader
 ## modules.
 ##
-## Each metadata reader reads the meatadata from a file of their type
+## Each metadata reader reads the metadata from a file of their type
 ## and returns the metadata it contains. A reader implements the
 ## reader interface.
 ##

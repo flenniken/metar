@@ -14,7 +14,8 @@ type
 
 
 proc newImageData*(width: int = -1, height: int = -1, capacity: Natural = 0): ImageData =
-  ## Create a new ImageData object.
+  ## Create a new ImageData object. The capacity is the number of
+  ## pixelOffsets tuples allocated.
   var pixelOffsets = newSeq[tuple[start: int64, finish: int64]](capacity)
   result = ImageData(width: width, height: height, pixelOffsets: pixelOffsets)
 

@@ -278,22 +278,22 @@ suite "test xmpparser.nim":
     check(list[0].value == "w")
 
   test "test parseNamespaces":
+    # echo xmpSample
     var table = parseNamespaces(xmpSample)
 
     # echo $table.len
-    # for k in table.keys:
-    #   let v = table[k]
+    # for k,v in table.pairs:
     #   echo $k & " = " & v
 
     check(table.len == 8)
-    check(table["http://ns.adobe.com/camera-raw-settings/1.0/"] == "crs")
-    check(table["adobe:ns:meta/"] == "x")
-    check(table["http://purl.org/dc/elements/1.1/"] == "dc")
-    check(table["http://ns.adobe.com/exif/1.0/aux/"] == "aux")
-    check(table["http://www.w3.org/1999/02/22-rdf-syntax-ns#"] == "rdf")
-    check(table["http://ns.adobe.com/exif/1.0/"] == "exif")
-    check(table["http://ns.adobe.com/tiff/1.0/"] == "tiff")
-    check(table["http://ns.adobe.com/xap/1.0/"] == "xap")
+    check(table["crs"] == "http://ns.adobe.com/camera-raw-settings/1.0/")
+    check(table["x"] == "adobe:ns:meta/")
+    check(table["dc"] == "http://purl.org/dc/elements/1.1/")
+    check(table["aux"] == "http://ns.adobe.com/exif/1.0/aux/")
+    check(table["rdf"] == "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+    check(table["exif"] == "http://ns.adobe.com/exif/1.0/")
+    check(table["tiff"] == "http://ns.adobe.com/tiff/1.0/")
+    check(table["xap"] == "http://ns.adobe.com/xap/1.0/")
 
 
   test "test xmpParser":
