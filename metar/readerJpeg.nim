@@ -21,15 +21,16 @@ import tiff
 import tiffTags
 
 
-type
-  SectionInfo* = object
-    name*: string
-    node*: JsonNode
-    known*: bool
+tpubType:
+  type
+    SectionInfo = object
+      name*: string
+      node*: JsonNode
+      known*: bool
 
-  Section* = tuple[marker: uint8, start: int64, finish: int64] ## \ A
-  ## section of a file. A section contains a byte identifier, the
-  ## start offset and one past the ending offset.
+    Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
+    ## section of a file. A section contains a byte identifier, the
+    ## start offset and one past the ending offset.
 
 
 # See:
@@ -474,13 +475,14 @@ proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.
 # 0000   FF C0 00 11 08 08 AB 0D 01 03 01 11 00 02 11 01    ................
 # 0010   03 11 01                                           ...
 
-type
-  SofInfo* = ref object of RootObj
-    precision*: uint8
-    height*: uint16
-    width*: uint16
-    components*: seq[tuple[x: uint8, y:uint8, z:uint8]] ## \
-  ## SofInfo contains the information from the JPEG SOF sections.
+tpubType:
+  type
+    SofInfo = ref object of RootObj
+      precision*: uint8
+      height*: uint16
+      width*: uint16
+      components*: seq[tuple[x: uint8, y:uint8, z:uint8]] ## \
+    ## SofInfo contains the information from the JPEG SOF sections.
 
 proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
   ## Return metadata for the given SofInfo object.

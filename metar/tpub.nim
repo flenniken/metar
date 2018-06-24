@@ -24,3 +24,29 @@ macro tpub*(x: untyped): untyped =
   when not defined(release):
     x.name = newTree(nnkPostfix, ident"*", name(x))
   result = x
+
+
+macro tpubType*(x: untyped): untyped =
+  ## Exports a type when in debug mode (not in release) so it can be
+  ## tested in an external module.
+  ##
+  ## Here is an example that makes the type "SectionInfo" public in debug mode:
+  ##
+  ## .. code-block:: nim
+  ##   import tpub
+  ##   tpubType:
+  ##     type
+  ##       SectionInfo = object
+  ##         name*: string
+  ##
+  # echo "treeRepr = ", treeRepr(x)
+  when not defined(release):
+    if x.kind == nnkStmtList:
+      if x[0].kind == nnkTypeSection:
+        for n in x[0].children:
+          if n.kind == nnkTypeDef:
+            if n[0].kind == nnkIdent:
+              n[0] = newTree(nnkPostfix, ident"*", n[0])
+  # echo "after:"
+  # echo "treeRepr = ", treeRepr(x)
+  result = x
