@@ -201,9 +201,10 @@ type
   ## Identifies an IPTC record. A number, byte identifier and a utf8 string.
 
 
-proc `$`(self: IptcRecord): string {.tpub.} =
-  result = "$1, $2, \"$3\"" % [
-    toHex(self.number), toHex(self.data_set), self.str]
+when not defined(release):
+  proc `$`(self: IptcRecord): string {.tpub.} =
+    result = "$1, $2, \"$3\"" % [
+      toHex(self.number), toHex(self.data_set), self.str]
 
 
 proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
@@ -348,14 +349,15 @@ proc readSections(file: File): seq[Section] {.tpub.} =
     raise newException(UnknownFormatError, "Invalid JPEG")
 
 
-proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
-  ## Read and return all the sections with the given marker.
+when not defined(release):
+  proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
+    ## Read and return all the sections with the given marker.
 
-  result = @[]
-  var sections = readSections(file)
-  for section in sections:
-    if section.marker == marker:
-      result.add(section)
+    result = @[]
+    var sections = readSections(file)
+    for section in sections:
+      if section.marker == marker:
+        result.add(section)
 
 
 type
@@ -501,15 +503,16 @@ proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
   result["components"] = jarray
 
 
-proc `$`(self: SofInfo): string {.tpub.} =
-  ## Return a string representation of the given SofInfo object.
+when not defined(release):
+  proc `$`(self: SofInfo): string {.tpub.} =
+    ## Return a string representation of the given SofInfo object.
 
-  var lines = newSeq[string]()
-  lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
-    $self.precision, $self.width, $self.height, $self.components.len])
-  for c in self.components:
-    lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
-  result = lines.join("\n")
+    var lines = newSeq[string]()
+    lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
+      $self.precision, $self.width, $self.height, $self.components.len])
+    for c in self.components:
+      lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
+    result = lines.join("\n")
 
 
 proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =

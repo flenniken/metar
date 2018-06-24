@@ -626,7 +626,7 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
       ranges.add(range)
 
 
-proc readTiff(file: File): Metadata {.tpub.} =
+proc readTiff*(file: File): Metadata =
   ## Read the given Tiff file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown. May return
   ## NotSupportedError exception.
