@@ -141,7 +141,12 @@ suite "test tiff.nim":
 
     let entry = getIFDEntry(buffer, endian, 0)
     let expected = "NewSubfileType(254), 1 longs, packed: 00 00 00 00"
-    check($entry == expected)
+    check(entry.tag == 254'u16)
+    check(entry.kind == Kind.longs)
+    check(entry.count == 1'u32)
+    check(entry.packed == [0'u8, 0, 0, 0])
+    check(entry.endian == endian)
+    check(entry.headerOffset == 0)
 
     # Loop through the 14 IDF entries.
     for ix in 0..14-1:
@@ -156,8 +161,12 @@ suite "test tiff.nim":
     ]
     let entry = getIFDEntry(buffer, bigEndian, 0)
     let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
-    check($entry == expected)
-    # echo $entry
+    check(entry.tag == 254'u16)
+    check(entry.kind == Kind.longs)
+    check(entry.count == 5'u32)
+    check(entry.packed == [0'u8, 1, 2, 3])
+    check(entry.endian == bigEndian)
+    check(entry.headerOffset == 0)
 
   test "test getIFDEntry index":
     var buffer = [
@@ -165,8 +174,14 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let entry = getIFDEntry(buffer, bigEndian, 0, 2)
-    let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
-    check($entry == expected)
+    # let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
+
+    check(entry.tag == 254'u16)
+    check(entry.kind == Kind.longs)
+    check(entry.count == 5'u32)
+    check(entry.packed == [0'u8, 1, 2, 3])
+    check(entry.endian == bigEndian)
+    check(entry.headerOffset == 0)
     # echo $entry
 
   test "test getIFDEntry index not enough":

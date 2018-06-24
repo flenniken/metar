@@ -6,7 +6,7 @@ import tables
 import strutils
 import tpub
 
-const tagToString* = {
+const tagToString = {
   1'u16: "InteropIndex",
   2'u16: "InteropVersion",
   11'u16: "ProcessingSoftware",
@@ -474,8 +474,15 @@ const tagToString* = {
 }.toOrderedTable
 
 
+iterator tags*(): (uint16, string) =
+  ## Iterates over all tiff tags.
+  for k, v in tagToString.pairs():
+    yield((k,v))
+
+
 proc tagName*(tag: uint16): string =
-  ## Return the human readable name of the given tag.
+  ## Return the human readable name of the given tag. If the tag isn't
+  ## found, the tag is converted to a string and returned.
 
   let name = tagToString.getOrDefault(tag)
   if name != nil:
@@ -485,8 +492,8 @@ proc tagName*(tag: uint16): string =
 
 
 proc tagName*(tagString: string): string =
-  ## Return the human readable name of the given tag. The tagString
-  ## parameter is an unsigned number string.
+  ## Return the human readable name of the given tag. If the tag isn't
+  ## found, the tagString is returned.
 
   var tag: uint16
   try:

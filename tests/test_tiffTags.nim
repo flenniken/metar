@@ -44,7 +44,7 @@ suite "Test test_tiffTags.nim":
   test "validate table":
     var found = false
     var dups = initTable[string, int]()
-    for value in tagToString.values():
+    for _, value in tags():
       if "_" in value:
         echo "underscore value: "  & value
         found = true
@@ -58,7 +58,7 @@ suite "Test test_tiffTags.nim":
         dups[value] = 1
     check(found == false)
     var lastKey = 0'u16
-    for key in tagToString.keys():
+    for key, _ in tags():
       if key <= lastKey:
         check(key <= lastKey)
         break

@@ -115,7 +115,10 @@ proc doc_module(name: string) =
   exec source
 
 task docs, "Build all the docs":
-  exec "find metar -type f -name \\*.nim | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
+  exec "rm docs/*.html"
+  exec "rm docs/*.idx"
+
+  exec "find metar -type f -name \\*.nim | grep -v metar/private | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
   let fileLines = slurp("docfiles.txt")
   for filename in fileLines.splitLines():
     if filename.len > 0:

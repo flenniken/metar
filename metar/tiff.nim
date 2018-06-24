@@ -67,19 +67,23 @@ type
 
 
   IFDEntry* = object
-    ## IFD entry data.
-    tag: uint16
-    kind: Kind
-    count: uint32
-    packed: array[4, uint8]
-    endian: Endianness
-    headerOffset: uint32
+    ## Image File Directory (IFD) Entry information. The tag, kind,
+    ## count and packed fields correspond to the 12 byte entries in
+    ## the tiff file.
+    tag*: uint16
+    kind*: Kind
+    count*: uint32
+    packed*: array[4, uint8]
+    endian*: Endianness
+    headerOffset*: uint32
 
 
   IFDInfo* = object
-    ## Node list contains the ifd section and any other optional
-    ## nodes. The next list contains ifd offsets found and their
-    ## associated names.  The first item is the offset to the next IFD
+    ## Image File Directory (IFD) information.  The node list contains
+    ## the IFD section node (name and metadata). In addition it may
+    ## contain other types of nodes, i.e, xmp, iptc, etc.  The next
+    ## list contains the pointers to additional IFDs found in the
+    ## current IFD. The first item is the offset to the next IFD
     ## (which may be 0), followed by subifds or exif, if there are
     ## any.
     nodeList*: seq[tuple[name: string, node: JsonNode]]
@@ -87,21 +91,22 @@ type
     
 
   TiffImageData* = object
-    ## Image metadata for the image node.
+    ## Image metadata for an image. The width and height of the image
+    ## and to file offsets of the image pixel data.
     width*: int32
     height*: int32
     starts*: seq[uint32]
     counts*: seq[uint32]
 
 
-proc `$`*(entry: IFDEntry): string =
-  ## Return a string representation of the IFDEntry.
+# proc `$`(entry: IFDEntry): string =
+#   ## Return a string representation of the IFDEntry.
 
-  "$1, $2 $3, packed: $4 $5 $6 $7"  %
-    [tagName(entry.tag),
-    $entry.count, $entry.kind,
-    toHex(entry.packed[0]), toHex(entry.packed[1]),
-    toHex(entry.packed[2]), toHex(entry.packed[3])]
+#   "$1, $2 $3, packed: $4 $5 $6 $7"  %
+#     [tagName(entry.tag),
+#     $entry.count, $entry.kind,
+#     toHex(entry.packed[0]), toHex(entry.packed[1]),
+#     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
 
 proc kindSize*(kind: Kind): Natural {.tpub.} =
@@ -125,8 +130,8 @@ proc kindSize*(kind: Kind): Natural {.tpub.} =
 proc readHeader*(file: File, headerOffset: uint32):
     tuple[ifdOffset: uint32, endian: Endianness] =
   ## Read the tiff header at the given offset and return the offset of
-  ## the first image file directory (IFD), and the endianness of the
-  ## file.  Raise UnknownFormatError when the file format is unknown.
+  ## the first image file directory (IFD) and the endianness of the
+  ## file.  Raise UnknownFormatError when the file is not a tiff file.
 
   # A header is made up of a three elements, order, magic and offset:
   # 2 bytes: byte order, 0x4949 or 0x4d4d
@@ -285,7 +290,8 @@ proc readOneNumber*(file: File, entry: IFDEntry): int32 =
 proc readLongs*(file: File, entry: IFDEntry, maximum: Natural): seq[uint32] =
   ## Read and return the entry's value list as a list of uint32s. The
   ## item kind must be longs. The maximum parameter limits the number
-  ## of items to read. An error is raised when it exceeds the maximum.
+  ## of items to read. An error is raised when the number of items in
+  ## the file exceeds the maximum.
 
   assert(file != nil)
   if entry.kind != Kind.longs:
