@@ -49,31 +49,6 @@ proc readMetadata*(filename: string): string
     result = ""
 
 
-proc showHelp*(): string =
-  ## Show the following command line options.
-  ##
-  ## ::
-  ##
-  ## Show metadata information for the given image(s).
-  ## Usage: metar [-j] [-v] file [file...]
-  ## -j --json     Output JSON data.
-  ## -v --version  Show the version number.
-  ## -h --help     Show this help.
-  ## file          Image filename to analyze.
-
-  result = """Show metadata information for the given image(s).
-Usage: metar [-j] [-v] file [file...]
--j --json     Output JSON data.
--v --version  Show the version number.
--h --help     Show this help.
-file          Image filename to analyze.
-"""
-
-
-# Show the "file: <filename>" of each file before the metadata.
-# Good when there more multiple files and for detecting files that are not images.
-# -f --filename Show filename before the metadata.
-
 when not defined(buidingLib):
   type
     Args* = tuple
@@ -83,6 +58,27 @@ when not defined(buidingLib):
       json: bool
       help: bool
       version: bool
+
+  proc showHelp*(): string =
+    ## Show the following command line options.
+    ##
+    ## ::
+    ##
+    ## Show metadata information for the given image(s).
+    ## Usage: metar [-j] [-v] file [file...]
+    ## -j --json     Output JSON data.
+    ## -v --version  Show the version number.
+    ## -h --help     Show this help.
+    ## file          Image filename to analyze.
+
+    result = """Show metadata information for the given image(s).
+Usage: metar [-j] [-v] file [file...]
+-j --json     Output JSON data.
+-v --version  Show the version number.
+-h --help     Show this help.
+file          Image filename to analyze.
+"""
+
 
   iterator processArgs*(args: Args): string =
     ## Given the command line arguments, return the requested
