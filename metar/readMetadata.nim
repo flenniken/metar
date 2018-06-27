@@ -10,14 +10,12 @@ import tables
 import version
 import metadata
 from readerJpeg import nil
-from readerDng import nil
 from readerTiff import nil
 import tpub
 import nimpy
 
 let readers = {
   "jpeg": readerJpeg.reader,
-  "dng": readerDng.reader,
   "tiff": readerTiff.reader,
 }.toOrderedTable
 
