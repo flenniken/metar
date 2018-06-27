@@ -7,6 +7,7 @@
 import os
 import json
 import tables
+import ospaths
 import version
 import metadata
 from readerJpeg import nil
@@ -25,7 +26,7 @@ proc getMetaInfo(filename: string, readerName: string,
   ## Return the meta information about the file and running system.
 
   result = newJObject()
-  result["filename"] = newJString(filename)
+  result["filename"] = newJString(extractFilename(filename))
   result["reader"] = newJString(readerName)
   result["size"] = newJInt(fileSize)
   result["version"] = newJString(versionNumber)
@@ -81,8 +82,8 @@ proc getMetadata*(filename: string): Metadata =
       problems.add((name, getCurrentExceptionMsg()))
       continue
 
-  # Return UnknownFormatError when none of the readers support
-  # understand the file.
+  # Return UnknownFormatError when none of the readers understand the
+  # file.
   if result == nil:
     if problems.len == 0:
       raise newException(UnknownFormatError, "File type not recognized.")
@@ -91,6 +92,7 @@ proc getMetadata*(filename: string): Metadata =
   # Add the meta dictionary information to the metadata.
   let fileSize = f.getFileSize()
   result["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
+
 
 proc keyNameImp*(readerName: string, section: string, key: string):
             string {.exportpy: "key_name".} =

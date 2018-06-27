@@ -39,7 +39,7 @@ suite "test_metar.nim":
     # Get metadata for image.jpg.
     let args:Args = (files: @["testfiles/image.jpg"], json: false,
                      help: false, version: false)
-    let expected = "filename = \"testfiles/image.jpg\""
+    let expected = "filename = \"image.jpg\""
     var found = false
     for str in processArgs(args):
       let pos = find(str, expected)

@@ -12,7 +12,7 @@ suite "test readable.nim":
     let filename = "testfiles/image.jpg"
     let metadata = getMetadata(filename)
     let str = readable(metadata, "jpeg")
-    echo str
+    # echo str
     let expected = """
 ========== jfif ==========
 major = 1

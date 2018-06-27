@@ -36,6 +36,7 @@ suite "Test readerTiff.nim":
       let message = getCurrentExceptionMsg()
       check(message == "Tiff: not implemented.")
 
+  # todo: create multipage tiff.
   # If you would like to create your own multipage tiff, simply install
   # irfanview, go to “Options/Multipage images/Create Multipage tif…”
   # and select the images you want to be included in the tif.
@@ -45,4 +46,4 @@ suite "Test readerTiff.nim":
     defer: file.close()
     let metadata = readTiff(file)
     # discard metadata
-    echo readable(metadata, "tiff")
+    # echo readable(metadata, "tiff")

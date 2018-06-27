@@ -65,6 +65,10 @@ proc runTests() =
   runShellTests()
 
 
+task runpytests, "Run python tests":
+  exec "python python/test_metar.py"
+
+
 task shell, "Run tests from the shell":
   echo "building metar and python module"
   build_metar_and_python_module(true)

@@ -33,7 +33,7 @@ height = 0
     self.assertTrue(data.startswith(start))
     contains = """\
 ========== meta ==========
-filename = "testfiles/image.jpg"
+filename = "image.jpg"
 reader = "jpeg"
 size = 2198
 """
