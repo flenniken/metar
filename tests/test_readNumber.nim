@@ -221,3 +221,13 @@ suite "Test readNumber.nim":
 
     var num = length2(buffer)
     check(num == 0xffc0)
+
+  test "read1":
+    testFile.setFilePos(0)
+    var one = testfile.read1()
+    check(one == 0x01)
+
+  test "read2":
+    testFile.setFilePos(0)
+    var two = testfile.read2()
+    check(two == 291)

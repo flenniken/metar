@@ -6,6 +6,9 @@ import algorithm
 
 suite "Test test_tiffTags.nim":
 
+  test "keyNameTiff":
+    check(keyNameTiff("ifd", "254") == "NewSubfileType(254)")
+
   test "tagName uint16":
     check(tagName(254'u16) == "NewSubfileType(254)")
     check(tagName(434'u16) == "DefaultImageColor(434)")

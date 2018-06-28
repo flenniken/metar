@@ -3,15 +3,12 @@
 ## The metar module implements the metar command line program and it
 ## contains the public procedures available in libraries.
 
-import os
-import macros
-import strutils
 import readMetadata
 import version
 import readable
 import metadata
-import nimpy
 import json
+import nimpy
 when not defined(buidingLib):
   import parseopt
 
@@ -151,8 +148,8 @@ file          Image filename to analyze.
           version = true
       of CmdLineKind.cmdArgument:
         files.add(key)
-      else:
-        help = true
+      of CmdLineKind.cmdEnd:
+        discard
 
     result = (files, json, help, version)
 

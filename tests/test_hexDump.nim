@@ -1,5 +1,7 @@
 import unittest
 import hexDump
+import testFile
+import strutils
 
 const bytes = [0xff'u8, 0xe1, 0x0, 0x5, (uint8)'e', (uint8)'x',
         (uint8)'i', (uint8)'f', 0x0, 0x31, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -39,7 +41,7 @@ suite "Test hexDump.nim":
 1234  FF E1 00 05 65 78 69 66 00 31 01 02 03 04 05     ....exif.1.....
 """
     check(hex == expected)
-    
+
   test "test hexDump 1":
     var hex = hexDump(@bytes[0..<1], 0x1234)
     # echo hex
@@ -69,3 +71,20 @@ var buffer = [
   0x07, 0x08, 0x09,
 ]"""
     check(hex == expected)
+
+  test "test hexDumpFileRange":
+    var file = openTestFile("testfiles/image.tif")
+    var hex = file.hexDumpFileRange(0'i64, 10'i64)
+    check(hex == "0000  49 49 2A 00 08 00 00 00 0E 00                    II*.......\n")
+    var hex1 = file.hexDumpFileRange(0'i64, 0'i64)
+    check(hex1 == "")
+
+  test "test hexDumpFileRange errors":
+    var file = openTestFile("testfiles/image.tif")
+
+    expect IOError:
+      discard file.hexDumpFileRange(10'i64, 0'i64)
+    expect IOError:
+      discard file.hexDumpFileRange(0'i64, 16'i64 * 1024'i64+1)
+    expect IOError:
+      discard file.hexDumpFileRange(999988'i64, 999999'i64)

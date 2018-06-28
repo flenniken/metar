@@ -91,14 +91,14 @@ proc hexDumpSource(bytes: seq[uint8]): string {.tpub.} =
   result = lines.join("\n")
 
 
-proc hexDumpFileRange*(file: File, start: int64, finish: int64) =
-  ## Hex dump a section of the given file.
+proc hexDumpFileRange*(file: File, start: int64, finish: int64): string =
+  ## Hex dump a section of the given file and return it as a string.
 
   let length = finish - start
   if length < 0:
      raise newException(IOError, "Invalid range")
   elif length == 0:
-    return
+    return ""
   elif length > 16 * 1024:
     raise newException(IOError, "Not implemented support for that big a range.")
 
@@ -106,4 +106,4 @@ proc hexDumpFileRange*(file: File, start: int64, finish: int64) =
   file.setFilePos(start)
   if file.readBytes(buffer, 0, length) != length:
     raise newException(IOError, "Unable to read the file.")
-  echo hexDump(buffer, (uint16)start)
+  result = hexDump(buffer, (uint16)start)

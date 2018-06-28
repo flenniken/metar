@@ -144,8 +144,10 @@ task t2, "Build and run t2.nim":
 
 task coverage, "Run code coverage of tests":
 
+  # Running one module and its test file at a time works.
+
   # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_readerJpeg"]
+  var test_filenames = ["test_metar"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:
@@ -164,6 +166,7 @@ task coverage, "Run code coverage of tests":
 
   exec "genhtml -o metar/coverage/html coverage.info"
   exec "open metar/coverage/html/index.html"
+
 
 task dot, "Show dependency graph":
   exec "nim genDepend metar/metar.nim"

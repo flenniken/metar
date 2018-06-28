@@ -157,9 +157,15 @@ suite "Test ranges":
 
     expect NotSupportedError:
       discard readGap(file, 0, 0)
+    expect NotSupportedError:
       discard readGap(file, 10, 0)
+    expect NotSupportedError:
       discard readGap(file, 999999, 9999999)
+    expect NotSupportedError:
+      discard readGap(file, 9999991, 9999999)
 
+
+      
   test "createRangesNode":
     var ranges = newSeq[Range]()
     ranges.add(newRange(0, 500, name="range1"))

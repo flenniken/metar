@@ -32,6 +32,16 @@ suite "test_metar.nim":
     let text = strings.join("\n")
     check(text == expectedHelp)
 
+  test "test processArgs version":
+    let args:Args = (files: @[], json: false, help: false, version: true)
+    var strings = newSeq[string]()
+    for str in processArgs(args):
+      strings.add(str)
+    let text = strings.join("\n")
+    # echo text
+    # check(text == "0.0.3")
+    check(text.len >= 4 and text.len <= 8)
+
   test "test showHelp":
     check(showHelp() == expectedHelp)
 
@@ -68,6 +78,15 @@ suite "test_metar.nim":
     check(args.files.len == 1)
     check(args.files[0] == "image.dng")
 
+  test "parseCommandLine json long":
+    var optParser = initOptParser(@["--json", "image.dng"])
+    var args = parseCommandLine(optParser)
+    check(args.help == false)
+    check(args.json == true)
+    check(args.version == false)
+    check(args.files.len == 1)
+    check(args.files[0] == "image.dng")
+
   test "parseCommandLine help short":
     var optParser = initOptParser(@["-j", "-h", "image.dng"])
     var args = parseCommandLine(optParser)
@@ -89,6 +108,15 @@ suite "test_metar.nim":
 
   test "parseCommandLine version":
     var optParser = initOptParser(@["-v", "--help", "image.dng"])
+    var args = parseCommandLine(optParser)
+    check(args.help == true)
+    check(args.json == false)
+    check(args.version == true)
+    check(args.files.len == 1)
+    check(args.files[0] == "image.dng")
+
+  test "parseCommandLine version long":
+    var optParser = initOptParser(@["--version", "--help", "image.dng"])
     var args = parseCommandLine(optParser)
     check(args.help == true)
     check(args.json == false)
@@ -129,3 +157,11 @@ suite "test_metar.nim":
     check(args.json == false)
     check(args.version == true)
     check(args.files.len == 0)
+
+  test "getVersion":
+    var version = getVersion()
+    check(version.len >= 4 and version.len <= 8)
+
+  test "keyName":
+    var str = keyName("tiff", "ifd0", "256")
+    check(str == "ImageWidth(256)")
