@@ -52,3 +52,11 @@ suite "Test imageData":
     let imageNode = createImageNode(imageData)
     check(imageNode != nil)
     check($imageNode == """{"width":1000,"height":500,"pixels":[[111,222]]}""")
+
+  test "test createImageNode incomplete":
+    var imageData = newImageData()
+    # imageData.width = 1000
+    imageData.height = 500
+    imageData.pixelOffsets.add((111'i64, 222'i64))
+    let imageNode = createImageNode(imageData)
+    check(imageNode == nil)

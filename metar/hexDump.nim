@@ -3,7 +3,7 @@ import tpub
 
 ## You can display a sequence of bytes as a hex string and ascii.
 
-iterator iteratorCount(bytes: seq[uint8], count: Natural): seq[uint8] {.tpub.} =
+iterator iteratorCount(bytes: openArray[uint8], count: Natural): seq[uint8] {.tpub.} =
   ## Return count bytes of a sequence at a time.
   var xstart = 0
   var xend = count
@@ -14,7 +14,8 @@ iterator iteratorCount(bytes: seq[uint8], count: Natural): seq[uint8] {.tpub.} =
     xstart = xend
     xend = xstart + count
 
-proc hexDump*(bytes: seq[uint8], offset: uint16=0): string =
+
+proc hexDump*(bytes: openArray[uint8], offset: uint16=0): string =
   ## Return a hex string of the given bytes. The offset parameter is
   ## the starting offset shown on the left.
   ##

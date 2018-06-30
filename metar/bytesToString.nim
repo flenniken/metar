@@ -3,6 +3,9 @@
 
 import tpub
 import unicode
+import hexdump
+import metadata
+
 
 proc stripInvalidUtf8(str: string): string {.tpub.} =
   ## Strip out invalid utf characters and return a new string.
@@ -18,7 +21,17 @@ proc stripInvalidUtf8(str: string): string {.tpub.} =
     for ix in start..<pos:
       result.add(str[ix])
 
+    if start > pos:
+      # todo: rewrite this function.
+      # var buffer = newSeq[uint8](str.len)
+      # for i, c in str:
+      #   buffer[i] = (uint8)c
+      # echo hexDump(buffer)
+      # echo toHex0(pos)
+      raise newException(NotSupportedError, "problem with invalid characters")
+
     start = pos + 1
+
     if start > str.len:
       break
 

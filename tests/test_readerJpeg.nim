@@ -468,6 +468,21 @@ precision: 8, width: 150, height: 100, num components: 3
         str.add((char)buffer[ix])
       check(stripInvalidUtf8(str) == "abc")
 
+    test "test stripInvalidUtf8 4":
+
+
+# 0000  43 6F 70 79 72 69 67 68 74 20 32 30 30 36 20 53  Copyright 2006 S
+# 0010  74 65 76 65 20 46 6C 65 6E 6E 69 6B 65 6E 00 00  teve Flenniken..
+# 0020  0D 0A 0D 0A E2 F3 69 00 14 00 00 01 03 00 01 00  ......i.........
+# 0030  00 00 08 09 00 00 01 01 03 00 01 00 00 00 23 06  ..............#.
+# 0040  00 00 02 01 03 00 03 00 00 00 CC F4 69 00 03 01  ............i...
+
+      let buffer = [(uint8)'a', (uint8)'b', 0xa9'u8, (uint8)'c']
+      var str = newStringOfCap(buffer.len)
+      for ix in 0..buffer.len-1:
+        str.add((char)buffer[ix])
+      check(stripInvalidUtf8(str) == "abc")
+
     test "test getHdtInfo":
       var buffer = [
         0xff'u8, 0xc4, 0, 0x1f, 0x00, 0x00, 0x01, 0x05,

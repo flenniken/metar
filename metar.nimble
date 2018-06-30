@@ -147,7 +147,7 @@ task coverage, "Run code coverage of tests":
   # Running one module and its test file at a time works.
 
   # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_metar"]
+  var test_filenames = ["test_tiff"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:

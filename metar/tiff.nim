@@ -252,7 +252,7 @@ proc readBlob*(file: File, entry: IFDEntry): seq[uint8] =
 
 
 proc readOneNumber*(file: File, entry: IFDEntry): int32 =
-  ## Read one entry number and return it as an int.  It can be a long,
+  ## Read one entry number and return it as an int32.  It can be a long,
   ## slong, short, sshort, bytes or sbytes. If the number is an
   ## uint32, it must be less than the maximum int32. An error is
   ## raised if there is more than one number or if the entry kind is
@@ -283,7 +283,7 @@ proc readOneNumber*(file: File, entry: IFDEntry): int32 =
     of Kind.sbytes:
       result = (int32)length[int8](entry.packed, 0, entry.endian)
     else:
-      let message = "Tiff: unexpected number type: $1." % [$entry.kind]
+      let message = "Tiff: unexpected number type, got: $1." % [$entry.kind]
       raise newException(NotSupportedError, message)
 
 
@@ -405,7 +405,7 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
 
 
 proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
-                      maximumSize:Natural=1000): JsonNode =
+                      maximumSize:Natural=1000): JsonNode {.tpub.} =
   ## Read the entry's value list. For lists that exceed the maximum,
   ## return a short string instead.
 
@@ -599,6 +599,10 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
                ranges: var seq[Range]): Metadata =
   ## Parse the exif bytes and return its metadata.  The ranges list is
   ## filled in with the ranges found in the IFD.
+
+  # echo "current file pos = " & $getFilePos(file)
+  # echo "headerOffset = " & $headerOffset
+  # echo "finish = " & $finish
 
   # let buffer = readSection(file, start, finish)
   # echo hexDump(buffer)

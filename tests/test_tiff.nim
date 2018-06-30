@@ -13,6 +13,7 @@ import readable
 import xmpparser
 import tiffTags
 import ranges
+import hexDump
 
 
 suite "test tiff.nim":
@@ -351,6 +352,19 @@ suite "test tiff.nim":
   test "test readValueList 1 byte":
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian, 0)
+    # echo $entry
+    var file: File
+    var list = readValueList(file, entry)
+    check(list.len == 1)
+    check($list == "[0]")
+
+  test "test readValueList 1 sbyte":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x06, 0x00, 0x00, 0x00, 0x01,
       0x00, 0x01, 0x02, 0x03,
     ]
     let endian = bigEndian
@@ -720,4 +734,278 @@ suite "test tiff.nim":
 
     check(ranges.len > 1)
 
+  test "test readBlob wrong kind":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x02, # kind, strings
+      0x00, 0x00, 0x00, 0x04, # count
+      0x65, 0x66, 0x67, 0x00, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
 
+    # kind should be blob or bytes
+    expect NotSupportedError:
+      discard readBlob(file, entry)
+
+  test "readOneNumber long":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0x12, 0x34, 0x56, 0x78, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(toHex0(number) == "12345678")
+
+  test "readOneNumber short":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x03, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0x12, 0x34, 0x56, 0x78, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(toHex0(number) == "1234")
+
+  test "readOneNumber byte":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x01, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0x12, 0x34, 0x56, 0x78, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(toHex0(number) == "12")
+
+  test "readOneNumber sbyte":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x06, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(number == -1)
+
+  test "readOneNumber sshort":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x08, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(number == -1)
+
+  test "readOneNumber slong":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x09, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var number = readOneNumber(file, entry)
+    check(number == -2)
+
+  test "readOneNumber invalid count":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x09, # kind, long
+      0x00, 0x00, 0x00, 0x02, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    try:
+      var number = readOneNumber(file, entry)
+      echo number
+      fail()
+    except NotSupportedError:
+      # echo getCurrentExceptionMsg()
+      discard
+
+  test "readOneNumber number too big":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    try:
+      var number = readOneNumber(file, entry)
+      echo number
+      fail()
+    except NotSupportedError:
+      # echo getCurrentExceptionMsg()
+      discard
+
+  test "readOneNumber not number":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x02, # kind, string
+      0x00, 0x00, 0x00, 0x01, # count
+      0xff, 0xff, 0xff, 0xfe, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    try:
+      var number = readOneNumber(file, entry)
+      echo number
+      fail()
+    except NotSupportedError:
+      # echo getCurrentExceptionMsg()
+      discard
+
+  test "readLongs":
+    # proc readLongs*(file: File, entry: IFDEntry, maximum: Natural): seq[uint32] =
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x01, # count
+      0x00, 0x00, 0x00, 0x02, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    var numbers = readLongs(file, entry, 2)
+    # echo numbers
+    check(numbers == @[2'u32])
+
+  test "readLongs zero":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x00, # count
+      0x00, 0x00, 0x00, 0x02, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    var numbers = readLongs(file, entry, 2)
+    # echo numbers
+    check(numbers.len == 0)
+
+  test "readLongs two":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x02, # count
+      0x00, 0x00, 0x00, 0x08, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    var numbers = readLongs(file, entry, 2)
+    # echo numbers
+    check(numbers == @[687930880'u32, 67109120'u32])
+
+  test "readLongs too many":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x04, # kind, long
+      0x00, 0x00, 0x00, 0x02, # count
+      0x00, 0x00, 0x00, 0x08, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    try:
+      var numbers = readLongs(file, entry, 1)
+      echo numbers
+    except NotSupportedError:
+      # echo getCurrentExceptionMsg()
+      discard
+
+  test "readLongs not long":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x01, # kind, byte
+      0x00, 0x00, 0x00, 0x02, # count
+      0x00, 0x00, 0x00, 0x08, # packed
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+
+    try:
+      var numbers = readLongs(file, entry, 2)
+      echo numbers
+    except NotSupportedError:
+      # echo getCurrentExceptionMsg()
+      discard
+
+  test "test readValueListMax":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x01, # kind, byte
+      0x00, 0x00, 0x00, 0x02, # count
+      0x00, 0x01, 0x02, 0x03, # packed
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian, 0)
+    # echo $entry
+    var file: File
+    var list = readValueListMax(file, entry, 2)
+    check(list.len == 2)
+    check($list == "[0,1]")
+
+  test "test readValueListMax too many":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x01, # kind, byte
+      0x00, 0x00, 0x00, 0x02, # count
+      0x00, 0x00, 0x00, 0x08, # packed
+    ]
+    let endian = bigEndian
+    let entry = getIFDEntry(buffer, endian, 0)
+    # echo $entry
+    var file: File
+    var json = readValueListMax(file, entry, 1)
+    check(json.getStr == "2 bytes starting at 8")
+
+  test "readExif":
+    var file = openTestFile("testfiles/IMG_6093.JPG")
+    defer: file.close()
+    var ranges = newSeq[Range]()
+    var node = readExif(file, 46'u32, 4796'u32, ranges)
+    # echo node
+    check(node.kind == JObject)
+
+  test "readTiff":
+    var file = openTestFile("testfiles/image.dng")
+    defer: file.close()
+    var metadata = readTiff(file)
+    # echo metadata
+    check(metadata.kind == JObject)
