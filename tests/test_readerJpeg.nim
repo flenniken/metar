@@ -60,7 +60,10 @@ suite "Test readerJpeg.nim":
     check(keyNameJpeg("iptc", "5") == "Title")
 
   test "keyNameJpeg iptc invalid":
-    check(keyNameJpeg("iptc", "999") == "")
+    check(keyNameJpeg("iptc", "999") == "999")
+
+  test "keyNameJpeg iptc asterisk":
+    check(keyNameJpeg("iptc", "5*") == "Title*")
 
   test "keyNameJpeg ranges 192":
     check(keyNameJpeg("ranges", "192") == "SOF0")
@@ -513,10 +516,12 @@ precision: 8, width: 150, height: 100, num components: 3
       check(sections.len == 4)
 
   test "test readJpeg":
-    var file = openTestFile("testfiles/IMG_6093.JPG")
+    let filename = "testfiles/agency-photographer-example.jpg"
+    # let filename = "testfiles/IMG_6093.JPG"
+    var file = openTestFile(filename)
     defer: file.close()
     var metadata = readJpeg(file)
-    # discard metadata
+    discard metadata
     # echo readable(metadata, "jpeg")
 
   # test "dump file":

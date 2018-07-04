@@ -78,9 +78,9 @@ proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
   let pos = validateUtf8(result)
   if pos != -1:
     # echo hexDump(result)
-    raise newException(NotSupportedError, "Invalid utf8 " & toHex(result[pos]))
+    raise newException(NotSupportedError, "Invalid utf8 string, found " & toHex(result[pos]) & ".")
     
   let zero = result.find((char)0'u8)
   if zero != -1:
     # echo hexDump(result)
-    raise newException(NotSupportedError, "Embedded zero.")
+    raise newException(NotSupportedError, "Embedded zero in string.")

@@ -19,6 +19,7 @@ import ranges
 import imageData
 import tiff
 import tiffTags
+import hexDump
 
 
 tpubType:
@@ -197,15 +198,23 @@ proc iptc_name(value: uint8): string {.tpub.} =
 
 
 type
-  IptcRecord = tuple[number: uint8, data_set: uint8, str: string] ## \
-  ## Identifies an IPTC record. A number, byte identifier and a utf8 string.
+  IptcRecord = object
+    ## Identifies an IPTC record.  When the iptc record cannot be
+    ## decoded, the error is set and the string is the error message.
+    number*: uint8
+    data_set*: uint8
+    str*: string
+    error*: bool
 
 
-when not defined(release):
-  proc `$`(self: IptcRecord): string {.tpub.} =
-    result = "$1, $2, \"$3\"" % [
-      toHex(self.number), toHex(self.data_set), self.str]
 
+
+# when not defined(release):
+#   proc `$`(self: IptcRecord): string {.tpub.} =
+#     result = "$1, $2, \"$3\"" % [
+#       toHex(self.number), toHex(self.data_set), self.str]
+
+# todo: treat iptc like exif where each record is a range. Remove * logic.
 
 proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   ## Return a list of all iptc records for the given iptc block.
@@ -273,10 +282,14 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
       raise newException(NotSupportedError, "Iptc: over 32k.")
     if start + string_len > finish:
       raise newException(NotSupportedError, "Iptc: invalid string length.")
-    var str = bytesToString(buffer, start + 5, string_len)
+    var str: string
+    try:
+      str = bytesToString(buffer, start + 5, string_len)
+      result.add(IptcRecord(number: number, data_set: data_set, str: str, error: false))
+    except NotSupportedError:
+      str = getCurrentExceptionMsg()
+      result.add(IptcRecord(number: number, data_set: data_set, str: str, error: true))
 
-    # let record: IptcRecord = (number, data_set, str)
-    result.add((number, data_set, str))
     start += string_len + 5
     if start >= finish:
       break  # done
@@ -402,30 +415,34 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
   result = ("", nil)
 
 
-proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
-  ## Extract the metadata from the iptc records.
-  ## Return a dictionary.
+# proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
+#   ## Extract the metadata from the iptc records.
+#   ## Return a dictionary.
 
-  result = initOrderedTable[string, string]()
-  var keywords = newSeq[string]()
-  const keyword_key = 0x19
-  for record in records:
-    if record.number != 2:
-      continue
-    if record.data_set == 0:
-      continue
-      # result["ModelVersion"] = length2(record, 2)
-    elif record.data_set == keyword_key:
-      # Make a list of keywords.
-      if record.str != nil:
-        keywords.add(record.str)
-    else:
-      # The key is the data_set number.
-      result[$record.data_set] = record.str
+#   result = initOrderedTable[string, string]()
+#   var keywords = newSeq[string]()
+#   const keyword_key = 0x19
+#   for record in records:
+#     # if record.number != 2:
+#     #   continue
+#     # if record.data_set == 0:
+#     #   continue
+#       # result["ModelVersion"] = length2(record, 2)
+#     if record.error:
+#       # todo: put * after left side instead.
+#       result[$record.data_set] =  "* " & record.str
 
-  if keywords.len > 0:
-    result[$keyword_key] = keywords.join(",")
-  return result
+#     elif record.data_set == keyword_key:
+#       # Make a list of keywords.
+#       if record.str != nil:
+#         keywords.add(record.str)
+#     else:
+#       # The key is the data_set number.
+#       result[$record.data_set] = record.str
+
+#   if keywords.len > 0:
+#     result[$keyword_key] = keywords.join(",")
+#   return result
 
 # procprocess_exif(exif):
 #   """
@@ -731,7 +748,24 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
 
   try:
     if section == "iptc":
-      return iptc_name(cast[uint8](parseUInt(key)))
+      # Handle unknown iptc records (name ending with *).
+      var unknown = false
+      var num_str: string
+      if key.len > 1 and key[key.len-1] == '*':
+        unknown = true
+        num_str = key[0..<key.len-1]
+      else:
+        num_str = key
+
+      var name = iptc_name(cast[uint8](parseUInt(num_str)))
+      if name == "":
+        name = $num_str
+
+      if unknown:
+        return name & "*"
+      else:
+        return name
+
     elif section == "ranges":
       return jpeg_section_name(cast[uint8](parseUInt(key)))
     elif section == "exif":
@@ -821,7 +855,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   var node: JsonNode
   var known = true
   var rangesAdded = false
-  
+
   # Read the section into memory, except for a couple of types.
   var buffer: seq[uint8]
   if marker != 0 and marker != 0xe1:
@@ -841,12 +875,24 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   of 0xed:
     # APPD, IPTC metadata.
     sectionName = "iptc"
-    let iptc_records = getIptcRecords(buffer)
-    if iptc_records.len > 0:
-      var iptcInfo = getIptcInfo(iptc_records)
-      node = newJObject()
-      for k, v in iptcInfo.pairs():
-        node[k] = newJString(v)
+
+    var allKnown = true
+    node = newJObject()
+    for record in getIptcRecords(buffer):
+      if record.error:
+        allKnown = false
+        node[$record.data_set & "*"] = newJString(record.str)
+      else:
+        node[$record.data_set] = newJString(record.str)
+
+    var message: string
+    if not allKnown:
+      message = "Some IPTC records were not decoded."
+    else:
+      message = ""
+    ranges.add(newRange(start, finish, sectionName, allKnown, message))
+    rangesAdded = true
+
 
   of 0xe1:
     # APP1, Could be xmp or exif.
@@ -928,7 +974,7 @@ proc handleSection(file: File, section: Section, imageData: var ImageData,
     var sectionName = jpeg_section_name(section.marker)
     ranges.add(newRange(section.start, section.finish, sectionName, false, message))
 
-  
+
 proc readJpeg(file: File): Metadata {.tpub.} =
   ## Read the given JPEG file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown.
