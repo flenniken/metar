@@ -15,7 +15,7 @@ iterator iteratorCount(bytes: openArray[uint8], count: Natural): seq[uint8] {.tp
     xend = xstart + count
 
 
-proc hexDump*(bytes: openArray[uint8], offset: uint16=0): string =
+proc hexDump*(bytes: openArray[uint8|char], offset: uint16=0): string =
   ## Return a hex string of the given bytes. The offset parameter is
   ## the starting offset shown on the left.
   ##
@@ -50,6 +50,14 @@ proc hexDump*(bytes: openArray[uint8], offset: uint16=0): string =
     start += 16
     result.add("\n")
 
+
+proc hexDump*(str: string, offset: uint16=0): string =
+  var buffer = newSeq[uint8](str.len)
+  for ix, ch in str:
+    buffer[ix] = (uint8)ch
+  result = hexDump(buffer, offset)
+
+
 proc toHex0*[T](number: T): string =
   ## Return the number as a hex string. It is like toHex but with the
   ## leading 0's removed.
@@ -73,7 +81,7 @@ proc toHex0*[T](number: T): string =
   if result == "":
      return "0"
 
-proc hexDumpSource(bytes: seq[uint8]): string {.tpub.} =
+proc hexDumpSource(bytes: openArray[uint8|char]): string {.tpub.} =
   ## Dump the buffer as an array of bytes in nim source code.
 
   var lines = newSeq[string]()

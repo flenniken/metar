@@ -325,44 +325,6 @@ suite "Test readerJpeg.nim":
       check(compareBytes(buffer, 0, "asdf") == false)
       check(compareBytes(buffer, 4, "Exig") == false)
 
-    test "test bytesToString":
-      var buffer = [(uint8)'s', (uint8)'t', (uint8)'a', (uint8)'r',
-        (uint8)'E', (uint8)'x', (uint8)'i', (uint8)'f', (uint8)'f',
-        (uint8)'t', (uint8)'e', (uint8)'s', (uint8)'t']
-      check(bytesToString(buffer, 0, buffer.len) == "starExifftest")
-      check(bytesToString(buffer, 9, 0) == "")
-      check(bytesToString(buffer, 9, 1) == "t")
-      check(bytesToString(buffer, 9, 4) == "test")
-      check(bytesToString(buffer, 4, 4) == "Exif")
-
-    test "test bytesToString2":
-      var buffer = newSeq[uint8]()
-      check(bytesToString(buffer, 0, 0) == "")
-
-    test "test bytesToString error":
-      var buffer = [0x1u8, 0x02, 0x03, 0x04]
-      try:
-        discard bytesToString(buffer, 0, buffer.len+1)
-        fail()
-      except:
-        # echo repr(getCurrentException())
-        # echo getCurrentException().name
-        # echo getCurrentExceptionMsg()
-        discard
-
-
-    test "test bytesToString error2":
-      var buffer:seq[uint8] = @[]
-      try:
-        discard bytesToString(buffer, 0, buffer.len+1)
-        fail()
-      except:
-        # echo repr(getCurrentException())
-        # echo getCurrentException().name
-        # echo getCurrentExceptionMsg()
-        discard
-
-
     test "test getSofInfo":
       var buffer = [0xff'u8, 0xc0, 0, 0x11, 0x08, 0x00, 0x64,
                     0x00, 0x96, 0x03, 0x01, 0x22, 0x00, 0x02,
@@ -407,35 +369,35 @@ precision: 8, width: 150, height: 100, num components: 3
       metadata["sofname"] = SofInfoToMeta(info)
       # echo pretty(metadata)
 
+    # todo: test getIptcRecords
+    # test "test getIptcRecords":
+    #   # let folder = "/Users/steve/code/metarnim/testfiles"
+    #   const folder = "."
+    #   showSectionsFolder(folder)
 
-    test "test getIptcRecords":
-      # let folder = "/Users/steve/code/metarnim/testfiles"
-      const folder = "."
-      showSectionsFolder(folder)
+    #   let filename = "testfiles/agency-photographer-example.jpg"
+    #   # showSections(filename)
 
-      let filename = "testfiles/agency-photographer-example.jpg"
-      # showSections(filename)
+    #   var buffer = readSectionBuffer(filename, 0xed)
+    #   # echo hexDump(buffer, 0x5FD0)
 
-      var buffer = readSectionBuffer(filename, 0xed)
-      # echo hexDump(buffer, 0x5FD0)
+    #   var records = getIptcRecords(buffer)
+    #   check(records.len == 52)
+    #   check($records[1] == """02, 05, "drp2091169d"""")
 
-      var records = getIptcRecords(buffer)
-      check(records.len == 52)
-      check($records[1] == """02, 05, "drp2091169d"""")
+    #   for record in records:
+    #     # echo $record
+    #     check(record.number == 2)
+    #     check(record.data_set >= 0u8)
+    #     check(record.str.len >= 0)
 
-      for record in records:
-        # echo $record
-        check(record.number == 2)
-        check(record.data_set >= 0u8)
-        check(record.str.len >= 0)
-
-      let info = getIptcInfo(records)
-      check(info.len == 18)
-      # for k, v in info:
-      #   echo k & "=" & v
-      var keywords = info["25"].split(',')
-      check(keywords.len == 34)
-      check(keywords[0] == "North America")
+    #   let info = getIptcInfo(records)
+    #   check(info.len == 18)
+    #   # for k, v in info:
+    #   #   echo k & "=" & v
+    #   var keywords = info["25"].split(',')
+    #   check(keywords.len == 34)
+    #   check(keywords[0] == "North America")
 
     test "test SofInfoToMeta":
 
@@ -448,40 +410,6 @@ precision: 8, width: 150, height: 100, num components: 3
       let expected = """{"precision":8,"width":200,"height":100,"components":[[1,2,3],[4,5,6]]}"""
       check(json == expected)
 
-
-    test "test stripInvalidUtf8":
-
-      check(stripInvalidUtf8("string") == "string")
-
-    test "test stripInvalidUtf8 2":
-
-      let buffer = [0xa9'u8, (uint8)'a', (uint8)'b', (uint8)'c']
-      var str = newStringOfCap(buffer.len)
-      for ix in 0..buffer.len-1:
-        str.add((char)buffer[ix])
-      check(stripInvalidUtf8(str) == "abc")
-
-    test "test stripInvalidUtf8 3":
-      let buffer = [(uint8)'a', (uint8)'b', 0xa9'u8, (uint8)'c']
-      var str = newStringOfCap(buffer.len)
-      for ix in 0..buffer.len-1:
-        str.add((char)buffer[ix])
-      check(stripInvalidUtf8(str) == "abc")
-
-    test "test stripInvalidUtf8 4":
-
-
-# 0000  43 6F 70 79 72 69 67 68 74 20 32 30 30 36 20 53  Copyright 2006 S
-# 0010  74 65 76 65 20 46 6C 65 6E 6E 69 6B 65 6E 00 00  teve Flenniken..
-# 0020  0D 0A 0D 0A E2 F3 69 00 14 00 00 01 03 00 01 00  ......i.........
-# 0030  00 00 08 09 00 00 01 01 03 00 01 00 00 00 23 06  ..............#.
-# 0040  00 00 02 01 03 00 03 00 00 00 CC F4 69 00 03 01  ............i...
-
-      let buffer = [(uint8)'a', (uint8)'b', 0xa9'u8, (uint8)'c']
-      var str = newStringOfCap(buffer.len)
-      for ix in 0..buffer.len-1:
-        str.add((char)buffer[ix])
-      check(stripInvalidUtf8(str) == "abc")
 
     test "test getHdtInfo":
       var buffer = [

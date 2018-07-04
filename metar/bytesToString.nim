@@ -1,3 +1,4 @@
+# See: test_bytesToString.nim(0):
 
 ## You use bytesToString module to create a string from an array of bytes.
 
@@ -7,50 +8,79 @@ import hexdump
 import metadata
 
 
-proc stripInvalidUtf8(str: string): string {.tpub.} =
-  ## Strip out invalid utf characters and return a new string.
+# proc validateUtf8*(s: string, start: Natural = 0): int =
+#   ## Returns the position of the invalid byte in ``s`` if the string ``s`` does
+#   ## not hold valid UTF-8 data. Otherwise ``-1`` is returned.
+#   var i = start
+#   let L = s.len
+#   while i < L:
+#     if ord(s[i]) <=% 127:
+#       inc(i)
+#     elif ord(s[i]) shr 5 == 0b110:
+#       if ord(s[i]) < 0xc2: return i # Catch overlong ascii representations.
+#       if i+1 < L and ord(s[i+1]) shr 6 == 0b10: inc(i, 2)
+#       else: return i
+#     elif ord(s[i]) shr 4 == 0b1110:
+#       if i+2 < L and ord(s[i+1]) shr 6 == 0b10 and ord(s[i+2]) shr 6 == 0b10:
+#         inc i, 3
+#       else: return i
+#     elif ord(s[i]) shr 3 == 0b11110:
+#       if i+3 < L and ord(s[i+1]) shr 6 == 0b10 and
+#                      ord(s[i+2]) shr 6 == 0b10 and
+#                      ord(s[i+3]) shr 6 == 0b10:
+#         inc i, 4
+#       else: return i
+#     else:
+#       return i
+#   return -1
 
-  result = newStringOfCap(str.len)
 
-  var start = 0
-  while true:
-    var pos = validateUtf8(str[start..<str.len])
-    if pos == -1:
-      pos = str.len
+# proc stripInvalidUtf8(str: string): (string, seq[int]) {.tpub.} =
+#   ## Strip out invalid utf characters and return a new string.
 
-    for ix in start..<pos:
-      result.add(str[ix])
+#   var stripped = newSeq[int]()
+#   var newStr = newStringOfCap(str.len)
+#   var start = 0
+#   while true:
+#     var pos = validateUtf8(str, start)
+#     if pos == -1:
+#       pos = str.len
+#     else:
+#       stripped.add(pos)
 
-    if start > pos:
-      # todo: rewrite this function.
-      # var buffer = newSeq[uint8](str.len)
-      # for i, c in str:
-      #   buffer[i] = (uint8)c
-      # echo hexDump(buffer)
-      # echo toHex0(pos)
-      raise newException(NotSupportedError, "problem with invalid characters")
+#     for ix in start..<pos:
+#       newStr.add(str[ix])
 
-    start = pos + 1
+#     assert(start <= pos)
 
-    if start > str.len:
-      break
+#     start = pos + 1
+
+#     if start > str.len:
+#       break
+
+#   result = (newStr, stripped)
 
 
 proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
-                   length: Natural=0): string {.tpub.} =
+                   length: Natural=0): string =
   ## Create a string from bytes in a buffer starting at the given
-  ## index and using length bytes. It strips out invalid utf8 bytes
-  ## and removes 0s.
+  ## index and using length bytes. Raise a NotSupportedError when the
+  ## bytes are not valid utf8 characters or when there are embedded
+  ## zeros.
 
   if length == 0:
     return ""
 
   result = newStringOfCap(length)
-  for ix in index..index+length-1:
+  for ix in index..<index+length:
     result.add((char)buffer[ix])
 
-  # Strip invalid unicode characters.
-  result = stripInvalidUtf8(result)
-
-  # Remove 0 bytes.
-  result = result.replace("\0")
+  let pos = validateUtf8(result)
+  if pos != -1:
+    # echo hexDump(result)
+    raise newException(NotSupportedError, "Invalid utf8 " & toHex(result[pos]))
+    
+  let zero = result.find((char)0'u8)
+  if zero != -1:
+    # echo hexDump(result)
+    raise newException(NotSupportedError, "Embedded zero.")

@@ -734,10 +734,45 @@ suite "test tiff.nim":
 
     check(ranges.len > 1)
 
+  test "test readBlob":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x07, # kind blob
+      0x00, 0x00, 0x00, 0x05, # count
+      0x00, 0x00, 0x00, 0x0c, # packed
+      0x00, 0x01, 0x02, 0x03, 0x04, # blob
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var blob = readBlob(file, entry)
+    check(blob.len == 5)
+    check($blob == "@[0, 1, 2, 3, 4]")
+
+  test "test readBlob less 5":
+    var buffer = [
+      0x00'u8, 0xFE, # tag
+      0x00, 0x07, # kind blob
+      0x00, 0x00, 0x00, 0x04, # count
+      0x09, 0x08, 0x07, 0x06, # packed
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var blob = readBlob(file, entry)
+    check(blob.len == 4)
+    check($blob == "@[9, 8, 7, 6]")
+
   test "test readBlob wrong kind":
     var buffer = [
       0x00'u8, 0xFE, # tag
-      0x00, 0x02, # kind, strings
+      0x00, 0x02, # kind string
       0x00, 0x00, 0x00, 0x04, # count
       0x65, 0x66, 0x67, 0x00, # packed
     ]

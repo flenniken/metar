@@ -88,7 +88,7 @@ type
     ## any.
     nodeList*: seq[tuple[name: string, node: JsonNode]]
     nextList*: seq[tuple[name: string, offset: uint32]]
-    
+
 
   TiffImageData* = object
     ## Image metadata for an image. The width and height of the image
@@ -247,8 +247,16 @@ proc readBlob*(file: File, entry: IFDEntry): seq[uint8] =
 
   let count = (int)entry.count
   result = newSeq[uint8](count)
-  if file.readBytes(result, 0, count) != count:
-    raise newException(NotSupportedError, "Tiff: Unable to read all the bytes.")
+
+  if count <= 4:
+    # The values fit in packed.  Move packed values to the list.
+    for ix in 0..<count:
+      result[ix] = entry.packed[ix]
+  else:
+    let start = length[uint32](entry.packed, 0, entry.endian)
+    file.setFilePos(((int64)start) + (int64)entry.headerOffset)
+    if file.readBytes(result, 0, count) != count:
+      raise newException(NotSupportedError, "Tiff: Unable to read all the bytes.")
 
 
 proc readOneNumber*(file: File, entry: IFDEntry): int32 =
@@ -433,7 +441,7 @@ proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, heade
   if imageData == nil:
     result = (false, nil, nil)
     return
-  
+
   let imageNode = createImageNode(imageData)
 
   var ranges = newSeq[Range](imageData.pixelOffsets.len)

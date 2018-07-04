@@ -1,5 +1,6 @@
 import ospaths
 
+
 proc createTestFile*(bytes: openArray[uint8]):
   tuple[file:File, filename:string] =
   ## Create a test file with the given bytes. Return the file and
@@ -12,6 +13,7 @@ proc createTestFile*(bytes: openArray[uint8]):
       raise newException(IOError, "Unable to write all the bytes.")
   file.setFilePos(0)
   result = (file, filename)
+
 
 proc openTestFile*(filename: string): File =
   ## Open the given test file for reading and return the file object.
