@@ -190,14 +190,14 @@ proc jpeg_section_name(value: uint8): string {.tpub.} =
     result = ""
 
 
-proc iptc_name(value: uint8): string {.tpub.} =
-  ## Return the iptc name for the given value or "" when not known.
+proc iptcLongName(value: uint8): string {.tpub.} =
+  ## Return the iptc name and value, i.e.: Title(5). If the value is not
+  ## known, return value as a string, i.e: 5.
   let name = known_iptc_names.getOrDefault(value)
   if name != nil:
     result = "$1($2)" % [name, $value]
   else:
     result = $value
-
 
 type
   IptcRecord = object
@@ -314,7 +314,7 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
       str = getCurrentExceptionMsg()
       known = false
 
-    var name = iptc_name(data_set)
+    var name = iptcLongName(data_set)
     if known:
       addSection(result, dups, name, newJString(str))
     else:
@@ -746,20 +746,26 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
 
-  try:
+  if section == "exif":
+    result = tagName(key)
+  else:
+    var num: uint8
+    try:
+      num = cast[uint8](parseUInt(key))
+    except:
+      return ""
+
     if section == "iptc":
-      let num = cast[uint8](parseUInt(key))
-      var name = known_iptc_names.getOrDefault(num)
-      if name == nil:
-        return ""
+      result = known_iptc_names.getOrDefault(num)
+      if result == nil:
+        result = ""
     elif section == "ranges":
-      let num = cast[uint8](parseUInt(key))
-      return jpeg_section_name(num)
+      result = jpeg_section_name(num)
     elif section == "exif":
-      return tagName(key)
-  except:
-    discard
-  result = ""
+      result = tagName(key)
+    else:
+      result = ""
+
 
 proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   ## Return the jfif metadata information for the given buffer.  Raise

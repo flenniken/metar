@@ -60,10 +60,10 @@ suite "Test readerJpeg.nim":
     check(keyNameJpeg("iptc", "5") == "Title")
 
   test "keyNameJpeg iptc invalid":
-    check(keyNameJpeg("iptc", "999") == "999")
+    check(keyNameJpeg("iptc", "999") == "")
 
   test "keyNameJpeg iptc asterisk":
-    check(keyNameJpeg("iptc", "5*") == "Title*")
+    check(keyNameJpeg("iptc", "5*") == "")
 
   test "keyNameJpeg ranges 192":
     check(keyNameJpeg("ranges", "192") == "SOF0")
@@ -119,26 +119,11 @@ suite "Test readerJpeg.nim":
       check(imageData.width == 150)
 
 
-    test "iptc_name key not found":
-      check(iptc_name(0) == "")
+    test "iptcLongName key not found":
+      check(iptcLongName(0) == "0")
 
-    test "iptc_name Title":
-      check(iptc_name(5) == "Title")
-
-    test "iptc_name Urgency":
-      check(iptc_name(10) == "Urgency")
-
-    test "iptc_name Description":
-      check(iptc_name(120) == "Description")
-
-    test "iptc_name Description Writer":
-      check(iptc_name(122) == "Description Writer")
-
-    test "iptc_name 123":
-      check(iptc_name(123) == "")
-
-    test "iptc_name 6":
-      check(iptc_name(6) == "")
+    test "iptcLongName Title":
+      check(iptcLongName(5) == "Title(5)")
 
     test "jpeg_section_name 0":
       check(jpeg_section_name(0) == "")
@@ -521,8 +506,8 @@ precision: 8, width: 150, height: 100, num components: 3
     var file = openTestFile(filename)
     defer: file.close()
     var metadata = readJpeg(file)
-    # discard metadata
-    echo readable(metadata, "jpeg")
+    discard metadata
+    # echo readable(metadata, "jpeg")
 
   # test "dump file":
   #   var file = openTestFile("testfiles/IMG_6093.JPG")
