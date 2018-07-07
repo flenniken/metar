@@ -521,8 +521,8 @@ precision: 8, width: 150, height: 100, num components: 3
     var file = openTestFile(filename)
     defer: file.close()
     var metadata = readJpeg(file)
-    discard metadata
-    # echo readable(metadata, "jpeg")
+    # discard metadata
+    echo readable(metadata, "jpeg")
 
   # test "dump file":
   #   var file = openTestFile("testfiles/IMG_6093.JPG")

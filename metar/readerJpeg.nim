@@ -192,9 +192,11 @@ proc jpeg_section_name(value: uint8): string {.tpub.} =
 
 proc iptc_name(value: uint8): string {.tpub.} =
   ## Return the iptc name for the given value or "" when not known.
-  result = known_iptc_names.getOrDefault(value)
-  if result == nil:
-    result = ""
+  let name = known_iptc_names.getOrDefault(value)
+  if name != nil:
+    result = "$1($2)" % [name, $value]
+  else:
+    result = $value
 
 
 type
@@ -209,19 +211,31 @@ type
 
 
 
-# when not defined(release):
-#   proc `$`(self: IptcRecord): string {.tpub.} =
-#     result = "$1, $2, \"$3\"" % [
-#       toHex(self.number), toHex(self.data_set), self.str]
+    # var allKnown = true
+    # node = newJObject()
+    # for record in getIptcRecords(buffer):
+    #   if record.error:
+    #     allKnown = false
+    #     node[$record.data_set & "*"] = newJString(record.str)
+    #   else:
+    #     node[$record.data_set] = newJString(record.str)
 
-# todo: treat iptc like exif where each record is a range. Remove * logic.
+    # var message: string
+    # if not allKnown:
+    #   message = "Some IPTC records were not decoded."
+    # else:
+    #   message = ""
+    # ranges.add(newRange(start, finish, sectionName, allKnown, message))
 
-proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
-  ## Return a list of all iptc records for the given iptc block.
-  ## Raise a NotSupportedError exception for an invalid IPTC buffer.
+proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
+              ranges: var seq[Range]): Metadata {.tpub.} =
+  ## Parse the iptc bytes and return its metadata.  The ranges list is
+  ## filled in with the ranges found.
 
   # See: http://www.iptc.org/IIM/ and
   # https://www.iptc.org/std/IIM/4.1/specification/IIMV4.1.pdf
+
+  var dups = initTable[string, int]()
 
   let size = buffer.len
   if size < 30 or size > 65502:
@@ -237,15 +251,21 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
     raise newException(NotSupportedError, "Iptc: Not photoshop 3.")
   if buffer[17] != 0 or not compareBytes(buffer, 18, "8BIM"):
     raise newException(NotSupportedError, "Iptc: Not 0 8BIM.")
-  # let type = length2(buffer, 22)  # index 22, 23
 
+  ranges.add(newRange(start, start+22'i64, "iptc", true, "header"))
+
+  # let type = length2(buffer, 22)  # index 22, 23
   # one = buffer[24]
   # two = buffer[25]
   # three = buffer[26]
   # four = buffer[27]
+  ranges.add(newRange(start+22'i64, start+28'i64, "iptc", false, "unknown header bytes"))
+
   let all_size = length2(buffer, 28)  # index 28, 29
   if all_size == 0 or all_size + 30 > size:
     raise newException(NotSupportedError, "Iptc: Inconsistent size.")
+  ranges.add(newRange(start+28'i64, start+30'i64, "iptc", true, "header"))
+
 
   # 5FD0  FF ED 22 BC 50 68 6F 74 6F 73 68 6F 70 20 33 2E  ..".Photoshop 3.
   # 5FE0  30 00 38 42 49 4D 04 04 00 00 00 00 04 8A 1C 02  0.8BIM..........
@@ -263,45 +283,52 @@ proc getIptcRecords(buffer: var openArray[uint8]): seq[IptcRecord] {.tpub.} =
   # 1C 02        19          000D           North America
   # 1C 02        19          0018           United States of America
 
-  var start = 30
-  let finish = 30 + all_size
+  result = newJObject()
+  var bstart = 30
+  let bfinish = 30 + all_size
   # todo: decode this part of the iptc section:
-  # echo hexDump(@buffer[finish..buffer.len-1])
-  result = newSeq[IptcRecord]()
+  # echo hexDump(@buffer[bfinish..buffer.len-1])
+
   while true:
-    let marker = buffer[start + 0]
+    let marker = buffer[bstart + 0]
     if marker != 0x1c:
       raise newException(NotSupportedError, "Iptc: marker not 0x1c.")
-    let number = buffer[start + 1]
-    let data_set = buffer[start + 2]
-    # index start+3, start+4
-    let string_len = length2(buffer, start + 3)
+    let number = buffer[bstart + 1]
+    let data_set = buffer[bstart + 2]
+    # index bstart+3, bstart+4
+    let string_len = length2(buffer, bstart + 3)
     if string_len > 0x7fff:
       # The length is over 32k. The next length bytes (removing high bit)
       # are the count. But we don't support this.
       raise newException(NotSupportedError, "Iptc: over 32k.")
-    if start + string_len > finish:
+    if bstart + string_len > bfinish:
       raise newException(NotSupportedError, "Iptc: invalid string length.")
     var str: string
+    var known: bool
     try:
-      str = bytesToString(buffer, start + 5, string_len)
-      result.add(IptcRecord(number: number, data_set: data_set, str: str, error: false))
+      str = bytesToString(buffer, bstart + 5, string_len)
+      if str.len == 0:
+        continue
+      known = true
     except NotSupportedError:
       str = getCurrentExceptionMsg()
-      result.add(IptcRecord(number: number, data_set: data_set, str: str, error: true))
+      known = false
 
-    start += string_len + 5
-    if start >= finish:
+    var name = iptc_name(data_set)
+    if known:
+      addSection(result, dups, name, newJString(str))
+    else:
+      name = name & ": " & str
+
+    let recordFinish = bstart + string_len + 5
+    ranges.add(newRange(start+(int64)bstart, start+(int64)recordFinish, "iptc", known, name))
+
+    if recordFinish >= bfinish:
+      let rfinish = start+(int64)recordFinish
+      if rfinish < finish:
+        ranges.add(newRange(rfinish, finish, "iptc", false, "more iptc data"))
       break  # done
-
-
-
-
-# proc `$`(section: Section): string {.tpub.} =
-#   ## Return a string representation of a section.
-#   return "section = $1 ($2, $3) $4" % [toHex(section.marker),
-#     toHex0(section.start), toHex0(section.finish),
-#     toHex0(section.finish-section.start)]
+    bstart = recordFinish
 
 
 proc readSectionsRaw(file: File): seq[Section] =
@@ -415,34 +442,7 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
   result = ("", nil)
 
 
-# proc getIptcInfo(records: seq[IptcRecord]): OrderedTable[string, string] {.tpub.} =
-#   ## Extract the metadata from the iptc records.
-#   ## Return a dictionary.
 
-#   result = initOrderedTable[string, string]()
-#   var keywords = newSeq[string]()
-#   const keyword_key = 0x19
-#   for record in records:
-#     # if record.number != 2:
-#     #   continue
-#     # if record.data_set == 0:
-#     #   continue
-#       # result["ModelVersion"] = length2(record, 2)
-#     if record.error:
-#       # todo: put * after left side instead.
-#       result[$record.data_set] =  "* " & record.str
-
-#     elif record.data_set == keyword_key:
-#       # Make a list of keywords.
-#       if record.str != nil:
-#         keywords.add(record.str)
-#     else:
-#       # The key is the data_set number.
-#       result[$record.data_set] = record.str
-
-#   if keywords.len > 0:
-#     result[$keyword_key] = keywords.join(",")
-#   return result
 
 # procprocess_exif(exif):
 #   """
@@ -748,26 +748,13 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
 
   try:
     if section == "iptc":
-      # Handle unknown iptc records (name ending with *).
-      var unknown = false
-      var num_str: string
-      if key.len > 1 and key[key.len-1] == '*':
-        unknown = true
-        num_str = key[0..<key.len-1]
-      else:
-        num_str = key
-
-      var name = iptc_name(cast[uint8](parseUInt(num_str)))
-      if name == "":
-        name = $num_str
-
-      if unknown:
-        return name & "*"
-      else:
-        return name
-
+      let num = cast[uint8](parseUInt(key))
+      var name = known_iptc_names.getOrDefault(num)
+      if name == nil:
+        return ""
     elif section == "ranges":
-      return jpeg_section_name(cast[uint8](parseUInt(key)))
+      let num = cast[uint8](parseUInt(key))
+      return jpeg_section_name(num)
     elif section == "exif":
       return tagName(key)
   except:
@@ -875,24 +862,8 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   of 0xed:
     # APPD, IPTC metadata.
     sectionName = "iptc"
-
-    var allKnown = true
-    node = newJObject()
-    for record in getIptcRecords(buffer):
-      if record.error:
-        allKnown = false
-        node[$record.data_set & "*"] = newJString(record.str)
-      else:
-        node[$record.data_set] = newJString(record.str)
-
-    var message: string
-    if not allKnown:
-      message = "Some IPTC records were not decoded."
-    else:
-      message = ""
-    ranges.add(newRange(start, finish, sectionName, allKnown, message))
+    node = readIptc(buffer, start, finish, ranges)
     rangesAdded = true
-
 
   of 0xe1:
     # APP1, Could be xmp or exif.
