@@ -60,11 +60,11 @@ proc createImageNode*(imageData: ImageData): JsonNode =
 
   result = newJObject()
   if imageData.width == -1:
-     result["width"] = newJString("width not found")
+     result["width*"] = newJString("width not found")
   else:
     result["width"] = newJInt((BiggestInt)imageData.width)
   if imageData.height == -1:
-     result["height"] = newJString("height not found")
+     result["height*"] = newJString("height not found")
   else:
     result["height"] = newJInt((BiggestInt)imageData.height)
 

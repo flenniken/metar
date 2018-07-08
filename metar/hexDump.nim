@@ -81,23 +81,24 @@ proc toHex0*[T](number: T): string =
   if result == "":
      return "0"
 
-proc hexDumpSource(bytes: openArray[uint8|char]): string {.tpub.} =
-  ## Dump the buffer as an array of bytes in nim source code.
+when not defined(release):
+  proc hexDumpSource(bytes: openArray[uint8|char]): string {.tpub.} =
+    ## Dump the buffer as an array of bytes in nim source code.
 
-  var lines = newSeq[string]()
-  lines.add("var buffer = [")
-  var first = true
-  for row in iteratorCount(bytes, 8):
-    var line = newSeq[string]()
-    for item in row:
-      if first:
-        line.add("0x$1'u8" % [toHex(item)])
-      else:
-        line.add("0x$1" % [toHex(item)])
-      first = false
-    lines.add("  " & line.join(", ") & ",")
-  lines.add("]")
-  result = lines.join("\n")
+    var lines = newSeq[string]()
+    lines.add("var buffer = [")
+    var first = true
+    for row in iteratorCount(bytes, 8):
+      var line = newSeq[string]()
+      for item in row:
+        if first:
+          line.add("0x$1'u8" % [toHex(item)])
+        else:
+          line.add("0x$1" % [toHex(item)])
+        first = false
+      lines.add("  " & line.join(", ") & ",")
+    lines.add("]")
+    result = lines.join("\n")
 
 
 proc hexDumpFileRange*(file: File, start: int64, finish: int64): string =
