@@ -52,20 +52,27 @@ proc newImageData*(width: int32, height: int32, starts: seq[uint32],
 
 proc createImageNode*(imageData: ImageData): JsonNode =
   ## Create an image node from the given image data. Return nil when
-  ## the image data is incomplete.
+  ## the image data is empty.
 
   # Return nil when the image data is incomplete.
-  if imageData.width == -1 or imageData.height == -1 or imageData.pixelOffsets.len == 0:
+  if imageData.width == -1 and imageData.height == -1 and imageData.pixelOffsets.len == 0:
     return nil
 
   result = newJObject()
-  result["width"] = newJInt((BiggestInt)imageData.width)
-  result["height"] = newJInt((BiggestInt)imageData.height)
+  if imageData.width == -1:
+     result["width"] = newJString("width not found")
+  else:
+    result["width"] = newJInt((BiggestInt)imageData.width)
+  if imageData.height == -1:
+     result["height"] = newJString("height not found")
+  else:
+    result["height"] = newJInt((BiggestInt)imageData.height)
 
-  var pixels = newJArray()
-  for offset in imageData.pixelOffsets:
-    var part = newJArray()
-    part.add(newJInt((BiggestInt)offset.start))
-    part.add(newJInt((BiggestInt)offset.finish))
-    pixels.add(part)
-  result["pixels"] = pixels
+  if imageData.pixelOffsets.len != 0:
+    var pixels = newJArray()
+    for offset in imageData.pixelOffsets:
+      var part = newJArray()
+      part.add(newJInt((BiggestInt)offset.start))
+      part.add(newJInt((BiggestInt)offset.finish))
+      pixels.add(part)
+    result["pixels"] = pixels

@@ -199,15 +199,6 @@ proc iptcLongName(value: uint8): string {.tpub.} =
   else:
     result = $value
 
-type
-  IptcRecord = object
-    ## Identifies an IPTC record.  When the iptc record cannot be
-    ## decoded, the error is set and the string is the error message.
-    number*: uint8
-    data_set*: uint8
-    str*: string
-    error*: bool
-
 
 
 
@@ -293,7 +284,7 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
     let marker = buffer[bstart + 0]
     if marker != 0x1c:
       raise newException(NotSupportedError, "Iptc: marker not 0x1c.")
-    let number = buffer[bstart + 1]
+    # let number = buffer[bstart + 1]
     let data_set = buffer[bstart + 2]
     # index bstart+3, bstart+4
     let string_len = length2(buffer, bstart + 3)
@@ -898,6 +889,8 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
     imageData.height = (int)sofx.height
     node = SofInfoToMeta(sofx)
 
+  # todo: SOF2 is progressive jpeg. Support other SOF markers. The width and height are here.
+
   of 0xc4:
     # DHT(196) 0xc4, Define Huffman Table
     node = getHdtInfo(buffer)
@@ -969,7 +962,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
 
   let imageNode = createImageNode(imageData)
   if imageNode == nil:
-    raise newException(NotSupportedError, "image data not found.")
+    raise newException(NotSupportedError, "image data empty.")
   addSection(result, dups, "image", imageNode)
 
   # todo: xmp range should appear in the ranges list not APP1.

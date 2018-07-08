@@ -72,13 +72,14 @@ proc getMetadata*(filename: string): Metadata =
   result = nil
   var readerName: string
   for name, reader in readers.pairs():
-    readerName = name
     try:
       result = reader.read(f)
+      readerName = name
       break
     except UnknownFormatError:
       continue
     except NotSupportedError:
+      readerName = name
       problems.add((name, getCurrentExceptionMsg()))
       continue
 

@@ -623,6 +623,7 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
   let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ifdRanges)
   if ifdInfo.nodeList.len != 1:
     raise newException(NotSupportedError, "exif: more than one IFD.")
+  # todo: support more than one ifd in exif. ifdInfo.nextList
   result = ifdInfo.nodeList[0].node
 
   # Add in the gaps.
