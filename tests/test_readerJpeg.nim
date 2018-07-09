@@ -109,7 +109,7 @@ suite "Test readerJpeg.nim":
       check(sectionInfo.known == true)
 
       let sectionInfo2 = handleSection(file, sections[4], imageData, ranges)
-      let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,34,0],[2,17,1],[3,17,1]]}"""
+      let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,2,2,0],[2,1,1,1],[3,1,1,1]]}"""
       check(sectionInfo2.name == "SOF0")
       check($sectionInfo2.node == expected4)
       check(sectionInfo2.known == true)
@@ -321,17 +321,17 @@ suite "Test readerJpeg.nim":
 
       let expected = """
 precision: 8, width: 150, height: 100, num components: 3
-1, 34, 0
-2, 17, 1
-3, 17, 1"""
+1, 2, 2, 0
+2, 1, 1, 1
+3, 1, 1, 1"""
       check($info == expected)
       check(info.precision == 8)
       check(info.width == 150)
       check(info.height == 100)
       check(info.components.len == 3)
-      check(info.components[0] == (1u8, 34u8, 0u8))
-      check(info.components[1] == (2u8, 17u8, 1u8))
-      check(info.components[2] == (3u8, 17u8, 1u8))
+      check(info.components[0] == (1u8, 2u8, 2u8, 0u8))
+      check(info.components[1] == (2u8, 1u8, 1u8, 1u8))
+      check(info.components[2] == (3u8, 1u8, 1u8, 1u8))
 
     test "test getSofInfo e1":
       var buffer = [0xff'u8, 0xc0]
@@ -389,13 +389,13 @@ precision: 8, width: 150, height: 100, num components: 3
 
     test "test SofInfoToMeta":
 
-      var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
-      components.add((1u8, 2u8, 3u8))
-      components.add((4u8, 5u8, 6u8))
+      var components = newSeq[tuple[c: uint8, h:uint8, v:uint8, tq:uint8]]()
+      components.add((1u8, 3u8, 0x2u8, 3u8))
+      components.add((4u8, 0x6u8, 0x5u8, 6u8))
       var info = SofInfo(precision: 8u8, width: 200u16, height: 100u16,
                           components: components)
       let json = $SofInfoToMeta(info)
-      let expected = """{"precision":8,"width":200,"height":100,"components":[[1,2,3],[4,5,6]]}"""
+      let expected = """{"precision":8,"width":200,"height":100,"components":[[1,3,2,3],[4,6,5,6]]}"""
       check(json == expected)
 
 

@@ -21,6 +21,12 @@ import tiff
 import tiffTags
 import hexDump
 
+# JPEG spec in detail:
+# http://www.w3.org/Graphics/JPEG/itu-t81.pdf
+
+# JPEG format describing common markers:
+# http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
+
 
 tpubType:
   type
@@ -34,23 +40,22 @@ tpubType:
     ## start offset and one past the ending offset.
 
 
-# See:
-# http://vip.sugovica.hu/Sardi/kepnezo/JPEG%20File%20Layout%20and%20Format.htm
-
 # see http://exiv2.org/iptc.html
 const known_iptc_names = {
+  4'u8: "IntellectualGenre",
   5'u8: "Title",
   10'u8: "Urgency",
   15'u8: "Category",
   20'u8: "Other Categories",
   25'u8: "Keywords",
   40'u8: "Instructions",
-  55'u8: "Date Created",
+  55'u8: "DateCreated",
   80'u8: "Photographer",
   85'u8: "Photographer's Job Title",
   90'u8: "City",
   92'u8: "Location",
-  95'u8: "State",
+  95'u8: "ProvinceState",
+  100'u8: "CountryCode",
   101'u8: "Country",
   103'u8: "Reference",
   105'u8: "Headline",
@@ -58,7 +63,7 @@ const known_iptc_names = {
   115'u8: "Source",
   116'u8: "Copyright",
   120'u8: "Description",
-  122'u8: "Description Writer",
+  122'u8: "CaptionWriter",
 }.toOrderedTable
 
 const known_jpeg_section_names = {
@@ -130,7 +135,6 @@ const known_jpeg_section_names = {
   0xfe'u8: "COM",
 }.toOrderedTable
 
-# http://www.w3.org/Graphics/JPEG/itu-t81.pdf
 
 const standAlone = {
     0x01'u8,
@@ -223,8 +227,11 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
   ## Parse the iptc bytes and return its metadata.  The ranges list is
   ## filled in with the ranges found.
 
-  # See: http://www.iptc.org/IIM/ and
+  # See:
+  # https://iptc.org/standards/photo-metadata/iptc-standard/
+  # http://www.iptc.org/IIM/ and
   # https://www.iptc.org/std/IIM/4.1/specification/IIMV4.1.pdf
+  # http://www.iptc.org/std/IPTC7901/1.0/specification/7901V5.pdf
 
   var dups = initTable[string, int]()
 
@@ -434,7 +441,6 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
 
 
 
-
 # procprocess_exif(exif):
 #   """
 #   Convert xp keys from 16 bit unicode to utf8 strings.
@@ -454,16 +460,17 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
 #       string = ba.decode("utf-16LE")
 #       exif[key] = string
 
-# # JPEGs with an SOF0 segment are known as Baseline JPEGs. They are
-# # always lossy, not progressive, use Huffman coding, and have a bit
-# # depth of 8. Every application that supports JPEG is supposed to at
-# # least support Baseline JPEG.
+#  http://fileformats.archiveteam.org/wiki/JPEG
+# JPEGs with an SOF0 segment are known as Baseline JPEGs. They are
+# always lossy, not progressive, use Huffman coding, and have a bit
+# depth of 8. Every application that supports JPEG is supposed to at
+# least support Baseline JPEG.
 
-# # Progressive JPEG rearranges the image data, so that the the first
-# # part of it represents a very low quality version of the entire
-# # image, rather than a high quality version of a small part of the
-# # image. A progressive JPEG is identified by the presence of an
-# # SOF2, SOF6, SOF10, or SOF14 segment.
+# Progressive JPEG rearranges the image data, so that the the first
+# part of it represents a very low quality version of the entire
+# image, rather than a high quality version of a small part of the
+# image. A progressive JPEG is identified by the presence of an
+# SOF2, SOF6, SOF10, or SOF14 segment.
 
 
 # SOF0 (Start Of Frame 0) marker:
@@ -487,12 +494,12 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
 
 tpubType:
   type
+    ## SofInfo contains the information from the JPEG SOFx sections.
     SofInfo = ref object of RootObj
       precision*: uint8
       height*: uint16
       width*: uint16
-      components*: seq[tuple[x: uint8, y:uint8, z:uint8]] ## \
-    ## SofInfo contains the information from the JPEG SOF sections.
+      components*: seq[tuple[c: uint8, h: uint8, v: uint8, tq: uint8]]
 
 proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
   ## Return metadata for the given SofInfo object.
@@ -504,9 +511,10 @@ proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
   var jarray = newJArray()
   for c in self.components:
     var comps = newJArray()
-    comps.elems.add(newJInt((int)c.x))
-    comps.elems.add(newJInt((int)c.y))
-    comps.elems.add(newJInt((int)c.z))
+    comps.elems.add(newJInt((int)c.c))
+    comps.elems.add(newJInt((int)c.h))
+    comps.elems.add(newJInt((int)c.v))
+    comps.elems.add(newJInt((int)c.tq))
     jarray.add(comps)
   result["components"] = jarray
 
@@ -519,7 +527,7 @@ when not defined(release):
     lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
       $self.precision, $self.width, $self.height, $self.components.len])
     for c in self.components:
-      lines.add("$1, $2, $3" % [$c.x, $c.y, $c.z])
+      lines.add("$1, $2, $3, $4" % [$c.c, $c.h, $c.v, $c.tq])
     result = lines.join("\n")
 
 
@@ -549,13 +557,14 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
      10 + 3 * number_components > buffer.len:
     raise newException(NotSupportedError, "SOF: number of components.")
 
-  var components = newSeq[tuple[x: uint8, y:uint8, z:uint8]]()
+  var components = newSeq[tuple[c: uint8, h:uint8, v:uint8, tq: uint8]]()
   for ix in 0..number_components-1:
     let start = 10 + 3 * ix
-    let x = buffer[start + 0]
-    let y = buffer[start + 1]
-    let z = buffer[start + 2]
-    components.add((x, y, z))
+    let c = buffer[start + 0]
+    let h = buffer[start + 1] and 0x0f
+    let v = buffer[start + 1] shr 4
+    let tq = buffer[start + 2]
+    components.add((c, h, v, tq))
 
   result = SofInfo(precision: precision, width: width, height: height,
                     components: components)
@@ -882,14 +891,12 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
       node = readExif(file, (uint32)headerOffset, (uint32)finish, ranges)
       rangesAdded = true
 
-  of 0xc0:
-    # SOF0(192) 0xc0
+  of 0xc0, 0xc2, 0xc3, 0xc9, 0xca, 0xcb:
+    # SOFx(192+x) 0xc0 - 0xcb
     let sofx = getSofInfo(buffer)
     imageData.width = (int)sofx.width
     imageData.height = (int)sofx.height
     node = SofInfoToMeta(sofx)
-
-  # todo: SOF2 is progressive jpeg. Support other SOF markers. The width and height are here.
 
   of 0xc4:
     # DHT(196) 0xc4, Define Huffman Table
