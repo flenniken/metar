@@ -103,7 +103,7 @@ suite "Test readerJpeg.nim":
       var imageData = newImageData()
       var ranges = newSeq[Range]()
       let sectionInfo = handleSection(file, sections[1], imageData, ranges)
-      let expected1 = """{"major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
+      let expected1 = """{"id":"JFIF","major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
       check(sectionInfo.name == "jfif")
       check($sectionInfo.node == expected1)
       check(sectionInfo.known == true)

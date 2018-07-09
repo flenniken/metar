@@ -781,15 +781,17 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   result = newJObject()
 
   if length2(buffer, 0) != 0xffe0: # index 0, 1
-    raise newException(NotSupportedError, "jfif: Invalid header.")
+    raise newException(NotSupportedError, "jpeg: Invalid header.")
 
   var length = length2(buffer, 2) # index 2, 3
   if length > buffer.len-2:
-    raise newException(NotSupportedError, "jfif: Invalid length.")
+    raise newException(NotSupportedError, "jpeg: Invalid length.")
 
-  if not compareBytes(buffer, 4, "JFIF") or buffer[8] != 0u8:
-    raise newException(NotSupportedError, "jfif: Not JFIF0.")
+  if not compareBytes(buffer, 4, "JF") or buffer[8] != 0u8:
+    raise newException(NotSupportedError, "jpeg: Not JFxx0.")
 
+  let id = bytesToString(buffer, 4, 4)
+  result["id"] = newJString(id)
   result["major"] = newJInt((int)buffer[9])
   result["minor"] = newJInt((int)buffer[10])
 
@@ -906,8 +908,11 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
     # APP0(224) 0xe0, jfif metadata
     # todo: support jfxx too:
     # https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format#JFIF_APP0_marker_segment
+    # https://www.w3.org/Graphics/JPEG/jfif3.pdf
     node = getApp0(buffer)
     sectionName = "jfif"
+    ranges.add(newRange(start, start+18, sectionName, known, ""))
+    rangesAdded = true
 
   of 0xdb:
     # DQT(219) 0xdb, Define Quantization Table
