@@ -1,17 +1,29 @@
+import strutils
 import json
 import metadata
 import ranges
+import tpub
 
 ## You use imageData to store and work with image width, height and pixel ranges.
 
 type
   ImageData* = ref object
+    ## ImageData holds an image width, height and the location of the
+    ## pixel data in the file.
     width*: int
     height*: int
-    pixelOffsets*: seq[tuple[start: int64, finish: int64]] ## \
-  ## ImageData holds an image width, height and the location of the
-  ## pixel data in the file.
+    pixelOffsets*: seq[tuple[start: int64, finish: int64]]
 
+when not defined(release):
+  proc `$`(self: ImageData): string {.tpub.} =
+    ## Return a string representation of the given ImageData object ref.
+
+    var lines = newSeq[string]()
+    lines.add("ImageData: width: $1, height: $2, offsets: $3" %
+      [$self.width, $self.height, $self.pixelOffsets.len])
+    for po in self.pixelOffsets:
+      lines.add("($1, $2)" % [$po.start, $po.finish])
+    result = lines.join("\n")
 
 proc newImageData*(width: int = -1, height: int = -1, capacity: Natural = 0): ImageData =
   ## Create a new ImageData object. The capacity is the number of

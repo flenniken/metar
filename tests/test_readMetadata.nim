@@ -81,7 +81,8 @@ suite "Test readMetadata.nim":
     let filename = "testfiles/image.jpg"
     let str = getMetadata(filename).readable("jpeg")
     let expected = """
-========== jfif ==========
+========== APP0 ==========
+id = "JFIF"
 major = 1
 minor = 1
 units = 1

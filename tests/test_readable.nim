@@ -14,7 +14,8 @@ suite "test readable.nim":
     let str = readable(metadata, "jpeg")
     # echo str
     let expected = """
-========== jfif ==========
+========== APP0 ==========
+id = "JFIF"
 major = 1
 minor = 1
 units = 1

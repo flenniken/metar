@@ -32,6 +32,7 @@ tpubType:
   type
     SectionInfo = object
       name*: string
+      marker*: uint8
       node*: JsonNode
       known*: bool
 
@@ -767,16 +768,9 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
       result = ""
 
 
-proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
-  ## Return the jfif metadata information for the given buffer.  Raise
+proc getApp0(buffer: var openArray[uint8], start: int64, ranges: var seq[Range]): Metadata {.tpub.} =
+  ## Return the APP0 metadata information for the given buffer.  Raise
   ## an NotSupportedError when the buffer cannot be decoded.
-
-  # ----------APP0(224)----------
-  # 0000  FF E0 00 10 4A 46 49 46 00 01 01 01 00 60 00 60  ....JFIF.....`.`
-  # 0010  00 00
-
-  # len2, "JFIF"0, major1, minor1, density units 1, x density 2, y
-  # density 2, thumbnail width 1, thumbnail height 1, 3 * width * height thumbnail pixels.
 
   result = newJObject()
 
@@ -787,21 +781,22 @@ proc getApp0(buffer: var openArray[uint8]): Metadata {.tpub.} =
   if length > buffer.len-2:
     raise newException(NotSupportedError, "jpeg: Invalid length.")
 
-  if not compareBytes(buffer, 4, "JF") or buffer[8] != 0u8:
-    raise newException(NotSupportedError, "jpeg: Not JFxx0.")
+  if compareBytes(buffer, 4, "JFIF") and buffer[8] == 0u8:
+    result["id"] = newJString("JFIF")
+    result["major"] = newJInt((int)buffer[9])
+    result["minor"] = newJInt((int)buffer[10])
+    result["units"] = newJInt((int)buffer[11])
+    result["x"] = newJInt(length2(buffer, 12))
+    result["y"] = newJInt(length2(buffer, 14))
+    result["width"] = newJInt((int)buffer[16])
+    result["height"] = newJInt((int)buffer[17])
+    ranges.add(newRange(start, start+18, "APP0", true, ""))
+  # elif compareBytes(buffer, 4, "JFXX") and buffer[8] == 0u8:
+  #   result["id"] = newJString("JFXX")
+  else:
+    # echo hexDump(buffer)
+    raise newException(NotSupportedError, "unknown APP0 type.")
 
-  let id = bytesToString(buffer, 4, 4)
-  result["id"] = newJString(id)
-  result["major"] = newJInt((int)buffer[9])
-  result["minor"] = newJInt((int)buffer[10])
-
-  result["units"] = newJInt((int)buffer[11])
-  result["x"] = newJInt(length2(buffer, 12))
-  result["y"] = newJInt(length2(buffer, 14))
-  result["width"] = newJInt((int)buffer[16])
-  result["height"] = newJInt((int)buffer[17])
-
-  # todo: If width and height are not 0, the thumbnail image follows.
 
 proc length2l(buffer: var openArray[uint8], index: Natural=0): int =
   ## Read two bytes from the buffer in big-endian starting at the
@@ -851,7 +846,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   var known = true
   var rangesAdded = false
 
-  # Read the section into memory, except for a couple of types.
+  # Read the section into memory, except for a couple.
   var buffer: seq[uint8]
   if marker != 0 and marker != 0xe1:
     buffer = readSection(file, start, finish)
@@ -909,9 +904,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
     # todo: support jfxx too:
     # https://en.wikipedia.org/wiki/JPEG_File_Interchange_Format#JFIF_APP0_marker_segment
     # https://www.w3.org/Graphics/JPEG/jfif3.pdf
-    node = getApp0(buffer)
-    sectionName = "jfif"
-    ranges.add(newRange(start, start+18, sectionName, known, ""))
+    node = getApp0(buffer, start, ranges)
     rangesAdded = true
 
   of 0xdb:
@@ -942,7 +935,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   if not rangesAdded:
     ranges.add(newRange(start, finish, sectionName, known, ""))
 
-  result = SectionInfo(name: sectionName, node: node, known: known)
+  result = SectionInfo(name: sectionName, marker: marker, node: node, known: known)
 
 
 proc handleSection(file: File, section: Section, imageData: var ImageData,

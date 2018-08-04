@@ -60,4 +60,4 @@ suite "Test imageData":
     imageData.pixelOffsets.add((111'i64, 222'i64))
     let imageNode = createImageNode(imageData)
     # echo $imageNode
-    check($imageNode == """{"width":"width not found","height":500,"pixels":[[111,222]]}""")
+    check($imageNode == """{"width*":"width not found","height":500,"pixels":[[111,222]]}""")

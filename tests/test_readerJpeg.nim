@@ -91,32 +91,57 @@ suite "Test readerJpeg.nim":
       var sections = readSections(file)
       check(sections.len == 12)
 
-      # for ix, section in sections:
-      #   var (section_name, info) = handleSection(file, section)
-      #   var str:string
-      #   if info == nil:
-      #     str = ""
-      #   else:
-      #     str = $info
-      #   echo "$1 $2: $3" % [$ix, section_name, str]
+      var imageData = newImageData()
+      var ranges = newSeq[Range]()
+      for ix, section in sections:
+        let sectionInfo = handleSection(file, section, imageData, ranges)
+        if sectionInfo.known:
+          # echo $sectionInfo
+          discard
+        else:
+          echo "section not known: " & toHex(section.marker)
+          echo $sectionInfo
+          for range in ranges:
+            echo $range
+        # var str:string
+        # if sectionInfo.node == nil:
+        #   str = ""
+        # else:
+        #   str = $sectionInfo.node
+        # echo "$1 $2($4) = $3" % [$ix, sectionInfo.name, str, $sectionInfo.marker]
+
+    test "test app0 jfif":
+      var file = openTestFile("testfiles/image.jpg")
+      defer: file.close()
+      var sections = readSections(file)
+      check(sections.len == 12)
 
       var imageData = newImageData()
       var ranges = newSeq[Range]()
       let sectionInfo = handleSection(file, sections[1], imageData, ranges)
+      # echo sectionInfo
       let expected1 = """{"id":"JFIF","major":1,"minor":1,"units":1,"x":96,"y":96,"width":0,"height":0}"""
-      check(sectionInfo.name == "jfif")
+      check(sectionInfo.name == "APP0")
       check($sectionInfo.node == expected1)
       check(sectionInfo.known == true)
+      # for range in ranges:
+      #   echo $range
+      let expectedRange = Range(start: 2, finish: 20, name: "APP0", message: "", known: true)
+      check(ranges.len == 1)
+      check(ranges[0] == expectedRange)
+      check(imageData.width == -1)
 
-      let sectionInfo2 = handleSection(file, sections[4], imageData, ranges)
-      let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,2,2,0],[2,1,1,1],[3,1,1,1]]}"""
-      check(sectionInfo2.name == "SOF0")
-      check($sectionInfo2.node == expected4)
-      check(sectionInfo2.known == true)
-      # echo $imageData
-      check(imageData.pixelOffsets.len == 0)
-      check(imageData.height == 100)
-      check(imageData.width == 150)
+
+
+      # let sectionInfo2 = handleSection(file, sections[4], imageData, ranges)
+      # let expected4 = """{"precision":8,"width":150,"height":100,"components":[[1,2,2,0],[2,1,1,1],[3,1,1,1]]}"""
+      # check(sectionInfo2.name == "SOF0")
+      # check($sectionInfo2.node == expected4)
+      # check(sectionInfo2.known == true)
+      # # echo $imageData
+      # check(imageData.pixelOffsets.len == 0)
+      # check(imageData.height == 100)
+      # check(imageData.width == 150)
 
 
     test "iptcLongName key not found":
