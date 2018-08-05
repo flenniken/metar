@@ -94,10 +94,6 @@ file          Image filename to analyze.
       yield(showHelp())
     else:
       for filename in args.files:
-        # Show the filename when more than one.
-        if args.files.len > 1:
-          yield("file: " & filename)
-
         # Show the metadata if any.
         var str: string
         if args.json:
@@ -105,6 +101,9 @@ file          Image filename to analyze.
         else:
           str = readMetadata(filename)
         if str != "":
+          # Show the filename when more than one.
+          if args.files.len > 1:
+            yield("file: " & filename)
           yield(str)
 
 
