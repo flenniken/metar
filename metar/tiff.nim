@@ -443,6 +443,7 @@ proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, heade
     return
 
   let imageNode = createImageNode(imageData)
+  assert(imageNode != nil)
 
   var ranges = newSeq[Range](imageData.pixelOffsets.len)
   var ix = 0

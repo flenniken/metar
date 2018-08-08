@@ -4,8 +4,18 @@
 # cd metar
 # python python/example.py
 
+import os
 import sys
-sys.path.append("bin")
+
+# The block of code is only needed when you want to run the
+# development version of metar.  Add metar bin folder containing the
+# metar.so file to the path so it is imported.
+absolute_path = os.path.abspath(__file__)
+parent_dir = os.path.dirname(os.path.dirname(absolute_path))
+path = os.path.join(parent_dir, "bin")
+assert(os.path.exists(os.path.join(path, "metar.so")))
+sys.path.insert(0, path)
+
 import metar
 import json
 from collections import OrderedDict
@@ -14,23 +24,29 @@ from collections import OrderedDict
 print("The metar version number = %s" % metar.get_version())
 
 # Show help on the metar module.
-# print('\n')
-# help(metar)
-# print('\n')
+print('\n')
+help(metar)
+print('\n')
 
 # Read image.jpg and return its metadata as a JSON string.
-string = metar.read_metadata_json("testfiles/image.jpg")
-if string == '':
-  print("Error: unable to read the image.jpg file")
+filename = "testfiles/image.jpg"
+if not os.path.exists(filename):
+  print("Error: the test file is missing.")
   exit(1)
+string = metar.read_metadata_json(filename)
+if string == '':
+  print("Error: unable to read the test file.")
+  exit(1)
+ 
+# Convert the json string to a python dictionary.
+metadata = json.loads(string)
 
-metadata = json.loads(string, object_pairs_hook=OrderedDict)
-# print json.dumps(metadata)
-for k, v in metadata.items():
-  print "%s = %s" % (k,v)
-print
+# Display the image width and height.
+image_section = metadata['image']
+print('The image.jpg width and height == (%s, %s)' % (
+  image_section['width'], image_section['height']))
 
-# Show the keys "sections" of the dictionary.
+# Show the keys of the metadata dictionary.
 print("Metadata dictionary keys:")
 print(metadata.keys())
 print('\n')

@@ -23,6 +23,17 @@ suite "Test imageData":
     check(imageData.pixelOffsets[1] == (300'i64, 303'i64))
     check(imageData.pixelOffsets[2] == (400'i64, 404'i64))
 
+  test "test ImageData to string":
+    var starts = @[200'u32, 400, 300]
+    var counts = @[2'u32, 4, 3]
+    let imageData = newImageData(1000, 400, starts, counts)
+    let expected = """
+ImageData: width: 1000, height: 400, offsets: 3
+(200, 202)
+(300, 303)
+(400, 404)"""
+    check($imageData == expected)
+
   test "test newImageData merge":
     var starts = @[200'u32, 400, 300]
     var counts = @[100'u32, 50, 100]
@@ -53,7 +64,7 @@ suite "Test imageData":
     check(imageNode != nil)
     check($imageNode == """{"width":1000,"height":500,"pixels":[[111,222]]}""")
 
-  test "test createImageNode incomplete":
+  test "test createImageNode no width":
     var imageData = newImageData()
     # imageData.width = 1000
     imageData.height = 500
@@ -61,3 +72,17 @@ suite "Test imageData":
     let imageNode = createImageNode(imageData)
     # echo $imageNode
     check($imageNode == """{"width*":"width not found","height":500,"pixels":[[111,222]]}""")
+
+  test "test createImageNode no height":
+    var imageData = newImageData()
+    imageData.width = 1000
+    #imageData.height = 500
+    #imageData.pixelOffsets.add((111'i64, 222'i64))
+    let imageNode = createImageNode(imageData)
+    # echo $imageNode
+    check($imageNode == """{"width":1000,"height*":"height not found"}""")
+
+  test "test createImageNode missing":
+    var imageData = newImageData()
+    let imageNode = createImageNode(imageData)
+    check(imageNode == nil)

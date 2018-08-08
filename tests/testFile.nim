@@ -15,6 +15,19 @@ proc createTestFile*(bytes: openArray[uint8]):
   result = (file, filename)
 
 
+proc createTestFile*(str: string):  tuple[file:File, filename:string] =
+  ## Create a test file with the string. Return the file and
+  ## filename. Current file position is at 0.
+
+  let filename = joinPath(getTempDir(), "testfile.bin")
+  var file: File
+  if open(file, filename, fmReadWrite):
+    if file.writeChars(str, 0, str.len) != str.len:
+      raise newException(IOError, "Unable to write the string.")
+  file.setFilePos(0)
+  result = (file, filename)
+
+
 proc openTestFile*(filename: string): File =
   ## Open the given test file for reading and return the file object.
 

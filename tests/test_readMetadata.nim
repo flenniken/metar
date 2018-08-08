@@ -1,10 +1,12 @@
 
 import unittest
+import os
 import readMetadata
 import metadata
 import json
 import strutils
 import readable
+import testFile
 
 const keyName = keyNameImp
 
@@ -69,12 +71,33 @@ suite "Test readMetadata.nim":
     check(str.contains(""""readers":["""") == true)
 
 
-  test "test getMetadata nil":
+  test "test getMetadata missing file":
     var gotException = false
     try:
-      discard getMetadata("filename")
+      discard getMetadata("missing")
     except UnknownFormatError:
       gotException = true
+      let msg = getCurrentExceptionMsg()
+      check(msg == "File not found.")
+    check(gotException == true)
+
+  test "test getMetadata read only":
+    var str = "Test file used to test permissions."
+    var (file, filename) = createTestFile(str)
+    defer:
+      file.close()
+      removeFile(filename)
+    # var perms = getFilePermissions(filename)
+    # echo perms
+    setFilePermissions(filename, {})
+
+    var gotException = false
+    try:
+      discard getMetadata(filename)
+    except UnknownFormatError:
+      gotException = true
+      let msg = getCurrentExceptionMsg()
+      check(msg == "Cannot open file.")
     check(gotException == true)
 
   test "test getMetadata":

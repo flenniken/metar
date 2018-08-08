@@ -65,7 +65,24 @@ proc runTests() =
   runShellTests()
 
 
-task runpytests, "Run python tests":
+task mp, "Make python module":
+  exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+
+
+
+task mpdb, "Make python module with debug info":
+  exec r"nim c -d:buidingLib --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+  echo "You can debug the python shared lib like this:"
+  echo "lldb -- /usr/bin/python python/example.py"
+  echo "breakpoint set -f metar.nim -l 91"
+  echo "breakpoint set -f readMetadata.nim -l 60"
+  echo "run"
+  echo "see \"lldb debugger\" note for more info."
+  echo "Note: this doesn't work. What's missing?"
+
+
+task py, "Run python tests":
+  exec r"find . -name \*.pyc -delete"
   exec "python python/test_metar.py"
 
 
@@ -147,7 +164,7 @@ task coverage, "Run code coverage of tests":
   # Running one module and its test file at a time works.
 
   # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_tiff"]
+  var test_filenames = ["test_readMetadata"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:
