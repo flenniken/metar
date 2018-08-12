@@ -388,7 +388,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
     raise newException(UnknownFormatError, "Invalid JPEG")
 
 
-when not defined(release):
+when defined(test):
   proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
     ## Read and return all the sections with the given marker.
 
@@ -520,7 +520,7 @@ proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
   result["components"] = jarray
 
 
-when not defined(release):
+when defined(test):
   proc `$`(self: SofInfo): string {.tpub.} =
     ## Return a string representation of the given SofInfo object.
 

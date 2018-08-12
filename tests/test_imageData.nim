@@ -3,6 +3,9 @@ import imageData
 import json
 import metadata
 
+static:
+  doAssert defined(test), ": test not defined."
+
 
 suite "Test imageData":
 

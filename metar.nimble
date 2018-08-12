@@ -15,7 +15,7 @@ requires "nim >= 0.17.0"
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
-proc build_metar_and_python_module(ignoreOutput: bool = false) =
+proc build_metar_and_python_module(ignoreOutput = false) =
   var ignore: string
   if ignoreOutput:
     ignore = ">/dev/null 2>&1"
@@ -29,10 +29,13 @@ proc build_metar_and_python_module(ignoreOutput: bool = false) =
 task m, "Build metar exe and python module":
   build_metar_and_python_module()
 
-proc test_module(filename: string): string =
+proc test_module(filename: string, release = false): string =
   ## Test one module.
-  const cmd = "nim c --verbosity:0 --hints:off -r --out:bin/$1 tests/$1"
-  result = (cmd % [filename])
+  const cmd = "nim c --verbosity:0 -d:test $2 --hints:off -r --out:bin/$1 tests/$1"
+  if release:
+    result = (cmd % [filename, "-d:release"])
+  else:
+    result = (cmd % [filename, ""])
 
 proc get_test_filenames(): seq[string] =
   ## Return each nim file in the tests folder.
@@ -49,10 +52,10 @@ proc runShellTests() =
   echo "\e[1;34m[Suite] \e[00mShell Tests"
   exec "bash -c tests/test_shell.sh"
 
-proc runTests() =
+proc runTests(release: bool) =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
-    let source = test_module(filename)
+    let source = test_module(filename, release)
     exec source
 
   # Build the python module and run its tests.
@@ -67,7 +70,6 @@ proc runTests() =
 
 task mp, "Make python module":
   exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
-
 
 
 task mpdb, "Make python module with debug info":
@@ -92,8 +94,11 @@ task shell, "Run tests from the shell":
   runShellTests()
 
 
-task test, "Run all the tests":
-  runTests()
+task test, "Run all the tests in debug":
+  runTests(false)
+
+task testr, "Run all the tests in release":
+  runTests(true)
 
 task showtests, "Show command line to run tests":
   for filename in get_test_filenames():

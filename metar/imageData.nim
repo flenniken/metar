@@ -14,8 +14,8 @@ type
     height*: int
     pixelOffsets*: seq[tuple[start: int64, finish: int64]]
 
-when not defined(release):
-  proc `$`(self: ImageData): string {.tpub.} =
+when defined(test):
+  proc `$`*(self: ImageData): string =
     ## Return a string representation of the given ImageData object ref.
 
     var lines = newSeq[string]()

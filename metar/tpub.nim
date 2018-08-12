@@ -1,11 +1,7 @@
 
 ## The tpub module implements the {.tpub.} macro pragma used to make
-## procedures public in debug mode so you can test them in external
-## test files.  Wrap the test code with not release:
-##
-## .. code-block:: nim
-##   when not defined(release):
-##     # test code here
+## procedures public when testing so you can test them in external
+## test files.
 
 import macros
 
@@ -21,16 +17,16 @@ macro tpub*(x: untyped): untyped =
   ##     result = "test main in external module"
   ##
   expectKind(x, RoutineNodes)
-  when not defined(release):
+  when defined(test):
     x.name = newTree(nnkPostfix, ident"*", name(x))
   result = x
 
 
 macro tpubType*(x: untyped): untyped =
-  ## Exports a type when in debug mode (not in release) so it can be
-  ## tested in an external module.
+  ## Exports a type when in test mode so it can be tested in an
+  ## external module.
   ##
-  ## Here is an example that makes the type "SectionInfo" public in debug mode:
+  ## Here is an example that makes the type "SectionInfo" public in test mode:
   ##
   ## .. code-block:: nim
   ##   import tpub
@@ -40,7 +36,7 @@ macro tpubType*(x: untyped): untyped =
   ##         name*: string
   ##
   # echo "treeRepr = ", treeRepr(x)
-  when not defined(release):
+  when defined(test):
     if x.kind == nnkStmtList:
       if x[0].kind == nnkTypeSection:
         for n in x[0].children:

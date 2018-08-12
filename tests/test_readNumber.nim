@@ -204,14 +204,6 @@ suite "Test readNumber.nim":
     # echo toHex(num64)
     check("0123456789ABCDEF" == toHex(num64))
 
-  test "length invalid number, string":
-    expect AssertionError:
-      discard length[string](buffer)
-
-  test "length invalid number, char":
-    expect AssertionError:
-      discard length[char](buffer)
-
   test "length2":
 
     var buffer = [0xff'u8, 0xc0]

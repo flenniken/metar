@@ -81,7 +81,7 @@ proc toHex0*[T](number: T): string =
   if result == "":
      return "0"
 
-when not defined(release):
+when defined(test):
   proc hexDumpSource(bytes: openArray[uint8|char]): string {.tpub.} =
     ## Dump the buffer as an array of bytes in nim source code.
 

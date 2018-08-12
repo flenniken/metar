@@ -21,26 +21,28 @@ proc length*[T](buffer: openArray[uint8], index=0,
   when not (T is uint8 or T is int8 or T is uint16 or T is int16 or
         T is uint32 or T is int32 or T is uint64 or T is int64 or
         T is float or T is float32 or T is float64):
-    assert(false, "T is not a number type.")
+    static:
+      doAssert(false, "T is not a number type.")
+
+  let pointer = unsafeAddr(buffer[index])
+  when sizeof(T) == 1:
+    copyMem(addr(result), pointer, 1)
+    return
+  if endian == littleEndian:
+    when sizeof(T) == 2:
+      littleEndian16(addr(result), pointer)
+    elif sizeof(T) == 4:
+      littleEndian32(addr(result), pointer)
+    else: #sizeof(T) == 8:
+      littleEndian64(addr(result), pointer)
   else:
-    let pointer = unsafeAddr(buffer[index])
-    when sizeof(T) == 1:
-      copyMem(addr(result), pointer, 1)
-      return
-    if endian == littleEndian:
-      when sizeof(T) == 2:
-        littleEndian16(addr(result), pointer)
-      elif sizeof(T) == 4:
-        littleEndian32(addr(result), pointer)
-      else: #sizeof(T) == 8:
-        littleEndian64(addr(result), pointer)
-    else:
-      when sizeof(T) == 2:
-        bigEndian16(addr(result), pointer)
-      elif sizeof(T) == 4:
-        bigEndian32(addr(result), pointer)
-      else: # sizeof(T) == 8:
-        bigEndian64(addr(result), pointer)
+    when sizeof(T) == 2:
+      bigEndian16(addr(result), pointer)
+    elif sizeof(T) == 4:
+      bigEndian32(addr(result), pointer)
+    else: # sizeof(T) == 8:
+      bigEndian64(addr(result), pointer)
+
 
 proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
   ## Read a number from the current file position.
