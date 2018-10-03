@@ -69,18 +69,18 @@ proc runTests(release: bool) =
 
 
 task mp, "Make python module":
-  exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+  exec r"nim c -d:buidingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
 task mpdb, "Make python module with debug info":
-  exec r"nim c -d:buidingLib --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+  exec r"nim c -d:buidingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
   echo "You can debug the python shared lib like this:"
   echo "lldb -- /usr/bin/python python/example.py"
+  echo "process launch"
   echo "breakpoint set -f metar.nim -l 91"
   echo "breakpoint set -f readMetadata.nim -l 60"
-  echo "run"
+  echo "continue"
   echo "see \"lldb debugger\" note for more info."
-  echo "Note: this doesn't work. What's missing?"
 
 
 task py, "Run python tests":
@@ -159,7 +159,7 @@ task tree, "Show the project directory tree":
   exec "tree -I '*~|nimcache'"
 
 task t, "Build and run t.nim":
-  exec "nim c -r --out:bin/t metar/private/t"
+  exec "nim c -r -d:release --out:bin/t metar/private/t"
 
 task t2, "Build and run t2.nim":
   exec "nim c -r --out:bin/t2 metar/private/t2"

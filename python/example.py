@@ -25,7 +25,7 @@ print("The metar version number = %s" % metar.get_version())
 
 # Show help on the metar module.
 print('\n')
-help(metar)
+# help(metar)
 print('\n')
 
 # Read image.jpg and return its metadata as a JSON string.
