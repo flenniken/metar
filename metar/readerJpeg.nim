@@ -36,9 +36,15 @@ tpubType:
       node*: JsonNode
       known*: bool
 
-    Section = tuple[marker: uint8, start: int64, finish: int64] ## \ A
-    ## section of a file. A section contains a byte identifier, the
+    Section = tuple[marker: uint8, start: int64, finish: int64]
+    ## A section of a file. A section contains a byte identifier, the
     ## start offset and one past the ending offset.
+
+    SectionKind = object
+      ## The section name and associated data.
+      name*: string
+      data*: seq[uint8]
+
 
 
 # see http://exiv2.org/iptc.html
@@ -191,15 +197,13 @@ proc jpeg_section_name(value: uint8): string {.tpub.} =
   ## Return the name for the given jpeg section value or "" when not
   ## known.
   result = known_jpeg_section_names.getOrDefault(value)
-  if result == nil:
-    result = ""
 
 
 proc iptcLongName(value: uint8): string {.tpub.} =
   ## Return the iptc name and value, i.e.: Title(5). If the value is not
   ## known, return value as a string, i.e: 5.
   let name = known_iptc_names.getOrDefault(value)
-  if name != nil:
+  if name != "":
     result = "$1($2)" % [name, $value]
   else:
     result = $value
@@ -399,11 +403,6 @@ when defined(test):
         result.add(section)
 
 
-type
-  SectionKind = tuple[name: string, data: seq[uint8]] ##\
-  ## The section name and associated data.
-
-
 proc xmpOrExifSection(file: File, start: int64, finish: int64):
                   SectionKind {.tpub.} =
   ## Determine whether the section is xmp or exif and return its name
@@ -437,8 +436,8 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
       let start = 4 + value.len + 1
       let length = buffer.len - start
       let data = buffer[start..<start+length]
-      return (name, data)
-  result = ("", nil)
+      return SectionKind(name: name, data: data)
+  result = SectionKind(name: "", data: newSeq[uint8]())
 
 
 
@@ -758,8 +757,6 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
 
     if section == "iptc":
       result = known_iptc_names.getOrDefault(num)
-      if result == nil:
-        result = ""
     elif section == "ranges":
       result = jpeg_section_name(num)
     elif section == "exif":

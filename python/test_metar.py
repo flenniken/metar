@@ -10,7 +10,11 @@ path = os.path.join(parent_dir, "bin")
 assert(os.path.exists(os.path.join(path, "metar.so")))
 sys.path.insert(0, path)
 
-import metar
+try:
+  import metar
+except:
+  print("Error: The metar python library was not found.")
+  exit(0)
 import unittest
 import re
 import json

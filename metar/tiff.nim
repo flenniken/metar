@@ -3,6 +3,7 @@
 ## You use the tiff module to read and parse tiff files.
 
 import tables
+import options
 import readNumber
 import endians
 import metadata
@@ -433,13 +434,12 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
 
 
 proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, headerOffset: uint32):
-    tuple[image: bool, node: JsonNode, ranges: seq[Range]] =
-  ## Return image node and associated ranges from the imageData or nil when no image.
+    Option[tuple[image: bool, node: JsonNode, ranges: seq[Range]]] =
+  ## Return image node and associated ranges from the imageData or none when no image.
 
   let im = tiffImageData
   var imageData = newImageData(im.width, im.height, im.starts, im.counts)
   if imageData == nil:
-    result = (false, nil, nil)
     return
 
   let imageNode = createImageNode(imageData)
@@ -451,7 +451,7 @@ proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, heade
     ranges[ix] = newRange(start, finish, name = "image")
     ix += 1
 
-  result = (true, imageNode, ranges)
+  result = some((true, imageNode, ranges))
 
 
 proc handleEntry(file: File,
@@ -593,8 +593,9 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
         ranges.add(newRange(start, finish, name, false, message))
 
   # If the image exists, add its node and ranges.
-  let (image, imageNode, imageRanges) = getImage(ifdOffset, $id, tiffImageData, headerOffset)
-  if image:
+  let oImage = getImage(ifdOffset, $id, tiffImageData, headerOffset)
+  if isSome(oImage):
+    let (image, imageNode, imageRanges) = oImage.get()
     nodeList.add(("image", imageNode))
     for item in imageRanges:
       ranges.add(item)

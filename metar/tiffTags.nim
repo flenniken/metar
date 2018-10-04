@@ -485,7 +485,7 @@ proc tagName*(tag: uint16): string =
   ## found, the tag is converted to a string and returned.
 
   let name = tagToString.getOrDefault(tag)
-  if name != nil:
+  if name != "":
     result = "$1($2)" % [name, $tag]
   else:
     result = $tag

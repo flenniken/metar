@@ -8,10 +8,12 @@ import version
 import readable
 import metadata
 import json
-import nimpy
-when not defined(buidingLib):
+when defined(buidingLib):
+  import nimpy
+else:
   import parseopt
-
+  macro exportpy(name: untyped, x: untyped): untyped =
+    result = x
 
 # The keyName proc is here so it will get exported in the python module.
 proc keyName*(readerName: string, section: string, key: string):

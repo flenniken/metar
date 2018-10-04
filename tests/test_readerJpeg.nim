@@ -16,7 +16,7 @@ import readable
 
 static:
   doAssert defined(test), ": test not defined."
-  
+
 proc readSectionBuffer(filename: string, marker: uint8): seq[uint8] =
   ## Read and return a section buffer from the given file.
 
@@ -229,8 +229,10 @@ suite "Test readerJpeg.nim":
     # echo hexDump(buffer[0..200])
 
     # Extract the exif data.
-    var (name, data) = xmpOrExifSection(file, section.start,
+    var sectionKind = xmpOrExifSection(file, section.start,
                                         section.finish)
+    let name = sectionKind.name
+    let data = sectionKind.data
     check(name == "exif")
     check(data.len < section.finish - section.start - 4)
     # echo hexDump(data[0..200])
@@ -255,8 +257,10 @@ suite "Test readerJpeg.nim":
     # echo hexDump(buffer[0..200])
 
     # Extract the xmp data.
-    var (name, data) = xmpOrExifSection(file, section.start,
+    let sectionKind = xmpOrExifSection(file, section.start,
                                         section.finish)
+    let name = sectionKind.name
+    let data = sectionKind.data
     check(name == "xmp")
     check(data.len < section.finish - section.start - 4)
     # echo hexDump(data[0..200])

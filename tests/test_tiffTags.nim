@@ -49,10 +49,10 @@ suite "Test test_tiffTags.nim":
     var dups = initTable[string, int]()
     for _, value in tags():
       if "_" in value:
-        echo "underscore value: "  & value
+        echo "underscore value: " & value
         found = true
       if "-" in value:
-        echo "minus value: "  & value
+        echo "minus value: " & value
         found = true
       if value in dups:
         echo "dup value: " & value

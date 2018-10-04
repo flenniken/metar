@@ -78,7 +78,8 @@ proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
   let pos = validateUtf8(result)
   if pos != -1:
     # echo hexDump(result)
-    raise newException(NotSupportedError, "Invalid utf8 string, found " & toHex(result[pos]) & ".")
+    let str = result[pos..pos]
+    raise newException(NotSupportedError, "Invalid utf8 string, found " & toHex(str) & ".")
     
   let zero = result.find((char)0'u8)
   if zero != -1:

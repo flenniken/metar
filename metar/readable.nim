@@ -61,7 +61,6 @@ proc getLeafString(node: JsonNode, maxLen: Natural): string  {.tpub.} =
       result = ellipsize($node.getFloat(), maxLen)
     of JString:
       var value = node.getStr()
-      assert(value != nil)
       let length = if maxLen < maxStringLength: maxLen else: maxStringLength
       result = ellipsize("\"" & value & "\"", length)
     of JObject:

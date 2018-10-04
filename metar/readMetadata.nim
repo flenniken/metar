@@ -13,7 +13,6 @@ import metadata
 from readerJpeg import nil
 from readerTiff import nil
 import tpub
-import nimpy
 
 let readers = {
   "jpeg": readerJpeg.reader,
@@ -96,7 +95,7 @@ proc getMetadata*(filename: string): Metadata =
 
 
 proc keyNameImp*(readerName: string, section: string, key: string):
-            string {.exportpy: "key_name".} =
+            string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   ##
