@@ -3,9 +3,20 @@ import imageData
 import options # todo: why is options necessary when imageData imports it?
 import json
 import metadata
+import strutils
 
 static:
   doAssert defined(test), ": test not defined."
+
+proc `$`(self: ImageData): string =
+  ## Return a string representation of the given ImageData object ref.
+
+  var lines = newSeq[string]()
+  lines.add("ImageData: width: $1, height: $2, offsets: $3" %
+    [$self.width, $self.height, $self.pixelOffsets.len])
+  for po in self.pixelOffsets:
+    lines.add("($1, $2)" % [$po.start, $po.finish])
+  result = lines.join("\n")
 
 
 suite "Test imageData":

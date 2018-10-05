@@ -9,27 +9,21 @@ import tpub
 
 type
   ImageData* = ref object
-    ## ImageData holds an image width, height and pixel location of the image.
+    ## ImageData holds an the image's width, height and pixel
+    ## location.  The pixelOffsets list contains ranges in the file
+    ## where the image pixel are located. The tuples are half open
+    ## intervals, [start, finish).
     width*: int
     height*: int
     pixelOffsets*: seq[tuple[start: int64, finish: int64]]
 
 
-when defined(test):
-  proc `$`*(self: ImageData): string =
-    ## Return a string representation of the given ImageData object ref.
-
-    var lines = newSeq[string]()
-    lines.add("ImageData: width: $1, height: $2, offsets: $3" %
-      [$self.width, $self.height, $self.pixelOffsets.len])
-    for po in self.pixelOffsets:
-      lines.add("($1, $2)" % [$po.start, $po.finish])
-    result = lines.join("\n")
-
-
 proc newImageData*(width: int32, height: int32, starts: seq[uint32],
                    counts: seq[uint32]): Option[ImageData] =
-  ## Create a new ImageData object.
+  ## Optionally return a new ImageData object. The starts and count
+  ## lists describe the pixel location of the image.  Both lists must
+  ## be the same size. Starts is an offset into the file and counts
+  ## are the associated lengths.
 
   # Make sure the imageData has all its fields filled in.
   if width <= 0 or height <= 0 or starts.len == 0 or
@@ -58,8 +52,10 @@ proc newImageData*(width: int32, height: int32, starts: seq[uint32],
 
 
 proc createImageNode*(imageData: ImageData): Option[JsonNode] =
-  ## Create an image node from the given image data, if the image data
-  ## exists.
+  ## Optionally return an image json node created from the given image
+  ## data.  If none of the ImageData fields are filled in, none is
+  ## returned, otherwise missing fields become error strings in the
+  ## json output.
 
   # Return none when the image data has no fields filled in.
   if imageData.width <= 0 and imageData.height <= 0 and imageData.pixelOffsets.len == 0:
