@@ -438,11 +438,12 @@ proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, heade
   ## Return image node and associated ranges from the imageData or none when no image.
 
   let im = tiffImageData
-  var imageData = newImageData(im.width, im.height, im.starts, im.counts)
-  if imageData == nil:
+  var option = newImageData(im.width, im.height, im.starts, im.counts)
+  if option.isNone:
     return
+  let imageData = option.get()
 
-  let imageNode = createImageNode(imageData)
+  let imageNode = createImageNode(imageData).get()
   assert(imageNode != nil)
 
   var ranges = newSeq[Range](imageData.pixelOffsets.len)

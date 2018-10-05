@@ -1,4 +1,5 @@
 import strutils
+import options
 import json
 import metadata
 import ranges
@@ -8,11 +9,11 @@ import tpub
 
 type
   ImageData* = ref object
-    ## ImageData holds an image width, height and the location of the
-    ## pixel data in the file.
+    ## ImageData holds an image width, height and pixel location of the image.
     width*: int
     height*: int
     pixelOffsets*: seq[tuple[start: int64, finish: int64]]
+
 
 when defined(test):
   proc `$`*(self: ImageData): string =
@@ -25,22 +26,15 @@ when defined(test):
       lines.add("($1, $2)" % [$po.start, $po.finish])
     result = lines.join("\n")
 
-proc newImageData*(width: int = -1, height: int = -1, capacity: Natural = 0): ImageData =
-  ## Create a new ImageData object. The capacity is the number of
-  ## pixelOffsets tuples allocated.
-  var pixelOffsets = newSeq[tuple[start: int64, finish: int64]](capacity)
-  result = ImageData(width: width, height: height, pixelOffsets: pixelOffsets)
-
 
 proc newImageData*(width: int32, height: int32, starts: seq[uint32],
-                   counts: seq[uint32]): ImageData =
+                   counts: seq[uint32]): Option[ImageData] =
   ## Create a new ImageData object.
 
   # Make sure the imageData has all its fields filled in.
-  if width < 1 or height < 1 or starts.len == 0 or
+  if width <= 0 or height <= 0 or starts.len == 0 or
       counts.len == 0:
     return
-    # return nil # no image
 
   # The two lists must have the same number of items.
   if starts.len != counts.len:
@@ -56,35 +50,42 @@ proc newImageData*(width: int32, height: int32, starts: seq[uint32],
   # Merge the ranges.
   let (sections, _) = mergeOffsets(offsets, paddingShift = 1)
 
-  # Make a new ImageData object.
-  result = newImageData((int)width, (int)height, sections.len)
+  var pixelOffsets = newSeq[tuple[start: int64, finish: int64]](sections.len)
   for ix, section in sections:
-    result.pixelOffsets[ix] = (section.start, section.finish)
+    pixelOffsets[ix] = (section.start, section.finish)
+
+  result = some(ImageData(width: width, height: height, pixelOffsets: pixelOffsets))
 
 
-proc createImageNode*(imageData: ImageData): JsonNode =
-  ## Create an image node from the given image data. Return nil when
-  ## the image data is empty.
+proc createImageNode*(imageData: ImageData): Option[JsonNode] =
+  ## Create an image node from the given image data, if the image data
+  ## exists.
 
-  # Return nil when the image data is incomplete.
-  if imageData.width == -1 and imageData.height == -1 and imageData.pixelOffsets.len == 0:
-    return nil
+  # Return none when the image data has no fields filled in.
+  if imageData.width <= 0 and imageData.height <= 0 and imageData.pixelOffsets.len == 0:
+    return none(JsonNode)
 
-  result = newJObject()
-  if imageData.width == -1:
-     result["width*"] = newJString("width not found")
+  var jObject = newJObject()
+
+  if imageData.width == 0:
+     jObject["width*"] = newJString("width not found")
   else:
-    result["width"] = newJInt((BiggestInt)imageData.width)
-  if imageData.height == -1:
-     result["height*"] = newJString("height not found")
-  else:
-    result["height"] = newJInt((BiggestInt)imageData.height)
+    jObject["width"] = newJInt((BiggestInt)imageData.width)
 
-  if imageData.pixelOffsets.len != 0:
+  if imageData.height == 0:
+     jObject["height*"] = newJString("height not found")
+  else:
+    jObject["height"] = newJInt((BiggestInt)imageData.height)
+
+  if imageData.pixelOffsets.len == 0:
+     jObject["pixels*"] = newJString("no image pixels")
+  else:
     var pixels = newJArray()
     for offset in imageData.pixelOffsets:
       var part = newJArray()
       part.add(newJInt((BiggestInt)offset.start))
       part.add(newJInt((BiggestInt)offset.finish))
       pixels.add(part)
-    result["pixels"] = pixels
+    jObject["pixels"] = pixels
+
+  result = some(jObject)

@@ -52,6 +52,18 @@ proc hexDump*(bytes: openArray[uint8|char], offset: uint16=0): string =
 
 
 proc hexDump*(str: string, offset: uint16=0): string =
+  ## Return a hex string of the given string. The offset parameter is
+  ## the starting offset shown on the left.
+  ##
+  ## For example:
+  ##
+  ## ::
+  ## echo hexDump("this is a test where we show a string as hex", 0x536'u16)
+  ##
+  ## 0536  74 68 69 73 20 69 73 20 61 20 74 65 73 74 20 77  this is a test w
+  ## 0546  68 65 72 65 20 77 65 20 73 68 6F 77 20 61 20 73  here we show a s
+  ## 0556  74 72 69 6E 67 20 61 73 20 68 65 78              tring as hex
+
   var buffer = newSeq[uint8](str.len)
   for ix, ch in str:
     buffer[ix] = (uint8)ch
@@ -102,7 +114,7 @@ when defined(test):
 
 
 proc hexDumpFileRange*(file: File, start: int64, finish: int64): string =
-  ## Hex dump a section of the given file and return it as a string.
+  ## Read a section of the given file and return it as a hex string.
 
   let length = finish - start
   if length < 0:

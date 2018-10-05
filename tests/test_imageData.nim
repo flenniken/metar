@@ -1,5 +1,6 @@
 import unittest
 import imageData
+import options # todo: why is options necessary when imageData imports it?
 import json
 import metadata
 
@@ -10,15 +11,15 @@ static:
 suite "Test imageData":
 
   test "test newImageData":
-    let imageData = newImageData()
-    check(imageData.width == -1)
-    check(imageData.height == -1)
+    let imageData = ImageData()
+    check(imageData.width == 0)
+    check(imageData.height == 0)
     check(imageData.pixelOffsets.len == 0)
 
   test "test newImageData2":
     var starts = @[200'u32, 400, 300]
     var counts = @[2'u32, 4, 3]
-    let imageData = newImageData(1000, 400, starts, counts)
+    let imageData = newImageData(1000, 400, starts, counts).get()
     check(imageData.width == 1000)
     check(imageData.height == 400)
     check(imageData.pixelOffsets.len == 3)
@@ -29,7 +30,7 @@ suite "Test imageData":
   test "test ImageData to string":
     var starts = @[200'u32, 400, 300]
     var counts = @[2'u32, 4, 3]
-    let imageData = newImageData(1000, 400, starts, counts)
+    let imageData = newImageData(1000, 400, starts, counts).get()
     let expected = """
 ImageData: width: 1000, height: 400, offsets: 3
 (200, 202)
@@ -40,7 +41,7 @@ ImageData: width: 1000, height: 400, offsets: 3
   test "test newImageData merge":
     var starts = @[200'u32, 400, 300]
     var counts = @[100'u32, 50, 100]
-    let imageData = newImageData(1000, 400, starts, counts)
+    let imageData = newImageData(1000, 400, starts, counts).get()
     check(imageData.width == 1000)
     check(imageData.height == 400)
     check(imageData.pixelOffsets.len == 1)
@@ -55,37 +56,36 @@ ImageData: width: 1000, height: 400, offsets: 3
   test "test newImageData nil":
     var starts = @[200'u32, 400, 300]
     var counts = @[100'u32, 50, 100]
-    let im = newImageData(-2, -1, starts, counts)
-    check(im == nil)
+    let im = newImageData(-2, 0, starts, counts)
+    check(im.isNone == true)
 
   test "test createImageNode":
-    var imageData = newImageData()
+    var imageData = ImageData()
     imageData.width = 1000
     imageData.height = 500
     imageData.pixelOffsets.add((111'i64, 222'i64))
-    let imageNode = createImageNode(imageData)
+    let imageNode = createImageNode(imageData).get()
     check(imageNode != nil)
     check($imageNode == """{"width":1000,"height":500,"pixels":[[111,222]]}""")
 
   test "test createImageNode no width":
-    var imageData = newImageData()
+    var imageData = ImageData()
     # imageData.width = 1000
     imageData.height = 500
     imageData.pixelOffsets.add((111'i64, 222'i64))
-    let imageNode = createImageNode(imageData)
+    let imageNode = createImageNode(imageData).get()
     # echo $imageNode
     check($imageNode == """{"width*":"width not found","height":500,"pixels":[[111,222]]}""")
 
   test "test createImageNode no height":
-    var imageData = newImageData()
+    var imageData = ImageData()
     imageData.width = 1000
     #imageData.height = 500
     #imageData.pixelOffsets.add((111'i64, 222'i64))
-    let imageNode = createImageNode(imageData)
+    let imageNode = createImageNode(imageData).get()
     # echo $imageNode
-    check($imageNode == """{"width":1000,"height*":"height not found"}""")
+    check($imageNode == """{"width":1000,"height*":"height not found","pixels*":"no image pixels"}""")
 
   test "test createImageNode missing":
-    var imageData = newImageData()
-    let imageNode = createImageNode(imageData)
-    check(imageNode == nil)
+    var imageData = ImageData()
+    check(createImageNode(imageData).isNone() == true)

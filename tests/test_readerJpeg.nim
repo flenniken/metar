@@ -91,7 +91,7 @@ suite "Test readerJpeg.nim":
     var sections = readSections(file)
     check(sections.len == 12)
 
-    var imageData = newImageData()
+    var imageData = ImageData()
     var ranges = newSeq[Range]()
     for ix, section in sections:
       let sectionInfo = handleSection(file, section, imageData, ranges)
@@ -116,7 +116,7 @@ suite "Test readerJpeg.nim":
     var sections = readSections(file)
     check(sections.len == 12)
 
-    var imageData = newImageData()
+    var imageData = ImageData()
     var ranges = newSeq[Range]()
     let sectionInfo = handleSection(file, sections[1], imageData, ranges)
     # echo sectionInfo
@@ -129,7 +129,7 @@ suite "Test readerJpeg.nim":
     let expectedRange = Range(start: 2, finish: 20, name: "APP0", message: "", known: true)
     check(ranges.len == 1)
     check(ranges[0] == expectedRange)
-    check(imageData.width == -1)
+    check(imageData.width == 0)
 
 
 

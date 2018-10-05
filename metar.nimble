@@ -21,9 +21,9 @@ proc build_metar_and_python_module(ignoreOutput = false) =
     ignore = ">/dev/null 2>&1"
   else:
     ignore = ""
+  exec r"nim c --out:bin/metar -d:release metar/metar" & ignore
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar " & ignore
-  exec r"nim c --out:bin/metar -d:release metar/metar" & ignore
 
 
 task m, "Build metar exe and python module":
@@ -219,19 +219,19 @@ task dot, "Show dependency graph":
   # metar -> ver [style = dotted]
 
 
-task showtestfiles, "Show command line to debug code":
-  echo ""
-  echo "Common switches:"
-  echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
-  echo ""
+# task showtestfiles, "Show command line to debug code":
+#   echo ""
+#   echo "Common switches:"
+#   echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
+#   echo ""
 
-  echo "Compile test_readerJpeg with debugging info:"
-  echo "  nim $nimswitches --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
-  echo ""
+#   echo "Compile test_readerJpeg with debugging info:"
+#   echo "  nim $nimswitches --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
+#   echo ""
 
-  echo "Compile metar with debugging info:"
-  echo "  nim $nimswitches --out:bin/metar metar/metar.nim"
-  echo ""
-  echo "Launch metar with the debugger:"
-  echo "  lldb bin/metar testfiles/image.jpg"
-  echo ""
+#   echo "Compile metar with debugging info:"
+#   echo "  nim $nimswitches --out:bin/metar metar/metar.nim"
+#   echo ""
+#   echo "Launch metar with the debugger:"
+#   echo "  lldb bin/metar testfiles/image.jpg"
+#   echo ""

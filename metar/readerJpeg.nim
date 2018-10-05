@@ -4,6 +4,7 @@
 ## implements the reader interface.
 
 import tables
+import options
 import strutils
 import metadata
 import tpub
@@ -953,7 +954,7 @@ proc readJpeg(file: File): Metadata {.tpub.} =
 
   result = newJObject()
   var dups = initTable[string, int]()
-  var imageData = newImageData()
+  var imageData = ImageData()
   var ranges = newSeq[Range]()
 
   let sections = readSections(file)
@@ -962,10 +963,10 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     if sectionInfo.node != nil:
       addSection(result, dups, sectionInfo.name, sectionInfo.node)
 
-  let imageNode = createImageNode(imageData)
-  if imageNode == nil:
+  let optionNode = createImageNode(imageData)
+  if optionNode.isNone:
     raise newException(NotSupportedError, "image data empty.")
-  addSection(result, dups, "image", imageNode)
+  addSection(result, dups, "image", optionNode.get())
 
   # todo: xmp range should appear in the ranges list not APP1.
   let fileSize = file.getFileSize()
