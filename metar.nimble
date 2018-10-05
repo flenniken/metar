@@ -197,7 +197,7 @@ task dot, "Show dependency graph":
   exec """find metar -name \*.nim -depth 1 | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o bin/dependencies.svg"
-  exec "open bin/dependencies.svg"
+  exec "open -a Firefox bin/dependencies.svg"
 
   # You can set the border color like this:
   # macros [color = red];

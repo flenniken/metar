@@ -4,8 +4,8 @@
 
 import tpub
 import unicode
-import hexdump
-import metadata
+# import hexdump
+# import metadata
 
 
 # proc validateUtf8*(s: string, start: Natural = 0): int =
