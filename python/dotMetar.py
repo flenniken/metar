@@ -36,8 +36,8 @@ def dotFilter(names, filename):
       if left != '' and left in names and right in names:
         print '%s -> %s;' % (left, right)
 
+  # Add dotted line between version.nim and ver.nim.
   print 'version -> ver [style = dotted];'
-  print 'metar -> ver [style = dotted];'
   print '}'
 
 def readNames(filename):

@@ -193,7 +193,7 @@ task coverage, "Run code coverage of tests":
 task dot, "Show dependency graph":
   exec "nim genDepend metar/metar.nim"
   # Create my.dot file with the contents of metar.dot after stripping
-  # out nim modules.  Add the dotted lines for ver.nim.
+  # out nim modules.  Add the dotted line between version.nim and ver.nim.
   exec """find metar -name \*.nim -depth 1 | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o bin/dependencies.svg"
