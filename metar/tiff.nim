@@ -632,7 +632,7 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
   # Add in the gaps.
   ifdRanges.add(newRange(headerOffset, headerOffset, name = "border"))
   ifdRanges.add(newRange((uint32)finish, (uint32)finish, name = "border"))
-  let (_, gaps) = mergeOffsets(ifdRanges)
+  let (_, gaps) = mergeRanges(ifdRanges)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
     ifdRanges.add(Range(name: "gap", start: start, finish: finish,

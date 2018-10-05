@@ -42,7 +42,7 @@ proc newImageData*(width: int32, height: int32, starts: seq[uint32],
     offsets[ix] = newRange(start, finish)
 
   # Merge the ranges.
-  let (sections, _) = mergeOffsets(offsets, paddingShift = 1)
+  let (sections, _) = mergeRanges(offsets, paddingShift = 1)
 
   var pixelOffsets = newSeq[tuple[start: int64, finish: int64]](sections.len)
   for ix, section in sections:

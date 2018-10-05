@@ -1,7 +1,7 @@
 # See: test_ranges.nim(0):
 
 ## You use the ranges modules to hold ranges, merge them and to create a
-## ranges metadata node from a list.
+## ranges metadata node from a list of ranges.
 
 import metadata
 import json
@@ -11,12 +11,16 @@ import tables
 import tpub
 
 type
-  OffsetList* = seq[tuple[start: int64, finish: int64]]
+  OffsetList = seq[tuple[start: int64, finish: int64]]
+    ## A list of file offsets. Each tuple is a half open interval,
+    ## [start, finish).
 
   Range* = object
-    ## A range describes a section of the file.  The start is the
-    ## offset of the beginning of the section and finish is one past
-    ## the end. The known field is true when the section format is
+    ## A range object describes a byte range of the file.  The start
+    ## is the offset of the beginning of the range and finish is one
+    ## past the end. The name is a short string, like "header". The
+    ## message is an optional short string with more information about
+    ## the range. The known field is true when the range format is
     ## known and handled by the current code, false when the format of
     ## the section is unknown.
     start*: int64
@@ -25,6 +29,9 @@ type
     message*: string
     known*: bool
 
+  # Doesn't do what I want. I want any of these types to work not just Offset.
+  # Offset* = int | uint32 | int64
+  #   ## A byte offset into a file.
 
 proc newRange*(start: int | uint32 | int64, finish: int | uint32 | int64, name: string = "",
                known: bool = true, message: string = ""): Range =
@@ -33,7 +40,7 @@ proc newRange*(start: int | uint32 | int64, finish: int | uint32 | int64, name: 
                  name: name, known: known, message: message)
 
 
-proc mergeOffsets*(ranges: seq[Range], paddingShift: Natural = 0):
+proc mergeRanges*(ranges: seq[Range], paddingShift: Natural = 0):
     tuple[minList: OffsetList, gapList: OffsetList] =
   ## Given a list of ranges, merge them into the smallest set of
   ## contiguous ranges. Return the new list of ranges. Also return a
@@ -141,8 +148,10 @@ proc createRangeNode(item: Range): JsonNode {.tpub.} =
 
 proc createRangesNode*(file: File, start: int | uint32 | int64, finish: int | uint32 | int64,
                        ranges: var seq[Range]): JsonNode =
-  ## Create ranges node from a list of ranges. Add in the gaps and
-  ## sort the ranges.
+  ## Return a json node for the given list of ranges.  The node
+  ## contains the gaps and the ranges are sorted. The start and finish
+  ## define the file boundries. You can pass 0 and fileSize to capture
+  ## the whole file.
 
   var offsetList = newSeq[Range](ranges.len)
   for ix, item in ranges:
@@ -152,7 +161,7 @@ proc createRangesNode*(file: File, start: int | uint32 | int64, finish: int | ui
   offsetList.add(newRange(s64, s64))
   offsetList.add(newRange(f64, f64))
 
-  let (_, gaps) = mergeOffsets(offsetList)
+  let (_, gaps) = mergeRanges(offsetList)
   for start, finish in gaps.items():
     let gapHex = readGap(file, start, finish)
     ranges.add(Range(name: "gap", start: start, finish: finish,

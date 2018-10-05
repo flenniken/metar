@@ -22,126 +22,126 @@ suite "Test ranges":
     let rangeNode = createRangeNode(range)
     check($rangeNode == """["name",123,456,true,"message"]""")
 
-  test "test mergeOffsets empty":
+  test "test mergeRanges empty":
     var list = newSeq[Range]()
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 0)
     check(gapList.len == 0)
 
-  test "test mergeOffsets 1":
+  test "test mergeRanges 1":
     var list = newSeq[Range]()
     let item: Range = newRange(5, 10)
     list.add(item)
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     let expected = @[(start: 5'i64, finish: 10'i64)]
     check(minList == expected)
 
-  test "test mergeOffsets 2":
+  test "test mergeRanges 2":
     var list = newSeq[Range]()
     list.add(newRange(5, 10))
     list.add(newRange(10, 30))
     let expected = @[(5'i64, 30'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expected)
 
-  test "test mergeOffsets 3":
+  test "test mergeRanges 3":
     var list = newSeq[Range]()
     list.add(newRange(5, 10))
     list.add(newRange(20, 30))
     let expectedGap = @[(10'i64, 20'i64)]
     let expectedList = @[(5'i64, 10'i64), (20'i64, 30'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedList)
     check(gapList == expectedGap)
 
-  test "test mergeOffsets 4":
+  test "test mergeRanges 4":
     var list = newSeq[Range]()
     list.add(newRange(0, 0))
     list.add(newRange(20, 30))
     let expectedMin = @[(20'i64, 30'i64)]
     let expectedGap = @[(0'i64, 20'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeOffsets 5":
+  test "test mergeRanges 5":
     var list = newSeq[Range]()
     list.add(newRange(20, 30))
     list.add(newRange(40, 40))
     let expectedMin = @[(20'i64, 30'i64)]
     let expectedGap = @[(30'i64, 40'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeOffsets 6":
+  test "test mergeRanges 6":
     var list = newSeq[Range]()
     list.add(newRange(0, 0))
     list.add(newRange(20, 30))
     list.add(newRange(40, 40))
     let expectedMin = @[(20'i64, 30'i64)]
     let expectedGap = @[(0'i64, 20'i64), (30'i64, 40'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 2)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeOffsets 7":
+  test "test mergeRanges 7":
     var list = newSeq[Range]()
     list.add(newRange(0, 40))
     list.add(newRange(20, 45))
     list.add(newRange(40, 60))
     let expectedMin = @[(0'i64, 60'i64)]
-    let (minList, gapList) = mergeOffsets(list)
+    let (minList, gapList) = mergeRanges(list)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
 
   # padding is on even byte boundaries.
 
-  test "test mergeOffsets padding 1":
+  test "test mergeRanges padding 1":
     # Not on padding value.
     var list = newSeq[Range]()
     list.add(newRange(0, 39))
     list.add(newRange(41, 45))
     let expectedMin = @[(0'i64, 39'i64), (41'i64, 45'i64)]
     let expectedGap = @[(39'i64, 41'i64)]
-    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
+    let (minList, gapList) = mergeRanges(list, paddingShift = 1)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)
     check(gapList == expectedGap)
 
-  test "test mergeOffsets padding 2":
+  test "test mergeRanges padding 2":
     # On padding value.
     var list = newSeq[Range]()
     list.add(newRange(0, 39))
     list.add(newRange(40, 49))
     let expectedMin = @[(0'i64, 49'i64)]
-    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
+    let (minList, gapList) = mergeRanges(list, paddingShift = 1)
     check(minList.len == 1)
     check(gapList.len == 0)
     check(minList == expectedMin)
 
-  test "test mergeOffsets padding 3":
+  test "test mergeRanges padding 3":
     # Not on padding
     var list = newSeq[Range]()
     list.add(newRange(0, 37))
     list.add(newRange(49, 55))
     let expectedMin = @[(0'i64, 37'i64), (49'i64, 55'i64)]
     let expectedGap = @[(37'i64, 49'i64)]
-    let (minList, gapList) = mergeOffsets(list, paddingShift = 1)
+    let (minList, gapList) = mergeRanges(list, paddingShift = 1)
     check(minList.len == 2)
     check(gapList.len == 1)
     check(minList == expectedMin)
