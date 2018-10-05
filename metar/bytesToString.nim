@@ -1,6 +1,6 @@
 # See: test_bytesToString.nim(0):
 
-## You use bytesToString module to create a string from an array of bytes.
+## Create a string from an array of bytes.
 
 import tpub
 import unicode

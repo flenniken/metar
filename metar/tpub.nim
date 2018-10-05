@@ -6,15 +6,15 @@
 import macros
 
 macro tpub*(x: untyped): untyped =
-  ## Exports a proc when in debug mode (not in release) so it can be
-  ## tested in an external module.
+  ## Exports a proc when in test mode so it can be tested in an
+  ## external module.
   ##
   ## Usage:
   ##
   ## .. code-block:: nim
   ##   import tpub
-  ##   proc main(value:int): string {.tpub.} =
-  ##     result = "test main in external module"
+  ##   proc myProcToTest(value:int): string {.tpub.} =
+  ##     ...
   ##
   expectKind(x, RoutineNodes)
   when defined(test):
@@ -26,7 +26,8 @@ macro tpubType*(x: untyped): untyped =
   ## Exports a type when in test mode so it can be tested in an
   ## external module.
   ##
-  ## Here is an example that makes the type "SectionInfo" public in test mode:
+  ## Here is an example that makes the type "SectionInfo" public in
+  ## test mode:
   ##
   ## .. code-block:: nim
   ##   import tpub
