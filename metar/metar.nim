@@ -49,7 +49,8 @@ proc readMetadataJson*(filename: string): string
   ## string. The name is read_metadata_json in python. Return an empty
   ## string when the file is not recognized.
   try:
-    result = $getMetadata(filename)
+    let (metadata, readerName) = getMetadata(filename)
+    result = $metadata
   except UnknownFormatError:
     result = ""
 
@@ -60,7 +61,8 @@ proc readMetadata*(filename: string): string
   ## readable string. The name in python is read_metadata. Return an
   ## empty string when the file is not recognized.
   try:
-    result = getMetadata(filename).readable("")
+    let (metadata, readerName) = getMetadata(filename)
+    result = metadata.readable(readerName)
   except UnknownFormatError:
     result = ""
 

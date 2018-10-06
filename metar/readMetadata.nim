@@ -48,7 +48,7 @@ proc getMetaInfo(filename: string, readerName: string,
   result["readers"] = r
 
 
-proc getMetadata*(filename: string): Metadata =
+proc getMetadata*(filename: string): tuple[metadata: Metadata, readerName: string] =
   ## Read the given file and return its metadata.  Raise
   ## UnknownFormatError when the file format is unknown.
   ##
@@ -59,6 +59,7 @@ proc getMetadata*(filename: string): Metadata =
   if not fileExists(filename):
     raise newException(UnknownFormatError, "File not found.")
 
+  # Open the file for reading.
   var f: File
   if not open(f, filename, fmRead):
     raise newException(UnknownFormatError, "Cannot open file.")
@@ -68,11 +69,11 @@ proc getMetadata*(filename: string): Metadata =
   # couldn't. These are the ones that raise NotSupportedError.
   var problems = newSeq[tuple[reader: string, message: string]]()
 
-  result = nil
+  var metadata: Metadata = nil
   var readerName: string
   for name, reader in readers.pairs():
     try:
-      result = reader.read(f)
+      metadata = reader.read(f)
       readerName = name
       break
     except UnknownFormatError:
@@ -84,14 +85,15 @@ proc getMetadata*(filename: string): Metadata =
 
   # Return UnknownFormatError when none of the readers understand the
   # file.
-  if result == nil:
+  if metadata == nil:
     if problems.len == 0:
       raise newException(UnknownFormatError, "File type not recognized.")
-    result = newJObject()
+    metadata = newJObject()
 
   # Add the meta dictionary information to the metadata.
   let fileSize = f.getFileSize()
-  result["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
+  metadata["meta"] = getMetaInfo(filename, readerName, fileSize, problems)
+  result = (metadata, readerName)
 
 
 proc keyNameImp*(readerName: string, section: string, key: string):

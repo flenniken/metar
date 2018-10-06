@@ -4,6 +4,7 @@
 
 import Metadata
 import json
+import options
 import tpub
 import strutils
 import readMetadata
@@ -176,13 +177,7 @@ iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
 proc readable*(metadata: Metadata, readerName: string): string =
   ## Return the metadata as a human readable string.
 
-  var name = readerName
-  if readerName == "":
-    let meta = metadata.getOrDefault("meta")
-    if meta != nil:
-      name = meta["reader"].getStr()
-
   var lines = newSeq[string]()
-  for line in metadata.forLines(name):
+  for line in metadata.forLines(readerName):
     lines.add(line)
   result = lines.join("\n")

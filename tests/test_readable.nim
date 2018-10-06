@@ -12,8 +12,8 @@ suite "test readable.nim":
 
   test "test readable image.jpg":
     let filename = "testfiles/image.jpg"
-    let metadata = getMetadata(filename)
-    let str = readable(metadata, "jpeg")
+    let (metadata, readerName) = getMetadata(filename)
+    let str = readable(metadata, readerName)
     # echo str
     let expected = """
 ========== APP0 ==========

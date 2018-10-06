@@ -102,7 +102,8 @@ suite "Test readMetadata.nim":
 
   test "test getMetadata":
     let filename = "testfiles/image.jpg"
-    let str = getMetadata(filename).readable("jpeg")
+    let (metadata, readerName) = getMetadata(filename)
+    let str = metadata.readable(readerName)
     let expected = """
 ========== APP0 ==========
 id = "JFIF"
