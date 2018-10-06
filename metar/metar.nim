@@ -34,7 +34,7 @@ proc keyName*(readerName: string, section: string, key: string):
   ## echo keyName("jpeg", "ifd1", "256")
   ##
   ## ImageWidth
-  result = keyNameImp(readerName, section, key)
+  result = readMetadata.keyName(readerName, section, key)
 
 
 proc getVersion*(): string {.exportpy: "get_version".} =

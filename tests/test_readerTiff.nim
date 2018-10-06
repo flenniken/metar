@@ -13,7 +13,6 @@ import testFile
 import readMetadata
 import tiff
 
-const keyName = keyNameImp
 
 suite "Test readerTiff.nim":
 

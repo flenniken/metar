@@ -8,7 +8,6 @@ import strutils
 import readable
 import testFile
 
-const keyName = keyNameImp
 
 suite "Test readMetadata.nim":
 

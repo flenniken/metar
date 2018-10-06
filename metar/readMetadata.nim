@@ -96,7 +96,7 @@ proc getMetadata*(filename: string): tuple[metadata: Metadata, readerName: strin
   result = (metadata, readerName)
 
 
-proc keyNameImp*(readerName: string, section: string, key: string):
+proc keyName*(readerName: string, section: string, key: string):
             string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
