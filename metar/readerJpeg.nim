@@ -245,10 +245,10 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
   if size < 30 or size > 65502:
     raise newException(NotSupportedError, "Iptc: Invalid buffer size.")
 
-  if length2(buffer, 0) != 0xffed:  # index 0, 1
+  if get2(buffer, 0) != 0xffed:  # index 0, 1
     raise newException(NotSupportedError, "Iptc: Invalid header.")
 
-  if length2(buffer, 2) + 2 > size: # index 2, 3
+  if get2(buffer, 2) + 2 > size: # index 2, 3
     raise newException(NotSupportedError, "Iptc: Invalid header length.")
 
   if not compareBytes(buffer, 4, "Photoshop 3.0"):
@@ -258,14 +258,14 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
 
   ranges.add(newRange(start, start+22'i64, "iptc", true, "header"))
 
-  # let type = length2(buffer, 22)  # index 22, 23
+  # let type = get2(buffer, 22)  # index 22, 23
   # one = buffer[24]
   # two = buffer[25]
   # three = buffer[26]
   # four = buffer[27]
   ranges.add(newRange(start+22'i64, start+28'i64, "iptc", false, "unknown header bytes"))
 
-  let all_size = length2(buffer, 28)  # index 28, 29
+  let all_size = get2(buffer, 28)  # index 28, 29
   if all_size == 0 or all_size + 30 > size:
     raise newException(NotSupportedError, "Iptc: Inconsistent size.")
   ranges.add(newRange(start+28'i64, start+30'i64, "iptc", true, "header"))
@@ -300,7 +300,7 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
     # let number = buffer[bstart + 1]
     let data_set = buffer[bstart + 2]
     # index bstart+3, bstart+4
-    let string_len = length2(buffer, bstart + 3)
+    let string_len = get2(buffer, bstart + 3)
     if string_len > 0x7fff:
       # The length is over 32k. The next length bytes (removing high bit)
       # are the count. But we don't support this.
@@ -418,11 +418,11 @@ proc xmpOrExifSection(file: File, start: int64, finish: int64):
   file.setFilePos(start)
   var buffer = readSection(file, start, finish)
 
-  if length2(buffer, 0) != 0xffe1:
+  if get2(buffer, 0) != 0xffe1:
     raise newException(NotSupportedError, "xmpExif: section start not 0xffe1.")
 
   # Read the block length.
-  let length = (int32)length2(buffer, 2)
+  let length = (int32)get2(buffer, 2)
   if length != finish - start - 2:
     raise newException(NotSupportedError, "xmpExif: invalid block length.")
 
@@ -545,13 +545,13 @@ proc getSofInfo(buffer: var openArray[uint8]): SofInfo {.tpub.} =
   if buffer[1] < 0xc0u8 or buffer[1] > 0xd0u8:  # index 1
     raise newException(NotSupportedError, "SOF: not in range.")
 
-  let size = length2(buffer, 2)  # index 2, 3
+  let size = get2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
     raise newException(NotSupportedError, "SOF: wrong size.")
 
   let precision = buffer[4]  # index 4
-  let height = (uint16)length2(buffer, 5)  # index 5, 6
-  let width = (uint16)length2(buffer, 7)  # index 7, 8
+  let height = (uint16)get2(buffer, 5)  # index 5, 6
+  let width = (uint16)get2(buffer, 7)  # index 7, 8
   let number_components = (int)buffer[9]  # index 9
 
   if number_components < 1 or
@@ -583,10 +583,10 @@ proc getHdtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
 
   result = newJObject()
 
-  if length2(buffer, 0) != 0xffc4:  # index 0, 1
+  if get2(buffer, 0) != 0xffc4:  # index 0, 1
     raise newException(NotSupportedError, "DHT: not 0xffc4.")
 
-  let size = length2(buffer, 2)  # index 2, 3
+  let size = get2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
     raise newException(NotSupportedError, "DHT: wrong size.")
 
@@ -645,10 +645,10 @@ proc getDqtInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   if buffer.len < 69:
     raise newException(NotSupportedError, "DQT: buffer too small.")
 
-  if length2(buffer, 0) != 0xffdb:  # index 0, 1
+  if get2(buffer, 0) != 0xffdb:  # index 0, 1
     raise newException(NotSupportedError, "DQT: not 0xffdb.")
 
-  let size = length2(buffer, 2)  # index 2, 3
+  let size = get2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
     raise newException(NotSupportedError, "DQT: wrong size.")
 
@@ -692,10 +692,10 @@ proc getSosInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   if buffer.len < 10:
     raise newException(NotSupportedError, "SOS: buffer too small.")
 
-  if length2(buffer, 0) != 0xffda:  # index 0, 1
+  if get2(buffer, 0) != 0xffda:  # index 0, 1
     raise newException(NotSupportedError, "SOS: not 0xffda.")
 
-  let size = length2(buffer, 2)  # index 2, 3
+  let size = get2(buffer, 2)  # index 2, 3
   if size + 2 != buffer.len:
     raise newException(NotSupportedError, "SOS: wrong buffer size.")
 
@@ -732,14 +732,14 @@ proc getDriInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   if buffer.len != 6:
     raise newException(NotSupportedError, "DRI: wrong size buffer.")
 
-  if length2(buffer, 0) != 0xffdd:  # index 0, 1
+  if get2(buffer, 0) != 0xffdd:  # index 0, 1
     raise newException(NotSupportedError, "DRI: not 0xffdd.")
 
-  let size = length2(buffer, 2)  # index 2, 3
+  let size = get2(buffer, 2)  # index 2, 3
   if size != 4:
     raise newException(NotSupportedError, "DRI: length not 4.")
 
-  let interval = length2(buffer, 2)  # index 4, 5
+  let interval = get2(buffer, 2)  # index 4, 5
   result["interval"] = newJInt((int)interval)
 
 
@@ -772,10 +772,10 @@ proc getApp0(buffer: var openArray[uint8], start: int64, ranges: var seq[Range])
 
   result = newJObject()
 
-  if length2(buffer, 0) != 0xffe0: # index 0, 1
+  if get2(buffer, 0) != 0xffe0: # index 0, 1
     raise newException(NotSupportedError, "jpeg: Invalid header.")
 
-  var length = length2(buffer, 2) # index 2, 3
+  var length = get2(buffer, 2) # index 2, 3
   if length > buffer.len-2:
     raise newException(NotSupportedError, "jpeg: Invalid length.")
 
@@ -784,8 +784,8 @@ proc getApp0(buffer: var openArray[uint8], start: int64, ranges: var seq[Range])
     result["major"] = newJInt((int)buffer[9])
     result["minor"] = newJInt((int)buffer[10])
     result["units"] = newJInt((int)buffer[11])
-    result["x"] = newJInt(length2(buffer, 12))
-    result["y"] = newJInt(length2(buffer, 14))
+    result["x"] = newJInt(get2(buffer, 12))
+    result["y"] = newJInt(get2(buffer, 14))
     result["width"] = newJInt((int)buffer[16])
     result["height"] = newJInt((int)buffer[17])
     ranges.add(newRange(start, start+18, "APP0", true, ""))
@@ -796,37 +796,32 @@ proc getApp0(buffer: var openArray[uint8], start: int64, ranges: var seq[Range])
     raise newException(NotSupportedError, "unknown APP0 type.")
 
 
-proc length2l(buffer: var openArray[uint8], index: Natural=0): int =
-  ## Read two bytes from the buffer in big-endian starting at the
-  ## given index.
-  return (int)length[uint16](buffer, index, littleEndian)
-
 proc getAppeInfo(buffer: var openArray[uint8]): Metadata {.tpub.} =
   # Get the Adobe APPE metadata.
 
   # 0000  FF EE 00 0E 41 64 6F 62 65 00 64 00 00 00 00 01  ....Adobe.d.....
   result = newJObject()
 
-  if length2(buffer, 0) != 0xffee: # index 0, 1
+  if get2(buffer, 0) != 0xffee: # index 0, 1
     raise newException(NotSupportedError, "appe: Invalid header.")
 
-  var length = length2(buffer, 2) # index 2, 3
+  var length = get2(buffer, 2) # index 2, 3
   if length > buffer.len-2:
     raise newException(NotSupportedError, "appe: Invalid length.")
 
   if not compareBytes(buffer, 4, "Adobe") or buffer[9] != 0u8:
     raise newException(NotSupportedError, "appe: Not Adobe.")
 
-  var version = length2l(buffer, 10)
+  var version = get2l(buffer, 10)
   if version != 0x64:
     raise newException(NotSupportedError, "appe: unknown version")
   result["version"] = newJInt((int)version)
 
   # Two-byte flags0 0x8000 bit: Encoder used Blend=1 downsampling
-  var flags0 = length2l(buffer, 12)
+  var flags0 = get2l(buffer, 12)
   result["flags0"] = newJInt((int)flags0)
 
-  var flags1 = length2l(buffer, 14)
+  var flags1 = get2l(buffer, 14)
   result["flags1"] = newJInt((int)flags1)
 
   # # One-byte color transform code

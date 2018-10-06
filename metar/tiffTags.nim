@@ -474,7 +474,7 @@ const tagToString = {
 }.toOrderedTable
 
 
-iterator tags*(): (uint16, string) =
+iterator tags*(): tuple[key: uint16, value: string] =
   ## Iterates over all tiff tags.
   for k, v in tagToString.pairs():
     yield((k,v))

@@ -1,10 +1,9 @@
 
-## The readNumber module implements procedures to read numbers from a file
-## or buffer.
+## Read numbers from a file or buffer.
 
 import endians
 
-proc length*[T](buffer: openArray[uint8], index=0,
+proc getNumber*[T](buffer: openArray[uint8], index=0,
                 endian: Endianness=littleEndian): T =
   ## Return a number from the buffer at the given index with the
   ## specified endianness. Specify the number type with T.
@@ -12,10 +11,10 @@ proc length*[T](buffer: openArray[uint8], index=0,
   ## .. code-block:: nim
   ##   import readNumber, os
   ##   var buffer = [0x01'u8, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef]
-  ##   var num16 = length[uint16](buffer)
+  ##   var num16 = getNumber[uint16](buffer)
   ##   echo toHex(num16)
   ##   2301
-  ##   num16 = length[uint16](buffer, 3, bigEndian)
+  ##   num16 = getNumber[uint16](buffer, 3, bigEndian)
   ##   echo toHex(num16)
   ##   6789
   when not (T is uint8 or T is int8 or T is uint16 or T is int16 or
@@ -60,17 +59,27 @@ proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
   if file.readBytes(buffer, 0, sizeof(T)) != sizeof(T):
     raise newException(IOError, "Error reading file.")
 
-  result = length[T](buffer, 0, endian)
+  result = getNumber[T](buffer, 0, endian)
+
 
 proc read1*(file: File): uint8 =
   ## Read one byte from the current file position.
   return readNumber[uint8](file)
 
+
 proc read2*(file: File): uint16 =
   ## Read two bytes from the current file position in big-endian.
   return readNumber[uint16](file, bigEndian)
 
-proc length2*(buffer: var openArray[uint8], index: Natural=0): int =
+
+proc get2*(buffer: var openArray[uint8], index: Natural=0): int =
   ## Read two bytes from the buffer in big-endian starting at the
   ## given index.
-  return (int)length[uint16](buffer, index, bigEndian)
+  return (int)getNumber[uint16](buffer, index, bigEndian)
+
+
+proc get2l*(buffer: var openArray[uint8], index: Natural=0): int =
+  ## Read two bytes from the buffer in little-endian starting at the
+  ## given index.
+  return (int)getNumber[uint16](buffer, index, littleEndian)
+

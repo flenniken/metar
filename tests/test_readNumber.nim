@@ -146,7 +146,7 @@ suite "Test readNumber.nim":
       # echo "v8 = ", toHex(v8)
       check(v8 == 0x01)
 
-  test "length 16":
+  test "getNumber 16":
 
     var num16: uint16
 
@@ -155,63 +155,63 @@ suite "Test readNumber.nim":
                     "ABCD", "CDEF"]
 
     for index in 0..6:
-      num16 = length[uint16](buffer, index)
+      num16 = getNumber[uint16](buffer, index)
       # echo toHex(num16)
       check(expected[index] == toHex(num16))
 
     let ex2 = ["0123", "2345", "4567", "6789", "89AB", "ABCD", "CDEF"]
     for index in 0..6:
-      num16 = length[uint16](buffer, index, bigEndian)
+      num16 = getNumber[uint16](buffer, index, bigEndian)
       # echo toHex(num16)
       check(ex2[index] == toHex(num16))
 
-  test "length 8":
+  test "getNumber 8":
 
     let ex3 = ["01", "23", "45", "67", "89", "AB", "CD", "EF", "01",
                "23", "45", "67", "89", "AB", "CD", "EF"]
     for index in 0..7:
-      var num8 = length[uint8](buffer, index)
+      var num8 = getNumber[uint8](buffer, index)
       # echo toHex(num8)
       check(ex3[index] == toHex(num8))
 
     let ex4 = ["01", "23", "45", "67", "89", "AB", "CD", "EF"]
     for index in 0..7:
-      var num8 = length[uint8](buffer, index, bigEndian)
+      var num8 = getNumber[uint8](buffer, index, bigEndian)
       # echo toHex(num8)
       check(ex4[index] == toHex(num8))
 
-  test "length 32":
+  test "getNumber 32":
 
     let ex5 = ["67452301", "89674523", "AB896745", "CDAB8967", "EFCDAB89"]
     for index in 0..4:
-      var num32 = length[uint32](buffer, index)
+      var num32 = getNumber[uint32](buffer, index)
       # echo toHex(num32)
       check(ex5[index] == toHex(num32))
 
     let ex6 = ["01234567", "23456789", "456789AB", "6789ABCD", "89ABCDEF"]
     for index in 0..4:
-      var num8 = length[uint32](buffer, index, bigEndian)
+      var num8 = getNumber[uint32](buffer, index, bigEndian)
       # echo toHex(num8)
       check(ex6[index] == toHex(num8))
 
-  test "length 64":
+  test "getNumber 64":
 
-    var num64 = length[uint64](buffer)
+    var num64 = getNumber[uint64](buffer)
     # echo toHex(num64)
     check("EFCDAB8967452301" == toHex(num64))
 
-    num64 = length[uint64](buffer, 0, bigEndian)
+    num64 = getNumber[uint64](buffer, 0, bigEndian)
     # echo toHex(num64)
     check("0123456789ABCDEF" == toHex(num64))
 
-  test "length2":
+  test "get2":
 
     var buffer = [0xff'u8, 0xc0]
 
-    var num16: uint16 = length[uint16](buffer, 0)
+    var num16: uint16 = getNumber[uint16](buffer, 0)
     check(num16 == 0xc0ff)
 
-    var num = length2(buffer)
+    var num = get2(buffer)
     check(num == 0xffc0)
 
   test "read1":
