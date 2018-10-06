@@ -271,6 +271,14 @@ suite "test xmpparser.nim":
     check(list[1].key == "xpacket:id")
     check(list[1].value == "W5M0MpCehiHzreSzNTczkc9d")
 
+  test "test parseXpacket begin2":
+    var list = parseXpacket(""" begin="" id='W5M0MpCehiHzreSzNTczkc9d'""")
+    check(list.len == 2)
+    check(list[0].key == "xpacket:begin")
+    check(list[0].value == "")
+    check(list[1].key == "xpacket:id")
+    check(list[1].value == "W5M0MpCehiHzreSzNTczkc9d")
+
   test "test parseXpacket end":
     var list = parseXpacket(""" end="w"""")
     check(list.len == 1)
@@ -285,15 +293,16 @@ suite "test xmpparser.nim":
     # for k,v in table.pairs:
     #   echo $k & " = " & v
 
-    check(table.len == 8)
-    check(table["crs"] == "http://ns.adobe.com/camera-raw-settings/1.0/")
-    check(table["x"] == "adobe:ns:meta/")
-    check(table["dc"] == "http://purl.org/dc/elements/1.1/")
-    check(table["aux"] == "http://ns.adobe.com/exif/1.0/aux/")
-    check(table["rdf"] == "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
-    check(table["exif"] == "http://ns.adobe.com/exif/1.0/")
-    check(table["tiff"] == "http://ns.adobe.com/tiff/1.0/")
-    check(table["xap"] == "http://ns.adobe.com/xap/1.0/")
+    check(table.len == 9)
+    check(table["xmlns:crs"] == "http://ns.adobe.com/camera-raw-settings/1.0/")
+    check(table["xmlns:x"] == "adobe:ns:meta/")
+    check(table["xmlns:dc"] == "http://purl.org/dc/elements/1.1/")
+    check(table["xmlns:aux"] == "http://ns.adobe.com/exif/1.0/aux/")
+    check(table["xmlns:rdf"] == "http://www.w3.org/1999/02/22-rdf-syntax-ns#")
+    check(table["xmlns:exif"] == "http://ns.adobe.com/exif/1.0/")
+    check(table["xmlns:tiff"] == "http://ns.adobe.com/tiff/1.0/")
+    check(table["xmlns:xap"] == "http://ns.adobe.com/xap/1.0/")
+    check(table["x:xmptk"] == "Public XMP Toolkit Core 3.5")
 
 
   test "test xmpParser":
