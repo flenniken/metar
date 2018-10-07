@@ -642,6 +642,27 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
       ranges.add(range)
 
 
+proc addSection*(metadata: var Metadata, dups: var Table[string, int],
+                sectionName: string, info: JsonNode) =
+  ## Add the section to the given metadata.  If the section already
+  ## exists in the metadata, put it in an array.
+
+  assert(info != nil)
+
+  if sectionName in dups:
+    # More than one, store them in an array.
+    var existingInfo = metadata[sectionName]
+    if existingInfo.kind != JArray:
+      var jarray = newJArray()
+      jarray.add(existingInfo)
+      existingInfo = jarray
+    existingInfo.add(info)
+    metadata[sectionName] = existingInfo
+  else:
+    metadata[sectionName] = info
+  dups[sectionName] = 1
+
+
 proc readTiff*(file: File): Metadata =
   ## Read the given Tiff file and return its metadata.  Return
   ## UnknownFormatError when the file format is unknown. May return

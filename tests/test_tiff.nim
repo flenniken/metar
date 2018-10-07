@@ -14,6 +14,7 @@ import xmpparser
 import tiffTags
 import ranges
 import hexDump
+import tables
 
 
 suite "test tiff.nim":
@@ -1044,3 +1045,20 @@ suite "test tiff.nim":
     var metadata = readTiff(file)
     # echo metadata
     check(metadata.kind == JObject)
+
+  test "test addSection":
+    var metadata = newJObject()
+    var dups = initTable[string, int]()
+    var info = newJObject()
+    info["test"] = newJInt(1)
+    addSection(metadata, dups, "name", info)
+    # echo metadata
+    # echo readable(metadata)
+    check($metadata == """{"name":{"test":1}}""")
+
+    info = newJObject()
+    info["test"] = newJInt(2)
+    addSection(metadata, dups, "name", info)
+    # echo metadata
+    # echo readable(metadata)
+    check($metadata == """{"name":[{"test":1},{"test":2}]}""")

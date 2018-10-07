@@ -172,24 +172,3 @@ proc createRangesNode*(file: File, start: int | uint32 | int64, finish: int | ui
   result = newJArray()
   for rangeItem in sortedRanges:
     result.add(createRangeNode(rangeItem))
-
-
-proc addSection*(metadata: var Metadata, dups: var Table[string, int],
-                sectionName: string, info: JsonNode) =
-  ## Add the section to the given metadata.  If the section already
-  ## exists in the metadata, put it in an array.
-
-  assert(info != nil)
-
-  if sectionName in dups:
-    # More than one, store them in an array.
-    var existingInfo = metadata[sectionName]
-    if existingInfo.kind != JArray:
-      var jarray = newJArray()
-      jarray.add(existingInfo)
-      existingInfo = jarray
-    existingInfo.add(info)
-    metadata[sectionName] = existingInfo
-  else:
-    metadata[sectionName] = info
-  dups[sectionName] = 1

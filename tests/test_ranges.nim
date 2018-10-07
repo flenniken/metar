@@ -195,21 +195,3 @@ suite "Test ranges":
     ranges.add(newRange(0, 500, name="range1"))
     let rangesNode = createRangesNode(nil, 0, 1000, ranges)
     check($rangesNode == """[["range1",0,500,true,""],["range2",500,1000,true,""]]""")
-
-  test "test addSection":
-    var metadata = newJObject()
-    var dups = initTable[string, int]()
-    var info = newJObject()
-    info["test"] = newJInt(1)
-    addSection(metadata, dups, "name", info)
-    # echo metadata
-    # echo readable(metadata)
-    check($metadata == """{"name":{"test":1}}""")
-
-    info = newJObject()
-    info["test"] = newJInt(2)
-    addSection(metadata, dups, "name", info)
-    # echo metadata
-    # echo readable(metadata)
-    check($metadata == """{"name":[{"test":1},{"test":2}]}""")
-
