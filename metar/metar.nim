@@ -3,6 +3,10 @@
 ## The metar module implements the metar command line program and it
 ## contains the public procedures available in libraries.
 
+# The current version of nimpy will only export metar methods when
+# they are defined in the metar module.  So all public python
+# procedures are defined in this file.
+
 import tpub
 import readMetadata
 import version
@@ -17,37 +21,28 @@ else:
   macro exportpy(name: untyped, x: untyped): untyped =
     result = x
 
-# The current version of nimpy will only export metar methods when
-# they are defined in the metar module.  The keyName proc is here so
-# it will get exported in the python module.
-
-proc keyName*(readerName: string, section: string, key: string):
-            string {.exportpy: "key_name".} =
-  ## Return a human readable name for the given key. The name is
-  ## key_name in python. The readerName is jpeg, tiff,... You can find
-  ## the reader name in the meta reader field. Section is a top level
-  ## key in the metadata dictionary, ie, xmp, iptc... A key is a sub
-  ## key of the section.  For example:
-  ##
-  ## ::
-  ##
-  ## echo keyName("jpeg", "ifd1", "256")
-  ##
-  ## ImageWidth
-  result = readMetadata.keyName(readerName, section, key)
-
-
-proc getVersion*(): string {.exportpy: "get_version".} =
-  ## Return the Metar version number string.  The name is get_version
-  ## in python.
-  result = versionNumber
-
 
 proc readMetadataJson*(filename: string): string
     {.exportpy: "read_metadata_json".} =
   ## Read the given image file's metadata and return it as a JSON
-  ## string. The name is read_metadata_json in python. Return an empty
-  ## string when the file is not recognized.
+  ## string. Return an empty string when the file is not recognized.
+  ##
+  ## Nim:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   import metar
+  ##   echo readMetadataJson("testfiles/image.dng")
+  ##   {"ifd1":{"offset":8,"next":0,"254":[1],"256":[256],...}
+  ##
+  ## Python:
+  ##
+  ## .. code-block:: python
+  ##
+  ##   >>> from metar import read_metadata_json
+  ##   >>> print(read_metadata_json("testfiles/image.dng"))
+  ##   {"ifd1":{"offset":8,"next":0,"254":[1],"256":[256],...}
+  ##
   try:
     let (metadata, readerName) = getMetadata(filename)
     result = $metadata
@@ -58,13 +53,78 @@ proc readMetadataJson*(filename: string): string
 proc readMetadata*(filename: string): string
     {.exportpy: "read_metadata".} =
   ## Read the given image file's metadata and return it as a human
-  ## readable string. The name in python is read_metadata. Return an
-  ## empty string when the file is not recognized.
+  ## readable string. Return an empty string when the file is not
+  ## recognized.
+  ##
+  ## Nim:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   import metar
+  ##   echo readMetadata("testfiles/image.dng")
+  ##
+  ## Python:
+  ##
+  ## .. code-block:: python
+  ##
+  ##   >>> from metar import read_metadata_json
+  ##   >>> print(read_metadata("testfiles/image.dng"))
+  ##
+  ## Returns::
+  ##
+  ##   ========== ifd1 ==========
+  ##   offset = 8
+  ##   next = 0
+  ##   NewSubfileType(254) = [1]
+  ##   ImageWidth(256) = [256]
+  ##   ImageHeight(257) = [171]
+  ##   ...
+  ##
   try:
     let (metadata, readerName) = getMetadata(filename)
     result = metadata.readable(readerName)
   except UnknownFormatError:
     result = ""
+
+
+proc keyName*(readerName: string, section: string, key: string):
+            string {.exportpy: "key_name".} =
+  ## Return a human readable name for the given key.
+  ##
+  ## The readerName is "jpeg", "tiff" etc, you can find it in the meta
+  ## section.  A section is a top level key in the metadata
+  ## dictionary, ie, "xmp", "iptc", "meta", etc. A key is a sub key of
+  ## the section, ie, "256".
+  ##
+  ## Nim:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   import metar
+  ##   echo keyName("tiff", "ifd1", "256")
+  ##   ImageWidth(256)
+  ##
+  ## Python:
+  ##
+  ## .. code-block:: python
+  ##
+  ##   >>> from metar import key_name
+  ##   >>> print(key_name("tiff", "ifd1", "256"))
+  ##   ImageWidth(256)
+  ##
+  result = readMetadata.keyName(readerName, section, key)
+
+
+proc getVersion*(): string {.exportpy: "get_version".} =
+  ## Return the Metar version number string.
+  ##
+  ## .. code-block:: python
+  ##
+  ##   >>> from metar import get_version
+  ##   >>> print(get_version())
+  ##   0.0.4
+  ##
+  result = versionNumber
 
 
 when not defined(buidingLib):
@@ -79,18 +139,17 @@ when not defined(buidingLib):
         version: bool
 
   proc showHelp(): string {.tpub.} =
-    ## Show the following command line options.
+    ## Show the following command line options and usage::
     ##
-    ## ::
+    ##   Show metadata information for the given image(s).
+    ##   Usage: metar [-j] [-v] file [file...]
+    ##   -j --json     Output JSON data.
+    ##   -v --version  Show the version number.
+    ##   -h --help     Show this help.
+    ##   file          Image filename to analyze.
     ##
-    ## Show metadata information for the given image(s).
-    ## Usage: metar [-j] [-v] file [file...]
-    ## -j --json     Output JSON data.
-    ## -v --version  Show the version number.
-    ## -h --help     Show this help.
-    ## file          Image filename to analyze.
-
-    result = """Show metadata information for the given image(s).
+    result = """
+Show metadata information for the given image(s).
 Usage: metar [-j] [-v] file [file...]
 -j --json     Output JSON data.
 -v --version  Show the version number.
@@ -104,7 +163,8 @@ file          Image filename to analyze.
     ## information as lists of lines (strings).
     ##
     ## .. code-block:: nim
-    ##   import parseopt
+    ##
+    ##   import metar, parseopt
     ##   var optParser = initOptParser(@["-j", "image.dng"])
     ##   var args = parseCommandLine(optParser)
     ##   for str in processArgs(args):
@@ -135,7 +195,8 @@ file          Image filename to analyze.
     ## The following example is for the command line: metar -j image.dng
     ##
     ## .. code-block:: nim
-    ##   import parseopt
+    ##
+    ##   import metar, parseopt
     ##   import parseCommandLine
     ##   var optParser = initOptParser(@["-j", "image.dng"])
     ##   var args = parseCommandLine(optParser)
@@ -144,7 +205,7 @@ file          Image filename to analyze.
     ##   check(args.version == false)
     ##   check(args.files.len == 1)
     ##   check(args.files[0] == "image.dng")
-
+    ##
     var files: seq[string] = @[]
     var json = false
     var help = false
@@ -178,7 +239,7 @@ file          Image filename to analyze.
 
 when not defined(buidingLib):
   when isMainModule:
-    # Handle control-c and stop.
+    # Detect control-c and stop.
     proc controlCHandler() {.noconv.} =
       quit 0
     setControlCHook(controlCHandler)
