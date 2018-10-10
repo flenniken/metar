@@ -109,8 +109,8 @@ proc keyName*(readerName: string, section: string, key: string):
   ## .. code-block:: python
   ##
   ##   >>> from metar import key_name
-  ##   >>> print(key_name("tiff", "ifd1", "256"))
-  ##   ImageWidth(256)
+  ##   >>> key_name("tiff", "ifd1", "256")
+  ##   'ImageWidth(256)'
   ##
   result = readMetadata.keyName(readerName, section, key)
 
@@ -121,8 +121,8 @@ proc getVersion*(): string {.exportpy: "get_version".} =
   ## .. code-block:: python
   ##
   ##   >>> from metar import get_version
-  ##   >>> print(get_version())
-  ##   0.0.4
+  ##   >>> get_version()
+  ##   '0.0.4'
   ##
   result = versionNumber
 
