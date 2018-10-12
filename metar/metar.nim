@@ -91,8 +91,8 @@ proc keyName*(readerName: string, section: string, key: string):
             string {.exportpy: "key_name".} =
   ## Return a human readable name for the given key.
   ##
-  ## The readerName is "jpeg", "tiff" etc, you can find it in the meta
-  ## section.  A section is a top level key in the metadata
+  ## The readerName is "jpeg", "tiff" etc. You can find the name in
+  ## the meta section.  A section is a top level key in the metadata
   ## dictionary, ie, "xmp", "iptc", "meta", etc. A key is a sub key of
   ## the section, ie, "256".
   ##

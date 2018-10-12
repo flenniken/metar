@@ -65,8 +65,8 @@ type
   ##     "ranges": {}
   ##   }
   ##
-  ## The meta section is not created by the reader but the reader
-  ## fills in the problems item if it finds problem areas in the file.
+  ## The meta section is not created by the reader. It contains
+  ## information about the environment.
   ##
   ## Each reader is responsible for creating an images section. It
   ## contains the images found in the file. Each image has a width,
