@@ -1,5 +1,5 @@
 =================
- Metar
+Metar
 =================
 
 Library & Program
@@ -181,7 +181,8 @@ In a json sudo notation::
 
 A section value is either an ordered dictionary or a list of dictionaries::
 
-  sectionValue = {} or sectionValue = [{}, {}, {},...]
+  sectionValue = {} or
+  sectionValue = [{}, {}, {},...]
 
 A sectionValue dictionary contains strings, numbers, lists or dictionaries::
 
@@ -245,6 +246,8 @@ Here is a sample image section for a dng image::
   width = 1024
   height = 683
   pixels = [[168640, 261420]]
+
+Image Fields:
 
 * width -- the width of the image in pixels.
 * height -- the height of the image in pixels.
@@ -349,6 +352,8 @@ Here is a sample ranges section from a Jpeg image::
 Each line describes a byte range of the file. The lines are
 sorted.
 
+Range columns:
+
 * the first column is the name of the range. Often it is a
   section name. You can see where the section comes from in the
   file. If the reader leaves out a range, it appears here as a gap
@@ -410,7 +415,7 @@ Exchangeable image file format (Exif) is a standard metadata
 format used by digital camera and others. It is encoded in the
 file using tiff tags.
 
-Note::
+Note:
 
   As you can see from the example data below, a lot of the
   information doesn't mean much to the casual user.  You can puzzle
@@ -497,7 +502,7 @@ number, for example, "Copyright(116)".
 Scan Disk for Images
 =================
 
-You can use metar to scan you disk and count image files it
+You can use metar to scan your disk and count image files it
 recognizes.  The following command counts how many image are in
 your home folder on linux. It uses the find command to list all
 the files in your home folder then feed them to metar. It uses
