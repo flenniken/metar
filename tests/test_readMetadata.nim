@@ -115,3 +115,23 @@ width = 0
 height = 0
 """
     check(str[0..expected.len-1] == expected)
+
+  test "test getMetadata unknown file":
+    var gotException = false
+    try:
+      discard getMetadata("metar.nimble")
+    except UnknownFormatError:
+      gotException = true
+      let msg = getCurrentExceptionMsg()
+      check(msg == "File type not recognized.")
+    check(gotException == true)
+
+  test "NotSupportedError":
+    var gotException = false
+    let (metadata, reader) = getMetadata("testfiles/imagebad.jpg")
+    # echo $metadata
+    check(reader == "jpeg")
+    let meta = metadata["meta"]
+    let problems = meta["problems"]
+    check(problems.len == 1)
+    check($problems[0] == """["jpeg","Jpeg: byte not 0xff."]""")

@@ -386,7 +386,9 @@ proc readSections(file: File): seq[Section] {.tpub.} =
   # Read sections and handle errors.
   try:
     result = readSectionsRaw(file)
-  except UnknownFormatError, NotSupportedError:
+  except UnknownFormatError:
+    raise
+  except NotSupportedError:
     raise
   except:
     # This handles the cases where the file doesn't have enough bytes.

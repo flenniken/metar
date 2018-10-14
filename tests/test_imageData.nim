@@ -100,3 +100,8 @@ ImageData: width: 1000, height: 400, offsets: 3
   test "test createImageNode missing":
     var imageData = ImageData()
     check(createImageNode(imageData).isNone() == true)
+
+  test "test toString":
+    var imageData = ImageData()
+    # echo $imageData
+    check($imageData == "ImageData: width: 0, height: 0, offsets: 0")

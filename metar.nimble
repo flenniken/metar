@@ -168,19 +168,20 @@ task coverage, "Run code coverage of tests":
   # Running one module and its test file at a time works.
 
   # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_bytesToString"]
+  var test_filenames = ["test_readMetadata"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:
-    exec "nim --debugger:native --passC:--coverage --passL:--coverage c tests/" & filename
+    echo "compiling: " & filename
+    exec "nim --verbosity:0 --hints:off -d:test --debugger:native --passC:--coverage --passL:--coverage c tests/" & filename
 
-  exec "lcov --base-directory . --directory . --zerocounters -q"
+  exec "lcov --base-directory . --directory ~/.cache/nim/ --zerocounters -q"
 
   # Run test code.
   for filename in test_filenames:
     exec "tests/" & filename
 
-  exec "lcov --base-directory . --directory . -c -o coverage.info"
+  exec "lcov --base-directory . --directory ~/.cache/nim/ -c -o coverage.info"
 
   # Remove Nim system libs from the coverage info.
   exec "lcov --remove coverage.info \"*/lib/*\" -o coverage.info"
@@ -218,19 +219,22 @@ task dot, "Show dependency graph":
   # metar -> ver [style = dotted]
 
 
-# task showtestfiles, "Show command line to debug code":
-#   echo ""
-#   echo "Common switches:"
-#   echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
-#   echo ""
+task showtestfiles, "Show command line to debug code":
+  echo ""
+  echo "Common switches:"
+  echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
+  echo ""
 
-#   echo "Compile test_readerJpeg with debugging info:"
-#   echo "  nim $nimswitches --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
-#   echo ""
+  echo "Compile test_readerJpeg with debugging info:"
+  echo "  nim $nimswitches --out:bin/test_readerJpeg tests/test_readerJpeg.nim"
+  echo ""
 
-#   echo "Compile metar with debugging info:"
-#   echo "  nim $nimswitches --out:bin/metar metar/metar.nim"
-#   echo ""
-#   echo "Launch metar with the debugger:"
-#   echo "  lldb bin/metar testfiles/image.jpg"
-#   echo ""
+  echo "Compile metar with debugging info:"
+  echo "  nim $nimswitches --out:bin/metar metar/metar.nim"
+  echo ""
+  echo "Launch metar with the debugger:"
+  echo "  lldb bin/metar testfiles/image.jpg"
+  echo ""
+
+task jsondoc, "Write doc comments to a json file":
+  exec r"nim jsondoc0 --out:docs/metar.json metar/metar"

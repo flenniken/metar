@@ -37,7 +37,7 @@ proc readMetadataJson*(filename: string): string
   ##
   ## Python:
   ##
-  ## .. code-block:: python
+  ## .. code-block::
   ##
   ##   >>> from metar import read_metadata_json
   ##   >>> print(read_metadata_json("testfiles/image.dng"))
@@ -65,7 +65,7 @@ proc readMetadata*(filename: string): string
   ##
   ## Python:
   ##
-  ## .. code-block:: python
+  ## .. code-block::
   ##
   ##   >>> from metar import read_metadata_json
   ##   >>> print(read_metadata("testfiles/image.dng"))
@@ -106,7 +106,7 @@ proc keyName*(readerName: string, section: string, key: string):
   ##
   ## Python:
   ##
-  ## .. code-block:: python
+  ## .. code-block::
   ##
   ##   >>> from metar import key_name
   ##   >>> key_name("tiff", "ifd1", "256")
@@ -118,7 +118,7 @@ proc keyName*(readerName: string, section: string, key: string):
 proc getVersion*(): string {.exportpy: "get_version".} =
   ## Return the Metar version number string.
   ##
-  ## .. code-block:: python
+  ## .. code-block::
   ##
   ##   >>> from metar import get_version
   ##   >>> get_version()
