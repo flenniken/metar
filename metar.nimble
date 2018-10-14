@@ -68,30 +68,30 @@ proc runTests(release: bool) =
   runShellTests()
 
 
-task mp, "Make python module":
-  exec r"nim c -d:buidingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+# task mp, "Make python module only.":
+#   exec r"nim c -d:buidingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
-task mpdb, "Make python module with debug info":
-  exec r"nim c -d:buidingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
-  echo "You can debug the python shared lib like this:"
-  echo "lldb -- /usr/bin/python python/example.py"
-  echo "process launch"
-  echo "breakpoint set -f metar.nim -l 91"
-  echo "breakpoint set -f readMetadata.nim -l 60"
-  echo "continue"
-  echo "see \"lldb debugger\" note for more info."
+# task mpdb, "Make python module with debug info":
+#   exec r"nim c -d:buidingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+#   echo "You can debug the python shared lib like this:"
+#   echo "lldb -- /usr/bin/python python/example.py"
+#   echo "process launch"
+#   echo "breakpoint set -f metar.nim -l 91"
+#   echo "breakpoint set -f readMetadata.nim -l 60"
+#   echo "continue"
+#   echo "see \"lldb debugger\" note for more info."
 
 
-task py, "Run python tests":
-  exec r"find . -name \*.pyc -delete"
-  exec "python python/test_metar.py"
+# task py, "Run python tests":
+#   exec r"find . -name \*.pyc -delete"
+#   exec "python python/test_metar.py"
 
 
-task shell, "Run tests from the shell":
-  echo "building metar and python module"
-  build_metar_and_python_module(true)
-  runShellTests()
+# task shell, "Run tests from the shell":
+#   echo "building metar and python module"
+#   build_metar_and_python_module(true)
+#   runShellTests()
 
 
 task test, "Run all the tests in debug":
@@ -134,7 +134,6 @@ task clean, "Delete unneed files":
   exec "rm -fr metar/coverage"
 
 
-
 proc doc_module(name: string) =
   const cmd = "nim doc0 --index:on --out:docs/$1.html metar/$1.nim"
   let source = cmd % name
@@ -161,15 +160,15 @@ task tree, "Show the project directory tree":
 task t, "Build and run t.nim":
   exec "nim c -r -d:release --out:bin/t metar/private/t"
 
-task t2, "Build and run t2.nim":
-  exec "nim c -r --out:bin/t2 metar/private/t2"
+# task t2, "Build and run t2.nim":
+#   exec "nim c -r --out:bin/t2 metar/private/t2"
 
 task coverage, "Run code coverage of tests":
 
   # Running one module and its test file at a time works.
 
   # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_readMetadata"]
+  var test_filenames = ["test_bytesToString"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:
