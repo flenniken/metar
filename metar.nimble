@@ -39,7 +39,7 @@ proc test_module(filename: string, release = false): string =
 
 proc get_test_filenames(): seq[string] =
   ## Return each nim file in the tests folder.
-  exec "find tests -type f -name \\*.nim -depth 1 | sed 's/tests\\///' | sed 's/.nim//' >testfiles.txt"
+  exec "find tests -maxdepth 1 -type f -name \\*.nim | sed 's/tests\\///' | sed 's/.nim//' >testfiles.txt"
   let text = slurp("testfiles.txt")
   result = @[]
   for filename in text.splitLines():
@@ -194,7 +194,7 @@ task dot, "Show dependency graph":
   exec "nim genDepend metar/metar.nim"
   # Create my.dot file with the contents of metar.dot after stripping
   # out nim modules.  Add the dotted line between version.nim and ver.nim.
-  exec """find metar -name \*.nim -depth 1 | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
+  exec """find metar -maxdepth 1 -name \*.nim | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o bin/dependencies.svg"
   exec "open -a Firefox bin/dependencies.svg"
@@ -212,7 +212,7 @@ task dot, "Show dependency graph":
   # abc -> def [arrowhead = diamond]
 
   # find all files in the project and set their color blue.
-  # find metar -name \*.nim -depth 1 | sed 's%metar/%%' | sed 's/.nim/ [color blue]/'
+  # find metar -maxdepth 1 -name \*.nim | sed 's%metar/%%' | sed 's/.nim/ [color blue]/'
 
   # Make a dotted line.
   # version -> ver [style = dotted]

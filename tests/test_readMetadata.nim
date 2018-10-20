@@ -80,6 +80,24 @@ suite "Test readMetadata.nim":
       check(msg == "File not found.")
     check(gotException == true)
 
+  test "test perms":
+    var str = "Test file used to test permissions."
+    var (file, filename) = createTestFile(str)
+    file.close()
+    defer:
+      removeFile(filename)
+
+    # echo getFilePermissions(filename)
+    setFilePermissions(filename, {})
+    let after = getFilePermissions(filename)
+    # echo after
+    check($after == "{}")
+
+    # Verify you cannot open a file with no permissions.
+    var f: File
+    check(open(f, filename, fmRead) == false)
+
+
   test "test getMetadata read only":
     var str = "Test file used to test permissions."
     var (file, filename) = createTestFile(str)
