@@ -118,8 +118,7 @@ proc getRangeString(node: JsonNode): string {.tpub.} =
 
   if not known:
     name = name & "*"
-  result = "$1 ($2, $3) $4" % [alignLeft(name, 6), $start, $finish, message]
-  # result = "$1 ($2, $3) $4" % [alignLeft(name, 6), toHex(start), toHex(finish), message]
+  result = "$1 ($2, $3) $4" % [strutils.alignLeft(name, 6), $start, $finish, message]
 
 
 proc keyNameDefault(readerName: string, section: string,
