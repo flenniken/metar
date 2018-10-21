@@ -24,6 +24,8 @@ proc build_metar_and_python_module(ignoreOutput = false) =
   exec r"nim c --out:bin/metar -d:release metar/metar" & ignore
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar " & ignore
+  exec r"strip bin/metar"
+  exec r"strip -x bin/metar.so"
 
 
 task m, "Build metar exe and python module":
