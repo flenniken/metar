@@ -3,14 +3,13 @@ FROM debian:8
 
 MAINTAINER Steve Flenniken
 
-# This builds a build and test environment for the metar.
+# This builds a build and test environment for metar.
 
 RUN apt-get update \
   && apt-get -qy install curl libssl-dev build-essential gcc \
-  python python3 xz-utils less git man
+  python python3 xz-utils less git man sudo
 
 # Set sudo so steve doesn't need to type in a password.
-RUN apt-get -qy install sudo
 RUN mkdir -p /etc/sudoers.d
 RUN echo "steve ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/steve
 RUN chmod 440 /etc/sudoers.d/steve

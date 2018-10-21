@@ -135,13 +135,11 @@ task clean, "Delete unneed files":
 
 
 proc doc_module(name: string) =
-  const cmd = "nim doc0 --index:on --out:docs/$1.html metar/$1.nim"
+  const cmd = "nim doc0 --index:on --out:docs/html/$1.html metar/$1.nim"
   let source = cmd % name
   exec source
 
 task docs, "Build all the docs":
-  exec "rm docs/*.html"
-  exec "rm docs/*.idx"
 
   exec "find metar -type f -name \\*.nim | grep -v metar/private | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
   let fileLines = slurp("docfiles.txt")
@@ -149,10 +147,12 @@ task docs, "Build all the docs":
     if filename.len > 0:
       # echo filename
       doc_module(filename)
+  exec "rm docfiles.txt"
 
-  exec "nim buildIndex --out:docs/theindex.html docs/"
-  exec "nim rst2html --out:docs/main.html docs/main.rst"
-  exec "open docs/main.html"
+  exec "nim buildIndex --out:docs/html/theindex.html docs/html/"
+  exec "nim rst2html --out:docs/html/main.html docs/main.rst"
+  exec "rm docs/html/*.idx"
+  exec "open docs/html/main.html"
 
 task tree, "Show the project directory tree":
   exec "tree -I '*~|nimcache'"
@@ -238,3 +238,21 @@ task showtestfiles, "Show command line to debug code":
 
 task jsondoc, "Write doc comments to a json file":
   exec r"nim jsondoc0 --out:docs/metar.json metar/metar"
+
+task createimage, "Create a metar Docker image.":
+  exec r"docker build -t metar-env ."
+
+task listm, "List the metar Docker image and container.":
+  exec r"echo 'image:';docker images | grep metar-machine ; echo '\ncontainer:';docker ps -a | grep metar-machine"
+
+task run, "Run the metar Docker image.":
+  exec r"docker rm metar; docker run -v /Users/steve/code/metarnim:/home/steve/code/metarnim --name=metar -it metar-machine"
+
+task attach, "Attach to the metar container.":
+  exec r"docker attach metar"
+
+task prune, "Delete unused Docker images.":
+  exec r"docker image prune"
+
+task stop, "Stop the metar container.":
+  exec r"docker stop metar"

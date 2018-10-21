@@ -3,8 +3,6 @@ nimcache/
 *~
 bin/
 metar/private/
-docs/*.html
-docs/*.idx
-docs/*.txt
+docs/html/
 testfiles/
 *.pyc
