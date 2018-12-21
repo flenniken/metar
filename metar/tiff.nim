@@ -73,7 +73,7 @@ type
     ## the tiff file.
     tag*: uint16
     kind*: Kind
-    count*: uint32
+    number: uint32 # Use the count method to get this as an int.
     packed*: array[4, uint8]
     endian*: Endianness
     headerOffset*: uint32
@@ -108,6 +108,10 @@ type
 #     $entry.count, $entry.kind,
 #     toHex(entry.packed[0]), toHex(entry.packed[1]),
 #     toHex(entry.packed[2]), toHex(entry.packed[3])]
+
+
+proc count*(entry: IFDEntry): int {.inline.} =
+  result = (int)entry.number
 
 
 proc kindSize*(kind: Kind): Natural {.tpub.} =
@@ -183,12 +187,16 @@ proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
                        "Tiff: IFD entry kind is not known: " & $kind_ord)
   let kind = Kind(kind_ord)
   let count = getNumber[uint32](buffer, index+4, endian)
+  if count > (uint32)int32.high:
+    raise newException(NotSupportedError,
+                       "Tiff: IFD entry count is too big: " & $count)
+
   var packed: array[4, uint8]
   packed[0] = buffer[index+8]
   packed[1] = buffer[index+9]
   packed[2] = buffer[index+10]
   packed[3] = buffer[index+11]
-  result = IFDEntry(tag: tag, kind: kind, count: count, packed: packed,
+  result = IFDEntry(tag: tag, kind: kind, number: (uint32)count, packed: packed,
                     endian: endian, headerOffset: headerOffset)
 
 
@@ -246,7 +254,7 @@ proc readBlob*(file: File, entry: IFDEntry): seq[uint8] =
     let message = "Tiff: Unexpected kind for bytes. got: $1." % [$entry.kind]
     raise newException(NotSupportedError, message)
 
-  let count = (int)entry.count
+  let count = entry.count
   result = newSeq[uint8](count)
 
   if count <= 4:
@@ -269,7 +277,7 @@ proc readOneNumber*(file: File, entry: IFDEntry): int32 =
 
   assert(file != nil)
 
-  let count = (int)entry.count
+  let count = entry.count
   if count != 1:
     let message = "Tiff: expected one number, got: $1." % [$count]
     raise newException(NotSupportedError, message)
@@ -308,7 +316,7 @@ proc readLongs*(file: File, entry: IFDEntry, maximum: Natural): seq[uint32] =
     raise newException(NotSupportedError, message)
   # assert(entry.kind == Kind.longs)
 
-  let count = (int)entry.count
+  let count = entry.count
   if count > maximum:
     let message = "Tiff: too many longs, got: $1 max: $2." % [$count, $maximum]
     raise newException(NotSupportedError, message)
@@ -333,7 +341,7 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
   let endian = entry.endian
 
   # Read the bytes of the value list into a buffer.
-  let bufferSize: int = kindSize(entry.kind) * (int)entry.count
+  let bufferSize: int = kindSize(entry.kind) * entry.count
   var buffer = newSeq[uint8](bufferSize)
   if bufferSize <= 4:
     # The values fit in packed.  Move packed to the buffer.
@@ -352,12 +360,12 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
   case entry.kind:
 
     of Kind.bytes, Kind.blob:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[uint8](buffer, ix * sizeof(uint8), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.sbytes:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[int8](buffer, ix * sizeof(int8), endian)
         result.add(newJInt((BiggestInt)number))
 
@@ -365,28 +373,28 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
       result = parseStrings(buffer)
 
     of Kind.shorts:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[uint16](buffer, ix * sizeof(uint16), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.sshorts:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[int16](buffer, ix * sizeof(int16), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.longs:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[uint32](buffer, ix * sizeof(uint32), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.slongs:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[int32](buffer, ix * sizeof(int32), endian)
         result.add(newJInt((BiggestInt)number))
 
     of Kind.rationals:
       # A rational is two uint32 values, a numberator then denominator.
-      for ix in countup(0, ((int)entry.count)*8-1, 8):
+      for ix in countup(0, entry.count*8-1, 8):
         let numerator = getNumber[uint32](buffer, ix, endian)
         let denominator = getNumber[uint32](buffer, ix+4, endian)
         var rational = newJArray()
@@ -395,7 +403,7 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
         result.add(rational)
 
     of Kind.srationals:
-      for ix in countup(0, ((int)entry.count)*8-1, 8):
+      for ix in countup(0, entry.count*8-1, 8):
         let numerator = getNumber[int32](buffer, ix, endian)
         let denominator = getNumber[int32](buffer, ix+4, endian)
         var rational = newJArray()
@@ -404,12 +412,12 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
         result.add(rational)
 
     of Kind.floats:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[float32](buffer, ix * sizeof(float32), endian)
         result.add(newJFloat(number))
 
     of Kind.doubles:
-      for ix in 0..<(int)entry.count:
+      for ix in 0..<entry.count:
         let number = getNumber[float64](buffer, ix * sizeof(float64), endian)
         result.add(newJFloat(number))
 
@@ -419,8 +427,8 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
   ## Read the entry's value list. For lists that exceed the maximum,
   ## return a short string instead.
 
-  let bufferSize: Natural = kindSize(entry.kind) * (Natural)entry.count
-  if ((Natural)entry.count) <= maximumCount and bufferSize <= maximumSize:
+  let bufferSize: Natural = kindSize(entry.kind) * entry.count
+  if entry.count <= maximumCount and bufferSize <= maximumSize:
     let jArray = readValueList(file, entry)
     result = jArray
   else:
@@ -569,7 +577,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
       let entry = getIFDEntry(buffer, endian, headerOffset, ix*12)
 
       let entryStart = headerOffset + ifdOffset + (uint32)(ix * 12)
-      let entrySize  = (uint32)(kindSize(entry.kind) * (int)entry.count)
+      let entrySize  = (uint32)(kindSize(entry.kind) * entry.count)
       var externalStart: uint32
       var externalFinish: uint32
       if entrySize > 4'u32:

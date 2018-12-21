@@ -145,7 +145,7 @@ suite "test tiff.nim":
     let expected = "NewSubfileType(254), 1 longs, packed: 00 00 00 00"
     check(entry.tag == 254'u16)
     check(entry.kind == Kind.longs)
-    check(entry.count == 1'u32)
+    check(entry.count == 1)
     check(entry.packed == [0'u8, 0, 0, 0])
     check(entry.endian == endian)
     check(entry.headerOffset == 0)
@@ -165,7 +165,7 @@ suite "test tiff.nim":
     let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
     check(entry.tag == 254'u16)
     check(entry.kind == Kind.longs)
-    check(entry.count == 5'u32)
+    check(entry.count == 5)
     check(entry.packed == [0'u8, 1, 2, 3])
     check(entry.endian == bigEndian)
     check(entry.headerOffset == 0)
@@ -180,7 +180,7 @@ suite "test tiff.nim":
 
     check(entry.tag == 254'u16)
     check(entry.kind == Kind.longs)
-    check(entry.count == 5'u32)
+    check(entry.count == 5)
     check(entry.packed == [0'u8, 1, 2, 3])
     check(entry.endian == bigEndian)
     check(entry.headerOffset == 0)
@@ -629,6 +629,23 @@ suite "test tiff.nim":
     var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[[1,2]]")
+
+
+  test "test readValueList 0 rationals":
+    # rationals are two uint32, a numerator and denominator.
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00
+    ]
+    var (file, filename) = createTestFile(buffer)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    var list = readValueList(file, entry)
+    check(list.len == 0)
+    check($list == "[]")
 
 
   test "test readValueList 1 srationals":
