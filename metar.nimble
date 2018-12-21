@@ -31,6 +31,10 @@ proc build_metar_and_python_module(ignoreOutput = false) =
 task m, "Build metar exe and python module":
   build_metar_and_python_module()
 
+task bd, "Build debug version of metar":
+  exec r"nim c --out:bin/metar metar/metar"
+
+
 proc test_module(filename: string, release = false): string =
   ## Test one module.
   const cmd = "nim c --verbosity:0 -d:test $2 --hints:off -r --out:bin/$1 tests/$1"

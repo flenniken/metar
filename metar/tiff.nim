@@ -385,7 +385,8 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
         result.add(newJInt((BiggestInt)number))
 
     of Kind.rationals:
-      for ix in countup(0, (int)entry.count*8-1, 8):
+      # A rational is two uint32 values, a numberator then denominator.
+      for ix in countup(0, ((int)entry.count)*8-1, 8):
         let numerator = getNumber[uint32](buffer, ix, endian)
         let denominator = getNumber[uint32](buffer, ix+4, endian)
         var rational = newJArray()
@@ -394,7 +395,7 @@ proc readValueList*(file: File, entry: IFDEntry): JsonNode =
         result.add(rational)
 
     of Kind.srationals:
-      for ix in countup(0, (int)entry.count*8-1, 8):
+      for ix in countup(0, ((int)entry.count)*8-1, 8):
         let numerator = getNumber[int32](buffer, ix, endian)
         let denominator = getNumber[int32](buffer, ix+4, endian)
         var rational = newJArray()
@@ -579,6 +580,7 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
 
       try:
         handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
+      # Don't catch all exceptions here, address the issue at the source.
       except NotSupportedError:
         # Add the not supported entry as unknown to the ranges list.
         let error = getCurrentExceptionMsg()

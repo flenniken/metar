@@ -32,7 +32,7 @@ RUN curl -sSfLo init.sh https://nim-lang.org/choosenim/init.sh \
   && export PATH=/home/steve/.nimble/bin:$PATH \
   && echo "export PATH=$PATH" >> .bashrc \
   && nimble install -y nimpy
-
+ 
 # Add a couple of aliases.
 RUN echo "alias ll='ls -l'" >> .bashrc \
   && echo "alias n='nimble'" >> .bashrc
