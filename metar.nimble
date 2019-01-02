@@ -31,8 +31,10 @@ proc build_metar_and_python_module(ignoreOutput = false) =
 task m, "Build metar exe and python module":
   build_metar_and_python_module()
 
-task bd, "Build debug version of metar":
+task md, "Build debug version of metar and python module":
   exec r"nim c --out:bin/metar metar/metar"
+  exec r"find . -name \*.pyc -delete"
+  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
 proc test_module(filename: string, release = false): string =

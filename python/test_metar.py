@@ -107,6 +107,11 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
     expected_keys = ['APP0', 'DHT', 'DQT', 'SOF0', 'SOS', 'image', 'meta', 'ranges']
     self.assertEqual(keys, expected_keys)
 
+  def test_read_metadata_debug(self):
+    data = metar.read_metadata("testfiles/image.jpg")
+    print data
+    self.assertTrue('build = "' in data)
+
 
 if __name__ == '__main__':
   unittest.main()

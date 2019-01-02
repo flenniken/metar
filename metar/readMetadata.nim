@@ -30,6 +30,10 @@ proc getMetaInfo(filename: string, readerName: string,
   result["size"] = newJInt(fileSize)
   result["version"] = newJString(versionNumber)
   result["nimVersion"] = newJString(NimVersion)
+  when not defined(release):
+    result["build"] = newJString("debug")
+  else:
+    result["build"] = newJString("release")
   result["os"] = newJString(hostOS)
   result["cpu"] = newJString(hostCPU)
   var p = newJArray()
