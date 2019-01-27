@@ -114,7 +114,7 @@ proc count*(entry: IFDEntry): int {.inline.} =
   result = (int)entry.number
 
 
-proc kindSize*(kind: Kind): Natural {.tpub.} =
+proc kindSize*(kind: Kind): Natural =
   ## Return the number of bytes the given kind uses.
 
   case kind:

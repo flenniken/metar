@@ -503,7 +503,7 @@ proc tagName*(tagString: string): string =
   result = tagName(tag)
 
 
-proc keyNameTiff*(section: string, key: string): string {.tpub.} =
+proc keyNameTiff*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
   let name = tagName(key)

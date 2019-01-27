@@ -1,7 +1,7 @@
 
 import unittest
 import os
-import readMetadata
+import readers
 import metadata
 import json
 import strutils

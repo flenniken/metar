@@ -163,5 +163,5 @@ suite "test_metar.nim":
     check(version.len >= 4 and version.len <= 8)
 
   test "keyName":
-    var str = keyName("tiff", "ifd0", "256")
+    var str = keyName2("tiff", "ifd0", "256")
     check(str == "ImageWidth(256)")

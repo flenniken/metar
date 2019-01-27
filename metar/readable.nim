@@ -7,7 +7,7 @@ import json
 import options
 import tpub
 import strutils
-import readMetadata
+import readers
 import unicode
 
 const maxKeyLength = 15
@@ -132,7 +132,7 @@ proc keyNameDefault(readerName: string, section: string,
     result = name
 
 
-iterator forLines*(metadata: Metadata, readerName: string): string {.tpub.} =
+iterator forLines*(metadata: Metadata, readerName: string): string =
   ## Iterate through the metadata line by line in a human readable
   ## form.
 

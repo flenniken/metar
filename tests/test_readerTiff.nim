@@ -10,7 +10,7 @@ import tables
 import json
 import readable
 import testFile
-import readMetadata
+import readers
 import tiff
 
 

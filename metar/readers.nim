@@ -1,5 +1,5 @@
 
-## You use the readMetadata module to read an image file and return
+## You use the readers module to read an image file and return
 ## its metadata. It calls the reader modules to read the metadata and
 ## it generates the "meta" information section supported by all image
 ## types.

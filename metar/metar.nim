@@ -8,7 +8,7 @@
 # procedures are defined in this file.
 
 import tpub
-import readMetadata
+import readers
 import version
 import readable
 import metadata
@@ -87,7 +87,7 @@ proc readMetadata*(filename: string): string
     result = ""
 
 
-proc keyName*(readerName: string, section: string, key: string):
+proc keyName2*(readerName: string, section: string, key: string):
             string {.exportpy: "key_name".} =
   ## Return a human readable name for the given key.
   ##
@@ -112,7 +112,7 @@ proc keyName*(readerName: string, section: string, key: string):
   ##   >>> key_name("tiff", "ifd1", "256")
   ##   'ImageWidth(256)'
   ##
-  result = readMetadata.keyName(readerName, section, key)
+  result = readers.keyName(readerName, section, key)
 
 
 proc getVersion*(): string {.exportpy: "get_version".} =

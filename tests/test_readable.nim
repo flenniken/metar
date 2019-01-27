@@ -3,7 +3,7 @@ import readable
 import unittest
 import json
 import strutils
-import readMetadata
+import readers
 
 static:
   doAssert defined(test), ": test not defined."
