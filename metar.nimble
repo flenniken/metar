@@ -37,6 +37,13 @@ task md, "Build debug version of metar and python module":
   exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
+task mo, "Build debug version of metar":
+  exec r"nim c --out:bin/metar metar/metar"
+
+task mdlib, "Build debug version of the python module":
+  exec r"find . -name \*.pyc -delete"
+  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+
 proc test_module(filename: string, release = false): string =
   ## Test one module.
   const cmd = "nim c --verbosity:0 -d:test $2 --hints:off -r --out:bin/$1 tests/$1"
@@ -168,6 +175,14 @@ task tree, "Show the project directory tree":
 task t, "Build and run t.nim":
   exec "nim c -r -d:release --out:bin/t metar/private/t"
 
+task tlib, "Build t python library":
+  # Note the nim and the lib name must match, for example: t.so and t.nim.
+  # tlib.so and t.nim results in the error:
+  # ImportError: dynamic module does not define init function (inittlib)
+  exec r"nim c --app:lib --out:bin/t.so metar/private/t"
+  exec r"python python/test.py"
+
+
 # task t2, "Build and run t2.nim":
 #   exec "nim c -r --out:bin/t2 metar/private/t2"
 
@@ -175,8 +190,8 @@ task coverage, "Run code coverage of tests":
 
   # Running one module and its test file at a time works.
 
-  # var test_filenames = get_test_filenames()
-  var test_filenames = ["test_readMetadata"]
+  var test_filenames = get_test_filenames()
+  # var test_filenames = ["test_readMetadata"]
 
   # Compile test code with coverage support.
   for filename in test_filenames:
@@ -244,23 +259,28 @@ task showtestfiles, "Show command line to debug code":
   echo "  lldb bin/metar testfiles/image.jpg"
   echo ""
 
-task jsondoc, "Write doc comments to a json file":
+task jsondoc, "Write doc comments to a json file for metar.nim":
   exec r"nim jsondoc0 --out:docs/metar.json metar/metar"
+  exec "open -a Firefox docs/metar.json"
 
-task createimage, "Create a metar Docker image.":
-  exec r"docker build -t metar-env ."
 
-task listm, "List the metar Docker image and container.":
-  exec r"echo 'image:';docker images | grep metar-machine ; echo '\ncontainer:';docker ps -a | grep metar-machine"
+# The metar image is called metar_image
+# The container is called metar_container
 
-task run, "Run the metar Docker image.":
-  exec r"docker rm metar; docker run -v /Users/steve/code/metarnim:/home/steve/code/metarnim --name=metar -it metar-machine"
+task create, "Create a metar docker image.":
+  exec r"docker build -t metar-image ."
 
-task attach, "Attach to the metar container.":
-  exec r"docker attach metar"
+task run, "Run the metar docker container.":
+  exec r"./run-metar-container.sh"
 
-task prune, "Delete unused Docker images.":
-  exec r"docker image prune"
+task ddelete, "Delete the metar docker container.":
+  try:
+    exec r"docker stop metar-container; docker rm metar-container"
+  except:
+    discard
 
-task stop, "Stop the metar container.":
-  exec r"docker stop metar"
+task dlist, "List the metar docker image and container.":
+  try:
+    exec r"echo 'image:';docker images | grep metar-image ; echo '\ncontainer:';docker ps -a | grep metar-container"
+  except:
+    discard
