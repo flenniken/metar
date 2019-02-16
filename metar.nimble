@@ -10,7 +10,7 @@ description = "Metadata Reader for Images"
 license = "MIT"
 binDir = "bin"
 
-requires "nim >= 0.17.0"
+requires "nim >= 0.19.0"
 
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
@@ -21,11 +21,19 @@ proc build_metar_and_python_module(ignoreOutput = false) =
     ignore = ">/dev/null 2>&1"
   else:
     ignore = ""
-  exec r"nim c --out:bin/metar -d:release metar/metar" & ignore
+  var output: string
+  when hostOS == "macosx":
+    output = "bin/mac/metar"
+  elif hostOS == "linux":
+    output = "bin/linux/metar"
+  else:
+    output = "bin/metar"
+
+  exec r"nim c --out:$1 -d:release metar/metar$2" % [output, ignore]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar " & ignore
-  exec r"strip bin/metar"
-  exec r"strip -x bin/metar.so"
+  exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:$1.so metar/metar $2" % [output, ignore]
+  exec r"strip $1" % [output]
+  exec r"strip -x $1.so" % [output]
 
 
 task m, "Build metar exe and python module":
