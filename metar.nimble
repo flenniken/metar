@@ -32,7 +32,7 @@ proc build_metar_and_python_module(ignoreOutput = false) =
 
   exec r"nim c --out:$1 -d:release metar/metar$2" % [output, ignore]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buidingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:$1.so metar/metar $2" % [output, ignore]
+  exec r"nim c -d:buildingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:$1.so metar/metar $2" % [output, ignore]
   exec r"strip $1" % [output]
   exec r"strip -x $1.so" % [output]
 
@@ -43,7 +43,7 @@ task m, "Build metar exe and python module":
 task md, "Build debug version of metar and python module":
   exec r"nim c --out:bin/metar metar/metar"
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+  exec r"nim c -d:buildingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
 task mo, "Build debug version of metar":
@@ -51,7 +51,7 @@ task mo, "Build debug version of metar":
 
 task mdlib, "Build debug version of the python module":
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buidingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+  exec r"nim c -d:buildingLib --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 proc test_module(filename: string, release = false): string =
   ## Test one module.
@@ -93,11 +93,11 @@ proc runTests(release: bool) =
 
 
 # task mp, "Make python module only.":
-#   exec r"nim c -d:buidingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+#   exec r"nim c -d:buildingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 
 
 # task mpdb, "Make python module with debug info":
-#   exec r"nim c -d:buidingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
+#   exec r"nim c -d:buildingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:bin/metar.so metar/metar "
 #   echo "You can debug the python shared lib like this:"
 #   echo "lldb -- /usr/bin/python python/example.py"
 #   echo "process launch"

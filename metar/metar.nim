@@ -13,7 +13,7 @@ import version
 import readable
 import metadata
 import json
-when defined(buidingLib):
+when defined(buildingLib):
   import nimpy
 else:
   import parseopt
@@ -127,7 +127,7 @@ proc getVersion*(): string {.exportpy: "get_version".} =
   result = metarVersion
 
 
-when not defined(buidingLib):
+when not defined(buildingLib):
   tpubtype:
     type
       Args = tuple
@@ -237,7 +237,7 @@ file          Image filename to analyze.
     result = (files, json, help, version)
 
 
-when not defined(buidingLib):
+when not defined(buildingLib):
   when isMainModule:
     # Detect control-c and stop.
     proc controlCHandler() {.noconv.} =
