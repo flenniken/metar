@@ -119,6 +119,7 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
     data = metar.read_metadata("testfiles/image.jpg")
     # print data
     self.assertTrue('build = "' in data)
+    self.assertTrue('nimpyVersion = "' in data)
 
 
 if __name__ == '__main__':
