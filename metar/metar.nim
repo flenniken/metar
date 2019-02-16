@@ -124,7 +124,7 @@ proc getVersion*(): string {.exportpy: "get_version".} =
   ##   >>> get_version()
   ##   '0.0.4'
   ##
-  result = versionNumber
+  result = metarVersion
 
 
 when not defined(buidingLib):
@@ -171,7 +171,7 @@ file          Image filename to analyze.
     ##     echo str
 
     if args.version:
-      yield($versionNumber)
+      yield($metarVersion)
     elif args.files.len == 0 or args.help:
       yield(showHelp())
     else:

@@ -37,7 +37,7 @@ def dotFilter(names, filename):
         print '%s -> %s;' % (left, right)
 
   # Add dotted line between version.nim and ver.nim.
-  print 'version -> ver [style = dotted];'
+  # print 'version -> ver [style = dotted];'
   print '}'
 
 def readNames(filename):

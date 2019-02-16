@@ -1,6 +1,15 @@
 
 # Test that re-direction goes to the file.
-bin/metar testfiles/image.jpg > t.txt
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
+
+  # Linux
+  bin/linux/metar testfiles/image.jpg > t.txt
+
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+
+  # Mac OSX
+  bin/mac/metar testfiles/image.jpg > t.txt
+fi
 
 size=$(wc -c <t.txt | sed -e 's/\ //g')
 

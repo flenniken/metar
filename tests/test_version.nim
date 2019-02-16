@@ -21,8 +21,8 @@ import version
 suite "Test version.nim":
 
     test "test version string":
-      if versionNumber =~ re"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$":
+      if metarVersion =~ re"^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$":
         discard
       else:
-        echo "Invalid version number: " & versionNumber
+        echo "Invalid version number: " & metarVersion
         fail

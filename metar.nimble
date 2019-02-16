@@ -2,9 +2,10 @@ import strutils
 
 # https://github.com/nim-lang/nimble#nimble-reference
 
-# Include the version number.
-include metar/ver
+# Include the metar version number.
+include metar/version
 
+version = metarVersion
 author = "Steve Flenniken"
 description = "Metadata Reader for Images"
 license = "MIT"
