@@ -272,6 +272,10 @@ task jsondoc, "Write doc comments to a json file for metar.nim":
   exec r"nim jsondoc0 --out:docs/metar.json metar/metar"
   exec "open -a Firefox docs/metar.json"
 
+task jsondoct, "Write doc comments to a json file for t.nim":
+  exec r"nim jsondoc0 --out:docs/tdoc0.json metar/private/t"
+  exec r"nim jsondoc --out:docs/tdoc.json metar/private/t"
+  exec "open -a Firefox docs/tdoc.json"
 
 # The metar image is called metar_image
 # The container is called metar_container
