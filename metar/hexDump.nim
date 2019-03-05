@@ -94,13 +94,13 @@ proc toHex0*[T](number: T): string =
      return "0"
 
 when defined(test):
-  proc hexDumpSource(bytes: openArray[uint8|char]): string {.tpub.} =
+  proc hexDumpSource(bytes: openArray[uint8|char], columns: int=8): string {.tpub.} =
     ## Dump the buffer as an array of bytes in nim source code.
 
     var lines = newSeq[string]()
     lines.add("var buffer = [")
     var first = true
-    for row in iteratorCount(bytes, 8):
+    for row in iteratorCount(bytes, columns):
       var line = newSeq[string]()
       for item in row:
         if first:

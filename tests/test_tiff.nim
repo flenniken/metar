@@ -13,8 +13,19 @@ import readable
 import xmpparser
 import tiffTags
 import ranges
-import hexDump
 import tables
+
+proc dumpIfdInfo(ifdinfo: IFDInfo) =
+  echo "nodeList ="
+  for item in ifdInfo.nodeList:
+    echo item.name & ":"
+    var jsonString: string
+    toUgly(jsonString, item.node)
+    echo jsonString
+
+  echo "nextList = "
+  for next in ifdInfo.nextList:
+     echo "$1 $2" % [next.name, $next.offset]
 
 
 suite "test tiff.nim":
@@ -141,7 +152,7 @@ suite "test tiff.nim":
     if file.readBytes(buffer, 0, bufferSize) != bufferSize:
       raise newException(IOError, "Unable to read the file.")
 
-    let entry = getIFDEntry(buffer, endian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], endian, 0)
     let expected = "NewSubfileType(254), 1 longs, packed: 00 00 00 00"
     check(entry.tag == 254'u16)
     check(entry.kind == Kind.longs)
@@ -152,7 +163,11 @@ suite "test tiff.nim":
 
     # Loop through the 14 IDF entries.
     for ix in 0..14-1:
-      let entry = getIFDEntry(buffer, endian, 0, ix*12)
+      let start = ix*12
+      let entry = getIFDEntry(buffer[start..start+12-1], endian, 0)
+      # echo $entry
+      check(entry.headerOffset == 0)
+      check(entry.endian == endian)
       # echo $entry
 
 
@@ -162,42 +177,45 @@ suite "test tiff.nim":
       0x00, 0x01, 0x02, 0x03,
     ]
     let entry = getIFDEntry(buffer, bigEndian, 0)
-    let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
     check(entry.tag == 254'u16)
     check(entry.kind == Kind.longs)
     check(entry.count == 5)
     check(entry.packed == [0'u8, 1, 2, 3])
     check(entry.endian == bigEndian)
     check(entry.headerOffset == 0)
+    check($entry == "NewSubfileType(254), 5 longs, offset: 66051")
 
-  test "test getIFDEntry index":
+  test "test getIFDEntry bytes":
     var buffer = [
-      0x00'u8, 0x00, 0x00, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05,
+      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x04,
       0x00, 0x01, 0x02, 0x03,
     ]
-    let entry = getIFDEntry(buffer, bigEndian, 0, 2)
-    # let expected = "NewSubfileType(254), 5 longs, packed: 00 01 02 03"
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    check($entry == "NewSubfileType(254), 4 bytes, values: [0,1,2,3]")
 
-    check(entry.tag == 254'u16)
-    check(entry.kind == Kind.longs)
-    check(entry.count == 5)
-    check(entry.packed == [0'u8, 1, 2, 3])
-    check(entry.endian == bigEndian)
-    check(entry.headerOffset == 0)
-    # echo $entry
-
-  test "test getIFDEntry index not enough":
+  test "test getIFDEntry shorts":
     var buffer = [
-      0x00'u8, 0x00, 0x00, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05,
-      0x00, 0x01, 0x02
+      0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x02,
+      0x00, 0x01, 0x02, 0x03,
     ]
-    var gotException = false
-    try:
-      discard getIFDEntry(buffer, bigEndian, 0, 2)
-    except NotSupportedError:
-      # echo getCurrentExceptionMsg()
-      gotException = true
-    check(gotException == true)
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    check($entry == "NewSubfileType(254), 2 shorts, values: [1,515]")
+
+  test "test getIFDEntry longs":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    check($entry == "NewSubfileType(254), 1 longs, values: [66051]")
+
+  test "test getIFDEntry 3 shorts":
+    var buffer = [
+      0x00'u8, 0xFE, 0x00, 0x03, 0x00, 0x00, 0x00, 0x03,
+      0x00, 0x01, 0x02, 0x03,
+    ]
+    let entry = getIFDEntry(buffer, bigEndian, 0)
+    check($entry == "NewSubfileType(254), 3 shorts, offset: 66051")
 
   test "test getIFDEntry not enough bytes":
     var buffer = [
@@ -582,22 +600,6 @@ suite "test tiff.nim":
     check(node[0].getStr() == "A")
     check(node[1].getStr() == "C")
 
-  test "test readValueList one more than packed":
-    var buffer = [
-      0x00'u8, 0xFE, 0x00, 0x01, 0x00, 0x00, 0x00, 0x05,
-      0x00, 0x00, 0x00, 0x0c, 0, 1, 2, 3, 4, 5
-    ]
-    var (file, filename) = createTestFile(buffer)
-    defer:
-      file.close()
-      removeFile(filename)
-
-    let entry = getIFDEntry(buffer, bigEndian, 0)
-    var list = readValueList(file, entry)
-    check(list.len == 5)
-    check($list == "[0,1,2,3,4]")
-
-
   test "test readValueList 1 float64":
     var buffer = [
       0x00'u8, 0xFE, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x01,
@@ -608,7 +610,7 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], bigEndian, 0)
     var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[0.0]")
@@ -625,7 +627,7 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], bigEndian, 0)
     var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[[1,2]]")
@@ -659,7 +661,7 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], bigEndian, 0)
     var list = readValueList(file, entry)
     check(list.len == 1)
     check($list == "[[-1,2]]")
@@ -676,7 +678,7 @@ suite "test tiff.nim":
       removeFile(filename)
 
     let endian = bigEndian
-    let entry = getIFDEntry(buffer, endian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], endian, 0)
     # echo $entry
     var list = readValueList(file, entry)
     # echo $list
@@ -695,7 +697,7 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], bigEndian, 0)
     var list = readValueList(file, entry)
     check(list.len == 2)
     check($list == "[[1,2],[3,4]]")
@@ -765,7 +767,7 @@ suite "test tiff.nim":
       file.close()
       removeFile(filename)
 
-    let entry = getIFDEntry(buffer, bigEndian, 0)
+    let entry = getIFDEntry(buffer[0..12-1], bigEndian, 0)
     var blob = readBlob(file, entry)
     check(blob.len == 5)
     check($blob == "@[0, 1, 2, 3, 4]")
@@ -1079,3 +1081,152 @@ suite "test tiff.nim":
     # echo metadata
     # echo readable(metadata)
     check($metadata == """{"name":[{"test":1},{"test":2}]}""")
+
+  # test "test readIFD2":
+  #   let filename = "testfiles/single-channel.ome.tif"
+  #   var file = openTestFile(filename)
+  #   # var file = openTestFile("testfiles/MARBLES.TIF")
+
+  #   # Read the IFD info and set the ranges.
+  #   var ranges = newSeq[Range]()
+  #   const headerOffset:uint32 = 0
+  #   let (ifdOffset, endian) = readHeader(file, headerOffset)
+  #   echo "filename = $1" % [$filename]
+  #   echo "ifdOffset = $1" % [$ifdOffset]
+  #   echo "endian = $1" % [$endian]
+  #   var id = 1
+  #   var ifdInfo = readIFD(file, id, headerOffset, ifdOffset, endian, "nodeName", ranges)
+  #   dumpIfdInfo(ifdInfo)
+
+  test "dump ifd entries":
+    let filenames = [
+      # "testfiles/A0_200_T.TIF",
+      # "testfiles/101.tif",
+      # "testfiles/single-channel.ome.tif",
+      # "testfiles/multipage_tiff_example.tif",
+      # "testfiles/Multi_page24bpp.tif",
+      # "testfiles/image.tif",
+      "testfiles/MARBLES.TIF",
+    ]
+
+    for filename in filenames:
+      var file = openTestFile(filename)
+      defer: file.close()
+
+      let headerOffset = 0u32
+      let (ifdOffset, endian) = readHeader(file, headerOffset)
+      # echo "filename = $1" % [$filename]
+      # echo "ifdOffset = $1" % [$ifdOffset]
+      # echo "endian = $1" % [$endian]
+
+      let start: uint32 = headerOffset + ifdOffset
+      file.setFilePos((int64)start)
+      var numberEntries = (int)readNumber[uint16](file, endian)
+      # echo "numberEntries = $1" % [$numberEntries]
+
+      let bufferSize = 12 * numberEntries
+      var buffer = newSeq[uint8](bufferSize)
+      if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+        fail()
+      # echo hexDumpSource(buffer, 12)
+
+  test "test getIFDEntries":
+
+    # header: 2 endian, 2 magic number, 4 IFD offset
+    # 0x4D'u8, 0x4D, 0x00, 0x2A, 0x00, 0x00, 0x00, 0x08,
+
+    # 0x00, 0x10, # number of entries
+
+    # entries from testfiles/single-channel.ome.tif
+    # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
+    var buffer = [
+      0x01'u8, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0xB7,
+      0x01, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0xA7,
+      0x01, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x08, 0x00, 0x00,
+      0x01, 0x03, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+      0x01, 0x06, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+      0x01, 0x0E, 0x00, 0x02, 0x00, 0x00, 0x04, 0x74, 0x00, 0x01, 0x24, 0xCB,
+      0x01, 0x11, 0x00, 0x04, 0x00, 0x00, 0x00, 0xA7, 0x00, 0x00, 0x01, 0x0C,
+      0x01, 0x15, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+      0x01, 0x16, 0x00, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+      0x01, 0x17, 0x00, 0x04, 0x00, 0x00, 0x00, 0xA7, 0x00, 0x00, 0x03, 0xA8,
+      0x01, 0x1A, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x06, 0x44,
+      0x01, 0x1B, 0x00, 0x05, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x06, 0x4C,
+      0x01, 0x1C, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00,
+      0x01, 0x28, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x03, 0x00, 0x00,
+      0x01, 0x31, 0x00, 0x02, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x06, 0x54,
+      0x01, 0x53, 0x00, 0x03, 0x00, 0x00, 0x00, 0x01, 0x00, 0x02, 0x00, 0x00,
+    ]
+
+    # Read the IFD info and set the ranges.
+    const headerOffset:uint32 = 0
+    const ifdOffset = 8
+    const endian = bigEndian
+    var ranges = newSeq[Range]()
+    let entries = getIFDEntries(buffer, headerOffset, ifdOffset, endian, "nodeName", ranges)
+
+    check(entries.len == 16)
+    check(ranges.len == 0)
+
+    check($entries[0] == "ImageWidth(256), 1 longs, values: [439]")
+    check($entries[1] == "ImageHeight(257), 1 longs, values: [167]")
+    check($entries[2] == "BitsPerSample(258), 1 shorts, values: [8]")
+    check($entries[3] == "Compression(259), 1 shorts, values: [1]")
+    check($entries[4] == "PhotometricInterpretation(262), 1 shorts, values: [1]")
+    check($entries[5] == "ImageDescription(270), 1140 strings, offset: 74955")
+    check($entries[6] == "StripOffsets(273), 167 longs, offset: 268")
+    check($entries[7] == "SamplesPerPixel(277), 1 shorts, values: [1]")
+    check($entries[8] == "RowsPerStrip(278), 1 longs, values: [1]")
+    check($entries[9] == "StripByteCounts(279), 167 longs, offset: 936")
+    check($entries[10] == "XResolution(282), 1 rationals, offset: 1604")
+    check($entries[11] == "YResolution(283), 1 rationals, offset: 1612")
+    check($entries[12] == "PlanarConfiguration(284), 1 shorts, values: [1]")
+    check($entries[13] == "ResolutionUnit(296), 1 shorts, values: [3]")
+    check($entries[14] == "Software(305), 22 strings, offset: 1620")
+    check($entries[15] == "SampleFormat(339), 1 shorts, values: [2]")
+
+    # for entry in entries:
+    #   echo $entry
+
+  test "test getIFDEntries no entriestest":
+    var buffer: array[0, uint8] = []
+    const headerOffset:uint32 = 0
+    const ifdOffset = 8
+    const endian = bigEndian
+    var ranges = newSeq[Range]()
+    var message = ""
+    try:
+      let entries = getIFDEntries(buffer, headerOffset, ifdOffset, endian, "nodeName", ranges)
+    except NotSupportedError:
+      message = getCurrentExceptionMsg()
+    check(message == "Invalid entries buffer size.")
+
+  test "test getIFDEntries error":
+    # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
+    var buffer = [
+      0x01'u8, 0x00, 0x99, 0x04, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x01, 0xB7,
+      0x01, 0x01, 0x00, 0x04, 0x8f, 0xff, 0x00, 0x01, 0x00, 0x00, 0x00, 0xA7,
+    ]
+
+    # Read the IFD info and set the ranges.
+    const headerOffset:uint32 = 0
+    const ifdOffset = 8
+    const endian = bigEndian
+    var ranges = newSeq[Range]()
+    let entries = getIFDEntries(buffer, headerOffset, ifdOffset, endian, "nodeName", ranges)
+
+    check(entries.len == 0)
+
+    check(ranges.len == 2)
+    check(ranges[0].start == 8)
+    check(ranges[0].finish == 20)
+    check(ranges[0].name == "nodeName-e")
+    check(ranges[0].message == "IFD entry - Kind is not known: 39172")
+    check(ranges[0].known == false)
+
+    check(ranges.len == 2)
+    check(ranges[1].start == 20)
+    check(ranges[1].finish == 32)
+    check(ranges[1].name == "nodeName-e")
+    check(ranges[1].message == "IFD entry - Count is too big: 2415853569")
+    check(ranges[1].known == false)

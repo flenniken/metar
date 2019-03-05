@@ -78,7 +78,7 @@ type
     endian*: Endianness
     headerOffset*: uint32
 
-
+  # todo: the nextList first entry is not added when zero, should it?
   IFDInfo* = object
     ## Image File Directory (IFD) information.  The node list contains
     ## the IFD section node (name and metadata). In addition it may
@@ -98,16 +98,6 @@ type
     height*: int32
     starts*: seq[uint32]
     counts*: seq[uint32]
-
-
-# proc `$`(entry: IFDEntry): string =
-#   ## Return a string representation of the IFDEntry.
-
-#   "$1, $2 $3, packed: $4 $5 $6 $7"  %
-#     [tagName(entry.tag),
-#     $entry.count, $entry.kind,
-#     toHex(entry.packed[0]), toHex(entry.packed[1]),
-#     toHex(entry.packed[2]), toHex(entry.packed[3])]
 
 
 proc count*(entry: IFDEntry): int {.inline.} =
@@ -170,32 +160,30 @@ proc readHeader*(file: File, headerOffset: uint32):
     raise newException(UnknownFormatError, "Tiff: not a tiff file.")
 
 
-proc getIFDEntry*(buffer: var openArray[uint8], endian: Endianness,
-                  headerOffset: uint32, index: Natural = 0): IFDEntry =
-  ## Given a buffer of IFDEntry bytes starting at the given index,
-  ## return an IFDEntry object.
+proc getIFDEntry*(buffer: openArray[uint8], endian: Endianness,
+                  headerOffset: uint32): IFDEntry =
+  ## Return an IFDEntry from the specified entry bytes.
 
   # 2 tag bytes, 2 kind bytes, 4 count bytes, 4 packed bytes
-  if buffer.len()-index < 12:
-    raise newException(NotSupportedError, "Tiff: not enough bytes for IFD entry.")
+  if buffer.len() != 12:
+    raise newException(NotSupportedError, "Need 12 entry bytes.")
 
-  let tag = getNumber[uint16](buffer, index+0, endian)
-  let kind_ord = (int)getNumber[uint16](buffer, index+2, endian)
+  let tag = getNumber[uint16](buffer, 0, endian)
+  let kind_ord = (int)getNumber[uint16](buffer, 2, endian)
   if kind_ord < ord(low(Kind)) or kind_ord > ord(high(Kind)):
-    # todo: show the kind in the range error field.
     raise newException(NotSupportedError,
-                       "Tiff: IFD entry kind is not known: " & $kind_ord)
+                       "Kind is not known: " & $kind_ord)
   let kind = Kind(kind_ord)
-  let count = getNumber[uint32](buffer, index+4, endian)
+  let count = getNumber[uint32](buffer, 4, endian)
   if count > (uint32)int32.high:
     raise newException(NotSupportedError,
-                       "Tiff: IFD entry count is too big: " & $count)
+                       "Count is too big: " & $count)
 
   var packed: array[4, uint8]
-  packed[0] = buffer[index+8]
-  packed[1] = buffer[index+9]
-  packed[2] = buffer[index+10]
-  packed[3] = buffer[index+11]
+  packed[0] = buffer[8]
+  packed[1] = buffer[9]
+  packed[2] = buffer[10]
+  packed[3] = buffer[11]
   result = IFDEntry(tag: tag, kind: kind, number: (uint32)count, packed: packed,
                     endian: endian, headerOffset: headerOffset)
 
@@ -442,6 +430,19 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
     result = newJString(str)
 
 
+proc `$`*(entry: IFDEntry): string =
+  ## Return a string representation of the IFDEntry.
+  var value: string
+  if kindSize(entry.kind) * entry.count <= 4:
+    let list = readValueList(nil, entry)
+    result = "$1, $2 $3, values: $4"  %
+      [tagName(entry.tag), $entry.count, $entry.kind, $list]
+  else:
+    let offset = getNumber[uint32](entry.packed, 0, entry.endian)
+    result = "$1, $2 $3, offset: $4"  %
+      [tagName(entry.tag), $entry.count, $entry.kind, $offset]
+
+
 proc getImage(ifdOffset: uint32, id: string, tiffImageData: TiffImageData, headerOffset: uint32):
     Option[tuple[image: bool, node: JsonNode, ranges: seq[Range]]] =
   ## Return image node and associated ranges from the imageData or none when no image.
@@ -524,6 +525,33 @@ proc handleEntry(file: File,
     ifd[$entry.tag] = readValueListMax(file, entry, 1000)
 
 
+proc getIFDEntries*(buffer: openArray[uint8], headerOffset: uint32, ifdOffset: uint32,
+                   endian: Endianness, nodeName: string,
+                   ranges: var seq[Range]): seq[IFDEntry] =
+  ## Return the entries for the given buffer. The buffer contains the
+  ## 12 byte entries which start 2 bytes after the IFD offset. Also
+  ## fill in the ranges.
+
+  var entry: IFDEntry = IFDEntry(tag: 0, kind: Kind.bytes, number: 0,
+                                 packed: [0u8, 0, 0, 0],
+                                 endian: littleEndian, headerOffset: 0)
+
+  let numberEntries = buffer.len div 12
+  if numberEntries == 0 or numberEntries * 12 != buffer.len:
+    raise newException(NotSupportedError, "Invalid entries buffer size.")
+
+  for ix in countup(0, numberEntries*12-1, 12):
+    try:
+      entry = getIFDEntry(buffer[ix..ix+12-1], endian, headerOffset)
+      result.add(entry)
+    except NotSupportedError:
+      # Add error range for the entry itself.
+      let start = headerOffset + ifdOffset + (uint32)ix
+      let name = nodeName & "-e"
+      let message = "IFD entry - " & getCurrentExceptionMsg()
+      ranges.add(newRange(start, start + 12u32, name, false, message))
+
+
 proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
               endian: Endianness, nodeName: string,
               ranges: var seq[Range]): IFDInfo =
@@ -544,64 +572,60 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
   var tiffImageData = TiffImageData(width: -1, height: -1, starts: newSeq[uint32](),
                             counts : newSeq[uint32]())
 
-  # Read all the contiguous IFD bytes into a memory buffer.
+  # Read the number of IFD entries.
   let start: uint32 = headerOffset + ifdOffset
   file.setFilePos((int64)start)
   var numberEntries = (int)readNumber[uint16](file, endian)
+  if numberEntries < 1:
+    raise newException(NotSupportedError, "No IFD entries.")
   let bufferSize = 12 * numberEntries
-  let finish:uint32 = start + (uint32)bufferSize
-
+  # 6 is 2 for number of entries and 4 for next offset.
+  let finish:uint32 = start + (uint32)bufferSize + 6
   ranges.add(newRange(start, finish, name=nodeName, message = "entries"))
 
+  # Read the IFD's entries and update the ranges.
   var buffer = newSeq[uint8](bufferSize)
-  if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+  let bytesRead = file.readBytes(buffer, 0, bufferSize)
+  if bytesRead != bufferSize:
+    echo "read $1 bytes but expected to read $2" % [$bytesRead, $bufferSize]
     raise newException(IOError, "Unable to read the file.")
+  let entries = getIFDEntries(buffer, headerOffset, ifdOffset, endian, nodeName, ranges)
 
-  # Create a list to hold the ifd's list of nodes.
-  var nodeList = newSeq[tuple[name: string, node: JsonNode]]()
+  # Read the next IFD offset.
+  let next = readNumber[uint32](file, endian)
 
   # Create an ifd node and add it to the list of nodes.
+  var nodeList = newSeq[tuple[name: string, node: JsonNode]]()
   var ifd = newJObject()
   nodeList.add((nodeName, ifd))
 
   # Add IFD start and the next offset into the ifd node dictionary.
-  let next = readNumber[uint32](file, endian)
   ifd["offset"] = newJInt((BiggestInt)start)
   ifd["next"] = newJInt((BiggestInt)next)
   if next != 0'u32:
     nextList.add( ("ifd", next))
 
   # Loop through the IFD entries and process each one.
-  if numberEntries > 0:
-    for ix in 0..<numberEntries:
-      let entry = getIFDEntry(buffer, endian, headerOffset, ix*12)
-
-      let entryStart = headerOffset + ifdOffset + (uint32)(ix * 12)
-      let entrySize  = (uint32)(kindSize(entry.kind) * entry.count)
-      var externalStart: uint32
-      var externalFinish: uint32
-      if entrySize > 4'u32:
-        externalStart = getNumber[uint32](entry.packed, 0, entry.endian)
-        externalFinish = externalStart + entrySize
-        ranges.add(newRange(externalStart, externalFinish, name=nodeName,
-                            message=tagName(entry.tag)))
-
-      try:
-        handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
-      # Don't catch all exceptions here, address the issue at the source.
-      except NotSupportedError:
-        # Add the not supported entry as unknown to the ranges list.
-        let error = getCurrentExceptionMsg()
-        let name = nodeName & "-e"
-        let message = "tag-" & $entry.tag & " " & error
-        var start, finish: uint32
-        if entrySize > 4'u32:
-          start = externalStart
-          finish = externalFinish
-        else:
-          start = entryStart
-          finish = start + 12
-        ranges.add(newRange(start, finish, name, false, message))
+  for entry in entries:
+    # Add the external part of the entry to the ranges.
+    let entrySize  = (uint32)(kindSize(entry.kind) * entry.count)
+    var externalStart: uint32
+    var externalFinish: uint32
+    if entrySize > 4'u32:
+      externalStart = getNumber[uint32](entry.packed, 0, entry.endian)
+      externalFinish = externalStart + entrySize
+      ranges.add(newRange(externalStart, externalFinish, name=nodeName,
+                          message=tagName(entry.tag)))
+    try:
+      handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
+    # Don't catch all exceptions here, address the issue at the source.
+    except NotSupportedError:
+      # Add the not supported entry as unknown to the ranges list.
+      let error = getCurrentExceptionMsg()
+      let name = nodeName & "-e"
+      let message = "tag-" & $entry.tag & " " & error
+      # todo: not done
+      # ranges.add(newRange(start, finish, name, false, message))
 
   # If the image exists, add its node and ranges.
   let oImage = getImage(ifdOffset, $id, tiffImageData, headerOffset)
@@ -610,8 +634,6 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
     nodeList.add(("image", imageNode))
     for item in imageRanges:
       ranges.add(item)
-
-  # sort(ranges, cmpRanges)
 
   result = IFDInfo(nodeList: nodeList, nextList: nextList)
 
