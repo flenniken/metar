@@ -1,4 +1,17 @@
+'''
+This script is used to remove the system module lines from the dot
+output so only the dependencies of metar are shown. It's used by the
+nimble dot task shown here:
 
+task dot, "Show dependency graph":
+  exec "nim genDepend metar/metar.nim"
+  # Create my.dot file with the contents of metar.dot after stripping
+  # out nim modules.
+  exec """find metar -maxdepth 1 -name \*.nim | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
+  exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
+  exec "dot -Tsvg metar/my.dot -o bin/dependencies.svg"
+  exec "open -a Firefox bin/dependencies.svg"
+'''
 
 import os
 import sys
@@ -26,7 +39,9 @@ def parse_line(line):
 
 def dotFilter(names, filename):
   """
-  Read dot file lines and output lines containing names.
+  Print out a dot file that contains all the lines specified in
+  filename except the lines where the right side name is in the names
+  dictionary.
   """
   print 'digraph metar {'
 

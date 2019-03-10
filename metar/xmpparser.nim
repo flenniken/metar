@@ -63,7 +63,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## Normal items become strings.  For example:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <tiff:Make>Canon</tiff:Make>
   ##
@@ -75,7 +75,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## Bag and Seq become lists of items. For example the following:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <dc:subject>
   ##     <rdf:Bag>
@@ -101,7 +101,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## Alt items:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <dc:title>
   ##     <rdf:Alt>
@@ -117,7 +117,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## The xpacket:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>
   ##
@@ -130,7 +130,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## The xmpmeta:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <x:xmpmeta xmlns:x="adobe:ns:meta/" x:xmptk="Public XMP Toolkit Core 3.5">
   ##
@@ -143,7 +143,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##
   ## The names spaces:
   ##
-  ## .. code-block:: xml
+  ## .. code-block::
   ##
   ##   <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
   ##   <rdf:Description rdf:about=""

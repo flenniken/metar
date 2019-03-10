@@ -384,7 +384,7 @@ Here is a sample xmp section from a dng image::
   crs:Temperature = "5000"
   crs:Tint = "0"
   crs:Exposure = "-0.20"
-  --spin--
+  --snip--
   exif:Function = "False"
   exif:RedEyeMode = "False"
   aux:SerialNumber = "620423455"
