@@ -63,15 +63,14 @@ task m, "Build metar exe and python module":
 
 task md, "Build debug version of metar":
   let output = git_bin_folder(debug=true)
-  # memTracker
   exec r"rm -f $1/metar" % [output]
-  exec r"nim c --memTracker:on --out:$1/metar metar/metar" % [output]
+  exec r"nim c -d:nimTypeNames --out:$1/metar metar/metar" % [output]
 
 task mdlib, "Build debug version of the python module":
   let output = git_bin_folder(debug=true)
   exec r"rm -f $1/metar.so" % [output]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
+  exec r"nim c -d:buildingLib -d:nimTypeNames --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
 
 proc test_module(filename: string, release = false): string =
   ## Test one module.
@@ -212,7 +211,7 @@ task tree, "Show the project directory tree":
   exec "tree -I '*~|nimcache'"
 
 task t, "Build and run t.nim":
-  let cmd = "nim c -r -d:release --memTracker:on --out:bin/t metar/private/t"
+  let cmd = "nim c -r -d:release --out:bin/t metar/private/t"
   echo cmd
   exec cmd
 

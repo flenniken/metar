@@ -971,4 +971,4 @@ proc readJpeg(file: File): Metadata {.tpub.} =
   addSection(result, dups, "ranges", rangesNode)
 
 
-const reader* = (read: readJpeg, keyName: keyNameJpeg)
+let reader* = Reader(name: "jpeg", reader: readJpeg, keyName: keyNameJpeg)

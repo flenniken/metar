@@ -14,10 +14,23 @@ from readerJpeg import nil
 from readerTiff import nil
 import tpub
 
-let readers = {
-  "jpeg": readerJpeg.reader,
-  "tiff": readerTiff.reader,
-}.toOrderedTable
+type
+  readerProc = proc (file: File): Metadata
+  keyNameProc = proc (section: string, key: string): string
+
+
+let readers = [
+  readerJpeg.reader,
+  readerTiff.reader,
+]
+
+
+proc readerToKeyName(name: string): keyNameProc =
+  for t in readers:
+    if t.name == name:
+      return t.keyName
+  return nil
+
 
 proc getMetaInfo(filename: string, readerName: string,
     fileSize: int64, problems: seq[tuple[reader: string,
@@ -49,8 +62,8 @@ proc getMetaInfo(filename: string, readerName: string,
   result["problems"] = p
 
   var r = newJArray()
-  for name in readers.keys():
-    r.add(newJString(name))
+  for t in readers:
+    r.add(newJString(t.name))
   result["readers"] = r
 
 
@@ -77,16 +90,20 @@ proc getMetadata*(filename: string): tuple[metadata: Metadata, readerName: strin
 
   var metadata: Metadata = nil
   var readerName: string
-  for name, reader in readers.pairs():
+  for t in readers:
     try:
-      metadata = reader.read(f)
-      readerName = name
+      metadata = t.reader(f)
+      # The readerName is set when the reader understands the file
+      # format.
+      readerName = t.name
       break
     except UnknownFormatError:
       continue
     except NotSupportedError:
-      readerName = name
-      problems.add((name, getCurrentExceptionMsg()))
+      # This reader is used if none of the other readers can handle
+      # the file.
+      readerName = t.name
+      problems.add((readerName, getCurrentExceptionMsg()))
       continue
 
   # Return UnknownFormatError when none of the readers understand the
@@ -117,7 +134,8 @@ proc keyName*(readerName: string, section: string, key: string):
   ##   echo keyName("dng", "exif", "40961")
   ##   ColorSpace
 
-  if readerName in readers:
-    result = readers[readerName].keyName(section, key)
+  let keyNameProc = readerToKeyName(readerName)
+  if keyNameProc == nil:
+    result = ""
   else:
-    return ""
+    result = keyNameProc(section, key)

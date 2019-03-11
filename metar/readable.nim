@@ -176,6 +176,13 @@ iterator forLines*(metadata: Metadata, readerName: string): string =
 proc readable*(metadata: Metadata, readerName: string): string =
   ## Return the metadata as a human readable string.
 
+  # echo "total memory managed by nim = " & $getTotalMem()
+  # echo "memory used by objects = " & $getOccupiedMem()
+  # echo "getFreeMem = " & $getFreeMem()
+
+  when defined(nimTypeNames):
+    dumpNumberOfInstances()
+
   var lines = newSeq[string]()
   for line in metadata.forLines(readerName):
     lines.add(line)

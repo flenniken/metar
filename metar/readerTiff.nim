@@ -3,7 +3,8 @@
 ## The readerTiff module reads TIFF images and returns its
 ## metadata. It implements the reader interface.
 
+import metadata
 import tiff
 import tiffTags
 
-const reader* = (read: readTiff, keyName: keyNameTiff)
+let reader* = Reader(name: "tiff", reader: readTiff, keyName: keyNameTiff)
