@@ -41,3 +41,9 @@ RUN mkdir -p /home/steve/code/metarnim/
 WORKDIR /home/steve/code/metarnim/
 
 CMD /bin/bash
+
+# You need to get the latest version of nim and nimpy.
+# choosenim update stable
+# nimble uninstall nimpy
+# nimble install nimpy
+# Match the version specified in the version.nim file.

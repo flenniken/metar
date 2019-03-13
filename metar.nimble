@@ -46,7 +46,7 @@ proc build_metar_and_python_module(ignoreOutput = false) =
   exec r"rm -f $1/metar.so" % [output]
   exec r"nim c --out:$1/metar -d:release metar/metar $2" % [output, ignore]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib -d:release --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar $2" % [output, ignore]
+  exec r"nim c -d:buildingLib -d:release --app:lib --out:$1/metar.so metar/metar $2" % [output, ignore]
   exec r"strip $1/metar" % [output]
   exec r"strip -x $1/metar.so" % [output]
 
@@ -64,13 +64,16 @@ task m, "Build metar exe and python module":
 task md, "Build debug version of metar":
   let output = git_bin_folder(debug=true)
   exec r"rm -f $1/metar" % [output]
-  exec r"nim c -d:nimTypeNames --out:$1/metar metar/metar" % [output]
+  # -d:nimTypeNames use this with:
+  # when defined(nimTypeNames):
+  #   dumpNumberOfInstances()
+  exec r"nim c --out:$1/metar metar/metar" % [output]
 
 task mdlib, "Build debug version of the python module":
   let output = git_bin_folder(debug=true)
   exec r"rm -f $1/metar.so" % [output]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib -d:nimTypeNames --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
+  exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
 
 proc test_module(filename: string, release = false): string =
   ## Test one module.
