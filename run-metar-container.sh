@@ -17,9 +17,10 @@ else
     docker attach $container
   else
     echo "Running a new container."
+    # xpictures is a link to external folder of images.
 
     docker run -v /Users/steve/code/metarnim:/home/steve/code/metarnim \
+           -v /Users/steve/xpictures:/home/steve/xpictures \
       --name=metar-container -it metar-image
-
   fi
 fi
