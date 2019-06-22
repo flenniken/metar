@@ -7,7 +7,7 @@ MAINTAINER Steve Flenniken
 
 RUN apt-get update \
   && apt-get -qy install curl libssl-dev build-essential gcc \
-  python python3 xz-utils less git man sudo
+  python python3 xz-utils less git man sudo tree
 
 # Set sudo so steve doesn't need to type in a password.
 RUN mkdir -p /etc/sudoers.d

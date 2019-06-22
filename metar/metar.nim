@@ -45,6 +45,7 @@ proc readMetadataJson*(filename: string): string
   ##
   try:
     let (metadata, readerName) = getMetadata(filename)
+    discard readerName
     result = $metadata
   except UnknownFormatError:
     result = ""

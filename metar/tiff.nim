@@ -432,7 +432,7 @@ proc readValueListMax(file: File, entry: IFDEntry, maximumCount:Natural=20,
 
 proc `$`*(entry: IFDEntry): string =
   ## Return a string representation of the IFDEntry.
-  var value: string
+
   if kindSize(entry.kind) * entry.count <= 4:
     let list = readValueList(nil, entry)
     result = "$1, $2 $3, values: $4"  %
@@ -616,21 +616,24 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
       externalFinish = externalStart + entrySize
       ranges.add(newRange(externalStart, externalFinish, name=nodeName,
                           message=tagName(entry.tag)))
-    try:
-      handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
-    # Don't catch all exceptions here, address the issue at the source.
-    except NotSupportedError:
-      # Add the not supported entry as unknown to the ranges list.
-      let error = getCurrentExceptionMsg()
-      let name = nodeName & "-e"
-      let message = "tag-" & $entry.tag & " " & error
-      # todo: not done
-      # ranges.add(newRange(start, finish, name, false, message))
+    handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
+
+    # todo: not done
+    # try:
+    #   handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
+    # # Don't catch all exceptions here, address the issue at the source.
+    # except NotSupportedError:
+    #   # Add the not supported entry as unknown to the ranges list.
+    #   let error = getCurrentExceptionMsg()
+    #   let name = nodeName & "-e"
+    #   let message = "tag-" & $entry.tag & " " & error
+    #   ranges.add(newRange(start, finish, name, false, message))
 
   # If the image exists, add its node and ranges.
   let oImage = getImage(ifdOffset, $id, tiffImageData, headerOffset)
   if isSome(oImage):
     let (image, imageNode, imageRanges) = oImage.get()
+    discard image
     nodeList.add(("image", imageNode))
     for item in imageRanges:
       ranges.add(item)

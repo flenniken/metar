@@ -41,10 +41,13 @@ proc build_metar_and_python_module(ignoreOutput = false) =
   else:
     ignore = ""
 
+  echo "----- Building metar"
   let output = git_bin_folder()
   exec r"rm -f $1/metar" % [output]
   exec r"rm -f $1/metar.so" % [output]
   exec r"nim c --out:$1/metar -d:release metar/metar $2" % [output, ignore]
+
+  echo "----- Building lib"
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buildingLib -d:release --app:lib --out:$1/metar.so metar/metar $2" % [output, ignore]
   exec r"strip $1/metar" % [output]
@@ -54,12 +57,19 @@ proc build_metar_and_python_module(ignoreOutput = false) =
 task m, "Build metar exe and python module":
   build_metar_and_python_module()
 
-# task md, "Build debug version of metar and python module":
-#   let output = git_bin_folder(debug=true)
-#   exec r"nim c --out:$1/metar metar/metar" % [output]
-#   exec r"find . -name \*.pyc -delete"
-#   # The python shared lib must be the same name as the nim module.
-#   exec r"nim c -d:buildingLib --debugger:native --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
+task mall, "Build metar exe and python module both debug and release":
+  build_metar_and_python_module()
+
+  echo "----- Building debug metar"
+  let output = git_bin_folder(debug=true)
+  exec r"rm -f $1/metar" % [output]
+  exec r"nim c --out:$1/metar metar/metar" % [output]
+
+  echo "----- Building debug lib"
+  exec r"rm -f $1/metar.so" % [output]
+  exec r"find . -name \*.pyc -delete"
+  exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
+
 
 task md, "Build debug version of metar":
   let output = git_bin_folder(debug=true)

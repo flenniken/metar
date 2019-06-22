@@ -14,7 +14,7 @@ from readerTiff import nil
 import tpub
 
 type
-  readerProc = proc (file: File): Metadata
+  # readerProc = proc (file: File): Metadata
   keyNameProc = proc (section: string, key: string): string
 
 
