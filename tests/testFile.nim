@@ -1,6 +1,6 @@
 ## Procedures to work with test files.
 
-import ospaths
+import os
 
 
 proc createTestFile*(bytes: openArray[uint8]):

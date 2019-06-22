@@ -7,7 +7,6 @@
 import os
 import json
 import tables
-import ospaths
 import version
 import metadata
 from readerJpeg import nil
