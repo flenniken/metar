@@ -12,7 +12,7 @@ license = "MIT"
 binDir = "bin"
 
 # The nimpy package is required for the library module but not the
-# exe.  Nimpy does not update the version number, its always at
+# exe.  Nimpy does not update the its version number, its always at
 # 0.1.0. So we use the git version number instead. See the package
 # source code at ~/.nimble/pkgs. Update the version.nim file and the
 # Dockerfile when you update the version.
@@ -227,7 +227,8 @@ task docs, "Build all the docs":
   exec "nim buildIndex --out:docs/html/theindex.html docs/html/"
   exec "nim rst2html --out:docs/html/main.html docs/main.rst"
   exec "rm docs/html/*.idx"
-  exec "open docs/html/main.html"
+  # Open the main.html file in a browser when the open command exists.
+  exec "(hash open 2>/dev/null && open docs/html/main.html) || echo 'open docs/html/main.html'"
 
 task tree, "Show the project directory tree":
   exec "tree -I '*~|nimcache'"

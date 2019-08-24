@@ -88,7 +88,7 @@ proc readMetadata*(filename: string): string
     result = ""
 
 
-proc keyName2*(readerName: string, section: string, key: string):
+proc keyName*(readerName: string, section: string, key: string):
             string {.exportpy: "key_name".} =
   ## Return a human readable name for the given key.
   ##

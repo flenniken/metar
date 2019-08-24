@@ -163,5 +163,23 @@ suite "test_metar.nim":
     check(version.len >= 4 and version.len <= 8)
 
   test "keyName":
-    var str = keyName2("tiff", "ifd0", "256")
+    var str = keyName("tiff", "ifd0", "256")
     check(str == "ImageWidth(256)")
+
+  test "public interface":
+    # If you change the public interface you must increment the major
+    # version number which you should try not to do.
+
+    type keyNameProc = proc (readerName: string, section: string, key: string): string
+    var p1 : keyNameProc = keyName
+    var str = p1("tiff", "ifd0", "256")
+    check(str == "ImageWidth(256)")
+
+    type readMetadataProc = proc (filename: string): string
+    var p2 : readMetadataProc = readMetadata
+
+    type readMetadataJsonProc = proc (filename: string): string
+    var p3 : readMetadataJsonProc = readMetadataJson
+
+    type getVersionProc = proc (): string
+    var p4 : getVersionProc = getVersion
