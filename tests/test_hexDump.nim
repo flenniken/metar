@@ -52,6 +52,7 @@ suite "Test hexDump.nim":
     # echo hexDump(@bytes[0..<1])
 
   test "test toHex00":
+    check(toHex(0x4'u16) == "0004")
     check(toHex0(0) == "0")
     check(toHex0(0x10'u8) == "10")
     check(toHex0(0x12'u8) == "12")

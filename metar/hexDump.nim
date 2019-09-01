@@ -4,7 +4,16 @@ import tpub
 ## You can display a sequence of bytes as a hex string and ascii.
 
 iterator iteratorCount(bytes: openArray[uint8], count: Natural): seq[uint8] {.tpub.} =
-  ## Return count bytes of a sequence at a time.
+  ## Iterate through the given bytes returning 'count' bytes at a time.
+  ## If there are not enough bytes, return the remaining.
+  ##
+  ## For example, to return 16 bytes at a time:
+  ##
+  ## ::
+  ##
+  ## for row in iteratorCount(bytes, 16):
+  ##   ...
+
   var xstart = 0
   var xend = count
   while xstart < bytes.len:
@@ -75,7 +84,8 @@ proc toHex0*[T](number: T): string =
   ## leading 0's removed.
   ##
   ## .. code-block:: nim
-  ##   check(toHex0(0x0004'u16) == "4")
+  ##   check(toHex(0x4'u16) == "0004")
+  ##   check(toHex0(0x4'u16) == "4")
 
   let str = toHex(number)
 
@@ -96,6 +106,7 @@ proc toHex0*[T](number: T): string =
 when defined(test):
   proc hexDumpSource(bytes: openArray[uint8|char], columns: int=8): string {.tpub.} =
     ## Dump the buffer as an array of bytes in nim source code.
+    ## This procedure is only defined in test mode.
 
     var lines = newSeq[string]()
     lines.add("var buffer = [")
@@ -114,7 +125,8 @@ when defined(test):
 
 
 proc hexDumpFileRange*(file: File, start: int64, finish: int64): string =
-  ## Read a section of the given file and return it as a hex string.
+  ## Read a section of the given file (up to 16K) and return it as a
+  ## hex string.  If there is an error, the IOError exception is raised.
 
   let length = finish - start
   if length < 0:

@@ -119,6 +119,16 @@ proc keyName*(readerName: string, section: string, key: string):
 proc getVersion*(): string {.exportpy: "get_version".} =
   ## Return the Metar version number string.
   ##
+  ## Nim:
+  ##
+  ## .. code-block:: nim
+  ##
+  ##   import metar
+  ##   echo get_version()
+  ##   0.0.4
+  ##
+  ## Python:
+  ##
   ## .. code-block::
   ##
   ##   >>> from metar import get_version
@@ -149,6 +159,8 @@ when not defined(buildingLib):
     ##   -h --help     Show this help.
     ##   file          Image filename to analyze.
     ##
+    ## This procedure is not defined in the python library.
+    ##
     result = """
 Show metadata information for the given image(s).
 Usage: metar [-j] [-v] file [file...]
@@ -170,6 +182,9 @@ file          Image filename to analyze.
     ##   var args = parseCommandLine(optParser)
     ##   for str in processArgs(args):
     ##     echo str
+    ##
+    ## This iterator is not defined in the python library.
+    ##
 
     if args.version:
       yield($metarVersion)
@@ -207,6 +222,8 @@ file          Image filename to analyze.
     ##   check(args.files.len == 1)
     ##   check(args.files[0] == "image.dng")
     ##
+    ## This procedure is not defined in the python library.
+    ##
     var files: seq[string] = @[]
     var json = false
     var help = false
@@ -238,7 +255,6 @@ file          Image filename to analyze.
     result = (files, json, help, version)
 
 
-when not defined(buildingLib):
   when isMainModule:
     # Detect control-c and stop.
     proc controlCHandler() {.noconv.} =

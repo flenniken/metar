@@ -1,7 +1,7 @@
 
 ## The tpub module implements the {.tpub.} macro pragma used to make
 ## procedures public when testing so you can test them in external
-## test files.
+## test files. When the test option is off, the macros do nothing.
 
 import macros
 

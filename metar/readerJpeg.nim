@@ -398,6 +398,7 @@ proc readSections(file: File): seq[Section] {.tpub.} =
 when defined(test):
   proc findMarkerSections(file: File, marker: uint8): seq[Section] {.tpub.} =
     ## Read and return all the sections with the given marker.
+    ## This procedure is only defined in test mode.
 
     result = @[]
     var sections = readSections(file)
@@ -525,6 +526,7 @@ proc SofInfoToMeta(self: SofInfo): Metadata {.tpub.} =
 when defined(test):
   proc `$`(self: SofInfo): string {.tpub.} =
     ## Return a string representation of the given SofInfo object.
+    ## This procedure is only defined in test mode.
 
     var lines = newSeq[string]()
     lines.add("precision: $1, width: $2, height: $3, num components: $4" % [
