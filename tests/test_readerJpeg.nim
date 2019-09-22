@@ -213,62 +213,62 @@ suite "Test readerJpeg.nim":
       gotException = true
     check(gotException)
 
-  test "test xmpOrExifSection exif":
-    let filename = "testfiles/agency-photographer-example.jpg"
-    var file = openTestFile(filename)
-    defer: file.close()
+  # test "test xmpOrExifSection exif":
+  #   let filename = "testfiles.save/agency-photographer-example.jpg"
+  #   var file = openTestFile(filename)
+  #   defer: file.close()
 
-    # Find the xmp section.
-    let sections = findMarkerSections(file, 0xe1)
-    # echo "sections.len = " & $sections.len
-    check(sections.len == 2)
-    let section = sections[0]
+  #   # Find the xmp section.
+  #   let sections = findMarkerSections(file, 0xe1)
+  #   # echo "sections.len = " & $sections.len
+  #   check(sections.len == 2)
+  #   let section = sections[0]
 
-    # # Dump the start of the section.
-    # var buffer = readSection(file, section.start, section.finish)
-    # echo hexDump(buffer[0..200])
+  #   # # Dump the start of the section.
+  #   # var buffer = readSection(file, section.start, section.finish)
+  #   # echo hexDump(buffer[0..200])
 
-    # Extract the exif data.
-    var sectionKind = xmpOrExifSection(file, section.start,
-                                        section.finish)
-    let name = sectionKind.name
-    let data = sectionKind.data
-    check(name == "exif")
-    check(data.len < section.finish - section.start - 4)
-    # echo hexDump(data[0..200])
+  #   # Extract the exif data.
+  #   var sectionKind = xmpOrExifSection(file, section.start,
+  #                                       section.finish)
+  #   let name = sectionKind.name
+  #   let data = sectionKind.data
+  #   check(name == "exif")
+  #   check(data.len < section.finish - section.start - 4)
+  #   # echo hexDump(data[0..200])
 
-    check(data[0] == 0)
-    check(data[1] == 0x4d)
-    check(data[2] == 0x4d)
+  #   check(data[0] == 0)
+  #   check(data[1] == 0x4d)
+  #   check(data[2] == 0x4d)
 
-  test "test xmpOrExifSection xmp":
-    let filename = "testfiles/agency-photographer-example.jpg"
-    var file = openTestFile(filename)
-    defer: file.close()
+  # test "test xmpOrExifSection xmp":
+  #   let filename = "testfiles.save/agency-photographer-example.jpg"
+  #   var file = openTestFile(filename)
+  #   defer: file.close()
 
-    # Find the xmp section.
-    let sections = findMarkerSections(file, 0xe1)
-    # echo "sections.len = " & $sections.len
-    check(sections.len == 2)
-    let section = sections[1]
+  #   # Find the xmp section.
+  #   let sections = findMarkerSections(file, 0xe1)
+  #   # echo "sections.len = " & $sections.len
+  #   check(sections.len == 2)
+  #   let section = sections[1]
 
-    # # Dump the start of the section.
-    # var buffer = readSection(file, section.start, section.finish)
-    # echo hexDump(buffer[0..200])
+  #   # # Dump the start of the section.
+  #   # var buffer = readSection(file, section.start, section.finish)
+  #   # echo hexDump(buffer[0..200])
 
-    # Extract the xmp data.
-    let sectionKind = xmpOrExifSection(file, section.start,
-                                        section.finish)
-    let name = sectionKind.name
-    let data = sectionKind.data
-    check(name == "xmp")
-    check(data.len < section.finish - section.start - 4)
-    # echo hexDump(data[0..200])
+  #   # Extract the xmp data.
+  #   let sectionKind = xmpOrExifSection(file, section.start,
+  #                                       section.finish)
+  #   let name = sectionKind.name
+  #   let data = sectionKind.data
+  #   check(name == "xmp")
+  #   check(data.len < section.finish - section.start - 4)
+  #   # echo hexDump(data[0..200])
 
-    var str = bytesToString(data, 0, data.len)
+  #   var str = bytesToString(data, 0, data.len)
 
-    let expected = "<?xpacket begin="
-    check($str[0..<expected.len] == expected)
+  #   let expected = "<?xpacket begin="
+  #   check($str[0..<expected.len] == expected)
 
 
   test "test xmpOrExifSection not ffe1":
@@ -529,14 +529,14 @@ precision: 8, width: 150, height: 100, num components: 3
     #   echo $section
     check(sections.len == 4)
 
-  test "test readJpeg":
-    let filename = "testfiles/agency-photographer-example.jpg"
-    # let filename = "testfiles/IMG_6093.JPG"
-    var file = openTestFile(filename)
-    defer: file.close()
-    var metadata = readJpeg(file)
-    discard metadata
-    # echo readable(metadata, "jpeg")
+  # test "test readJpeg":
+  #   let filename = "testfiles.save/agency-photographer-example.jpg"
+  #   # let filename = "testfiles/IMG_6093.JPG"
+  #   var file = openTestFile(filename)
+  #   defer: file.close()
+  #   var metadata = readJpeg(file)
+  #   discard metadata
+  #   # echo readable(metadata, "jpeg")
 
   # test "dump file":
   #   var file = openTestFile("testfiles/IMG_6093.JPG")

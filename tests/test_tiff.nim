@@ -1050,13 +1050,13 @@ suite "test tiff.nim":
     var json = readValueListMax(file, entry, 1)
     check(json.getStr == "2 bytes starting at 8")
 
-  test "readExif":
-    var file = openTestFile("testfiles/IMG_6093.JPG")
-    defer: file.close()
-    var ranges = newSeq[Range]()
-    var node = readExif(file, 46'u32, 4796'u32, ranges)
-    # echo node
-    check(node.kind == JObject)
+  # test "readExif":
+  #   var file = openTestFile("testfiles.save/IMG_6093.JPG")
+  #   defer: file.close()
+  #   var ranges = newSeq[Range]()
+  #   var node = readExif(file, 46'u32, 4796'u32, ranges)
+  #   # echo node
+  #   check(node.kind == JObject)
 
   test "readTiff":
     var file = openTestFile("testfiles/image.dng")
@@ -1098,37 +1098,37 @@ suite "test tiff.nim":
   #   var ifdInfo = readIFD(file, id, headerOffset, ifdOffset, endian, "nodeName", ranges)
   #   dumpIfdInfo(ifdInfo)
 
-  test "dump ifd entries":
-    let filenames = [
-      # "testfiles/A0_200_T.TIF",
-      # "testfiles/101.tif",
-      # "testfiles/single-channel.ome.tif",
-      # "testfiles/multipage_tiff_example.tif",
-      # "testfiles/Multi_page24bpp.tif",
-      # "testfiles/image.tif",
-      "testfiles/MARBLES.TIF",
-    ]
+  # test "dump ifd entries":
+  #   let filenames = [
+  #     "testfiles/A0_200_T.TIF",
+  #     "testfiles/101.tif",
+  #     "testfiles/single-channel.ome.tif",
+  #     "testfiles/multipage_tiff_example.tif",
+  #     "testfiles/Multi_page24bpp.tif",
+  #     "testfiles/image.tif",
+  #     "testfiles/MARBLES.TIF",
+  #   ]
 
-    for filename in filenames:
-      var file = openTestFile(filename)
-      defer: file.close()
+  #   for filename in filenames:
+  #     var file = openTestFile(filename)
+  #     defer: file.close()
 
-      let headerOffset = 0u32
-      let (ifdOffset, endian) = readHeader(file, headerOffset)
-      # echo "filename = $1" % [$filename]
-      # echo "ifdOffset = $1" % [$ifdOffset]
-      # echo "endian = $1" % [$endian]
+  #     let headerOffset = 0u32
+  #     let (ifdOffset, endian) = readHeader(file, headerOffset)
+  #     # echo "filename = $1" % [$filename]
+  #     # echo "ifdOffset = $1" % [$ifdOffset]
+  #     # echo "endian = $1" % [$endian]
 
-      let start: uint32 = headerOffset + ifdOffset
-      file.setFilePos((int64)start)
-      var numberEntries = (int)readNumber[uint16](file, endian)
-      # echo "numberEntries = $1" % [$numberEntries]
+  #     let start: uint32 = headerOffset + ifdOffset
+  #     file.setFilePos((int64)start)
+  #     var numberEntries = (int)readNumber[uint16](file, endian)
+  #     # echo "numberEntries = $1" % [$numberEntries]
 
-      let bufferSize = 12 * numberEntries
-      var buffer = newSeq[uint8](bufferSize)
-      if file.readBytes(buffer, 0, bufferSize) != bufferSize:
-        fail()
-      # echo hexDumpSource(buffer, 12)
+  #     let bufferSize = 12 * numberEntries
+  #     var buffer = newSeq[uint8](bufferSize)
+  #     if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+  #       fail()
+  #     # echo hexDumpSource(buffer, 12)
 
   test "test getIFDEntries":
 

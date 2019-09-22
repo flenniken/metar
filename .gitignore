@@ -4,5 +4,4 @@ nimcache/
 bin/
 metar/private/
 docs/html/
-testfiles/
 *.pyc
