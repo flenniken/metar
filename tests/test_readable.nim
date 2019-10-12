@@ -1,4 +1,3 @@
-import metadata
 import readable
 import unittest
 import json

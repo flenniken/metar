@@ -3,7 +3,7 @@ import ranges
 import json
 import testFile
 import metadata
-import tables
+# import tables
 
 suite "Test ranges":
 

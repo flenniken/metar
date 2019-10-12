@@ -4,11 +4,9 @@
 
 import Metadata
 import json
-import options
 import tpub
 import strutils
 import readers
-import unicode
 
 const maxKeyLength = 15
 const maxStringLength = 40

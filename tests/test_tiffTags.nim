@@ -2,7 +2,6 @@ import unittest
 import tiffTags
 import tables
 import strutils
-import algorithm
 
 suite "Test test_tiffTags.nim":
 

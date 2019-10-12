@@ -1,7 +1,6 @@
 
 ## Parses XMP metadata from an xmp xml string.
 
-import os
 import streams
 import parsexml
 import strutils

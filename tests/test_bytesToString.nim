@@ -1,13 +1,8 @@
 # See: bytesToString.nim(0):
 
-import os
 import strutils
 import unittest
 import metadata
-import tables
-import json
-import hexDump
-import testFile
 import bytesToString
 
 suite "Test bytesToString.nim":

@@ -1,8 +1,6 @@
 import unittest
 import xmpparser
 import tables
-import metadata
-import json
 
 const xmpSample = """
 <?xpacket begin="" id="W5M0MpCehiHzreSzNTczkc9d"?>

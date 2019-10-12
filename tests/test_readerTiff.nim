@@ -1,14 +1,8 @@
 # See: readerTiff.nim(0):
 
-import os
-import strutils
 import unittest
 import metadata
-import readerTiff
-import hexDump
-import tables
 import json
-import readable
 import testFile
 import readers
 import tiff

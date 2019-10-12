@@ -4,7 +4,7 @@
 
 import tables
 import strutils
-import tpub
+# import tpub
 
 const tagToString = {
   1'u16: "InteropIndex",

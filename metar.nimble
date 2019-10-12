@@ -102,7 +102,11 @@ task mdlib, "Build debug version of the python module":
 
 proc test_module(filename: string, release = false): string =
   ## Test one module.
-  const cmd = "nim c --verbosity:0 -d:test $2 --hints:off -r -p:metar --out:bin/test/$1 tests/$1"
+
+  # You can add -f to force a recompile of imported modules, good for
+  # testing "imported but not used" warnings.
+
+  const cmd = "nim c -f --verbosity:0 -d:test $2 --hints:off -r -p:metar --out:bin/test/$1 tests/$1"
   if release:
     result = (cmd % [filename, "-d:release"])
   else:
@@ -127,6 +131,7 @@ proc runTests(release: bool) =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     let source = test_module(filename, release)
+    # echo source
     exec source
 
   # Build the python module and run its tests.
@@ -200,6 +205,7 @@ task clean, "Delete unneeded files":
   exec "rm -f metar/metar.dot"
   exec "rm -f metar/my.dot"
   exec "rm -f metar/metar.png"
+  # exec "rm -f metar_*.nims"
   exec "rm -f testfiles.txt"
   exec "rm -f docfiles.txt"
   exec "rm -f names.txt"

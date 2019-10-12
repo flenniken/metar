@@ -1,9 +1,7 @@
-import strutils
 import options
 import json
 import metadata
 import ranges
-import tpub
 
 ## You use imageData to store and work with image width, height and pixel ranges.
 

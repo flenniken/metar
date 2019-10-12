@@ -9,8 +9,6 @@ import readNumber
 import hexDump
 import strutils
 import json
-import readable
-import xmpparser
 import tiffTags
 import ranges
 import tables

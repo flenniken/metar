@@ -2,7 +2,6 @@
 
 ## Create a string from an array of bytes.
 
-import tpub
 import unicode
 # import hexdump
 # import metadata

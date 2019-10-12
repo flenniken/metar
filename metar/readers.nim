@@ -6,7 +6,6 @@
 
 import os
 import json
-import tables
 import version
 import metadata
 from readerJpeg import nil

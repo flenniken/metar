@@ -4,15 +4,11 @@ import os
 import strutils
 import unittest
 import metadata
-import tables
 import json
-import hexDump
 import testFile
-import bytesToString
 import ranges
 import readerJpeg
 import imageData
-import readable
 
 static:
   doAssert defined(test), ": test not defined."

@@ -9,9 +9,6 @@ import strutils
 import metadata
 import tpub
 import readNumber
-import endians
-import sequtils
-import unicode
 import json
 import xmpparser
 import bytesToString
@@ -20,7 +17,6 @@ import ranges
 import imageData
 import tiff
 import tiffTags
-import hexDump
 
 # JPEG spec in detail:
 # http://www.w3.org/Graphics/JPEG/itu-t81.pdf

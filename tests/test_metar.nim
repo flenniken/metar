@@ -2,7 +2,6 @@
 import unittest
 import parseopt
 import metar
-import metadata
 import strutils
 
 const expectedHelp = """
