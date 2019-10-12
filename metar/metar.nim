@@ -7,7 +7,8 @@
 # they are defined in the metar module.  So all public python
 # procedures are defined in this file.
 
-import tpub
+when not defined(buildingLib):
+  import tpub
 import readers
 import version
 import readable

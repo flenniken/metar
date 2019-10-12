@@ -45,5 +45,7 @@ WORKDIR /home/steve/code/metarnim/
 CMD /bin/bash
 
 # Get the correct version of nim and nimpy.
-# choosenim 0.20.0
-# nimble install -y nimpy@#f6b6654
+# See ~/code/nimpy for the latest version number.
+# Change version.nim to match.
+# choosenim 1.0.0
+# nimble install -y nimpy@#c8ec14a
