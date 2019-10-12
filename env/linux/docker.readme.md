@@ -2,6 +2,8 @@
 Metar Development Machine
 =========================
 
+Note: See "n tasks" for the equivalent docker tasks.
+
 Development machine for building metar on Debian 8.
 
 Build Machine
