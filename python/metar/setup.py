@@ -1,51 +1,66 @@
+import os
 import re
 from setuptools import setup, find_packages
 
+base_folder = os.path.dirname(os.path.abspath(__file__))
 
-version = re.search(
-    '^__version__\s*=\s*"(.*)"',
-    open('metar/version.py').read(),
+def get_version():
+  """
+  Get the metar version number string.
+  """
+  # The version.nim file in the metar nim project is the true version
+  # number. The file is copied to the python project when building the
+  # library.  This allows the python project to be independent of the
+  # nim project and keeps the two versions in sync.
+
+  version_file = os.path.join(base_folder, 'version.nim')
+  assert(os.path.exists(version_file))
+
+  # Get the one true version number.
+  # const metarVersion* = "0.1.22"
+  version = re.search(
+    'metarVersion.*"(.*)"',
+    open(version_file).read(),
     re.M
     ).group(1)
 
+  return version
 
-with open("README.rst", "rb") as f:
-    long_descr = f.read().decode("utf-8")
+def get_long_description():
+  readme_file = os.path.join(base_folder, 'README.rst')
+  assert(os.path.exists(readme_file))
 
-setup(
+  # Use the readme text for the long description.
+  with open(readme_file, "rb") as f:
+    long_description = f.read().decode("utf-8")
+
+  return long_description
+
+def main():
+  setup(
+    # todo: figure out how to package metar.so.
+    ext_modules=[Extension("metar", ["asdfasfd.c"])],
     name='metar',
-    version = version,
+    version=get_version(),
     description='Metadata reader and library.',
-    long_description = long_descr,
-    url='git@keypict.unfuddle.com:keypict/metar.git',
+    long_description=get_long_description(),
+    url='http://github.com/sflennik/metar/python',
     license='MIT',
     author='Steve Flenniken',
     author_email='steve.flenniken@gmail.com',
-    entry_points = {
-        "console_scripts": ['metar = metar.metar:main']
-        },
+
     packages=find_packages(exclude=['test*']),
     include_package_data=True,
     classifiers=[
-        'Development Status :: 5 - Production/Stable',
-        'Intended Audience :: Developers',
-        'Natural Language :: English',
-        'License :: OSI Approved :: MIT License',
-        'Operating System :: OS Independent',
-        'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3.4',
-        'Topic :: Software Development :: Libraries :: Python Modules',
+      'Development Status :: Beta',
+      'Intended Audience :: Developers',
+      'Natural Language :: English',
+      'Operating System :: Max OS, Linux Debian',
+      'Programming Language :: Python :: 2.7',
+      'Programming Language :: Python :: 3.x',
+      'Topic :: Software Development :: Libraries :: Python Modules',
     ],
-)
+  )
 
-setup(
-  name='metar',
-  version='0.0.1', # todo: use real version number.
-  description='Metadata reader and library.',
-  url='http://github.com/sflennik/metar',
-  author='Steve Flenniken',
-  author_email='steve.flenniken@gmail.com',
-  license='MIT',
-  packages=['metar'],
-  zip_safe=False
-)
+if __name__ == "__main__":
+    main()

@@ -69,10 +69,10 @@ proc createDependencyGraph() =
   exec "dot -Tsvg metar/my.dot -o docs/html//dependencies.svg"
 
 
-task m, "Build metar exe and python module, release versions":
+task m, "Build metar exe and python module, release versions.":
   build_metar_and_python_module()
 
-task mall, "Build metar exe and python module both debug and release":
+task mall, "Build metar exe and python module both debug and release.":
   build_metar_and_python_module()
 
   echo "----- Building debug metar"
@@ -86,7 +86,7 @@ task mall, "Build metar exe and python module both debug and release":
   exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
 
 
-task md, "Build debug version of metar":
+task md, "Build debug version of metar.":
   let output = git_bin_folder(debug=true)
   exec r"rm -f $1/metar" % [output]
   # -d:nimTypeNames use this with:
@@ -94,11 +94,13 @@ task md, "Build debug version of metar":
   #   dumpNumberOfInstances()
   exec r"nim c --out:$1/metar metar/metar" % [output]
 
-task mdlib, "Build debug version of the python module":
+task mdlib, "Build debug version of the python module.":
   let output = git_bin_folder(debug=true)
   exec r"rm -f $1/metar.so" % [output]
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
+  # Keep the python version in setup in sync with metar.
+  exec r"cp metar/version.nim python/metar/"
 
 proc test_module(filename: string, release = false): string =
   ## Test one module.
@@ -149,7 +151,7 @@ proc runTests(release: bool) =
 #   exec r"nim c -d:buildingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:%1/metar.so metar/metar " % [output]
 
 
-# task mpdb, "Make python module with debug info":
+# task mpdb, "Make python module with debug info.":
 #   let output = git_bin_folder(debug=true)
 #   exec r"nim c -d:buildingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
 #   echo "You can debug the python shared lib like this:"
@@ -161,25 +163,32 @@ proc runTests(release: bool) =
 #   echo "see \"lldb debugger\" note for more info."
 
 
-# task py, "Run python tests":
+# task py, "Run python tests.":
 #   exec r"find . -name \*.pyc -delete"
 #   exec "python python/test_metar.py"
 
 
-# task shell, "Run tests from the shell":
+# task shell, "Run tests from the shell.":
 #   echo "building metar and python module"
 #   build_metar_and_python_module(true)
 #   runShellTests()
 
 
-task test, "Run all the tests in debug":
+task args, "Show command line arguments.":
+  let count = system.paramCount()+1
+  echo "argument count: $1" % $count
+  for i in 0..count-1:
+    echo "$1: $2" % [$i, system.paramStr(i)]
+
+
+task test, "Run all the tests in debug.":
   runTests(false)
 
-task testall, "Run all the tests in both debug and release":
+task testall, "Run all the tests in both debug and release.":
   runTests(false)
   runTests(true)
 
-task showtests, "Show the command lines to run unit tests individually":
+task showtests, "Show the command lines to run unit tests individually.":
   for filename in get_test_filenames():
     let source = test_module(filename)
     echo source
@@ -192,7 +201,7 @@ task showtests, "Show the command lines to run unit tests individually":
 # task one, "Test the test_readerJpeg file.":
 #   test_module("test_readerJpeg")
 
-task clean, "Delete unneeded files":
+task clean, "Delete unneeded files.":
   # ## Delete binary files in the test dir (files with no extension).
   # exec "find tests -type f ! -name \"*.*\" | xargs rm"
 
@@ -245,7 +254,7 @@ proc open_in_browser(filename: string) =
 #   exec "markdown docs/project.md -o docs/html/project.html"
 #   open_in_browser("docs/html/project.html")
 
-task docs1, "Build docs for one module":
+task docs1, "Build docs for one module.":
   doc_module("hexDump")
   exec "nim rst2html --out:docs/html/main.html docs/main.rst"
   exec "nim rst2html --out:docs/html/project.html docs/project.rst"
@@ -254,7 +263,7 @@ task docs1, "Build docs for one module":
   createDependencyGraph()
   open_in_browser("readme.html")
 
-task docs, "Build all the docs":
+task docs, "Build all the docs.":
 
   exec "find metar -type f -name \\*.nim | grep -v metar/private | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
   let fileLines = slurp("docfiles.txt")
@@ -272,10 +281,13 @@ task docs, "Build all the docs":
   # exec "(hash open 2>/dev/null && open docs/html/main.html) || echo 'open docs/html/main.html'"
   open_in_browser("readme.html")
 
-task tree, "Show the project directory tree":
-  exec "tree -I '*~|nimcache'"
+task tree, "Show the project directory tree.":
+  exec "tree -I '*~|nimcache' | less"
 
-task t, "Build and run t.nim":
+task bins, "Show the binary file details.":
+  exec r"find bin -name metar\* -type f | xargs ls -l"
+
+task t, "Build and run t.nim.":
   let cmd = "nim c -r -d:release --out:bin/test/t metar/private/t"
   echo cmd
   exec cmd
@@ -291,7 +303,7 @@ task t, "Build and run t.nim":
 # task t2, "Build and run t2.nim":
 #   exec "nim c -r --out:bin/test/t2 metar/private/t2"
 
-task coverage, "Run unit tests to collect and show code coverage data":
+task coverage, "Run unit tests to collect and show code coverage data.":
 
   var test_filenames = newSeq[string]()
   if true:
@@ -324,7 +336,7 @@ task coverage, "Run unit tests to collect and show code coverage data":
   open_in_browser("metar/coverage/html/index.html")
 
 
-task dot, "Create and show the metar modules dependency graph":
+task dot, "Create and show the metar modules dependency graph.":
   createDependencyGraph()
   exec "open -a Firefox docs/html/dependencies.svg"
 
@@ -348,7 +360,7 @@ task dot, "Create and show the metar modules dependency graph":
   # metar -> ver [style = dotted]
 
 
-task showdebugger, "Show example command line to debug code":
+task showdebugger, "Show example command line to debug code.":
   echo ""
   echo "Common switches:"
   echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
@@ -365,11 +377,11 @@ task showdebugger, "Show example command line to debug code":
   echo "  lldb bin/linux/metar testfiles/image.jpg"
   echo ""
 
-# task jsondoc, "Write doc comments to a json file for metar.nim":
+# task jsondoc, "Write doc comments to a json file for metar.nim.":
 #   exec r"nim jsondoc0 --out:docs/metar.json metar/metar"
 #   exec "open -a Firefox docs/metar.json"
 
-# task jsondoct, "Write doc comments to a json file for t.nim":
+# task jsondoct, "Write doc comments to a json file for t.nim.":
 #   exec r"nim jsondoc0 --out:docs/tdoc0.json metar/private/t"
 #   exec r"nim jsondoc --out:docs/tdoc.json metar/private/t"
 #   exec "open -a Firefox docs/tdoc.json"

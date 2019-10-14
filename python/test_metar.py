@@ -3,17 +3,20 @@ import os
 import sys
 import platform
 
-# Add metar bin folder containing the metar.so file to the path so it
-# is imported.
-absolute_path = os.path.abspath(__file__)
-parent_dir = os.path.dirname(os.path.dirname(absolute_path))
+# Determine the bin folder name based on the platform.
 if platform.system() == "Darwin":
   folder = "mac"
 elif platform.system() == "Linux":
   folder = "linux"
 else:
   print platform.system()
+  print "Untested platform."
+  exit(1)
 
+
+# Add the metar library to the path so it can be imported.
+absolute_path = os.path.abspath(__file__)
+parent_dir = os.path.dirname(os.path.dirname(absolute_path))
 path = os.path.join(parent_dir, "bin", folder)
 assert(os.path.exists(os.path.join(path, "metar.so")))
 sys.path.insert(0, path)
@@ -22,7 +25,7 @@ try:
   import metar
 except:
   print("Error: The metar python library was not found.")
-  exit(0)
+  exit(1)
 import unittest
 import re
 import json
@@ -120,6 +123,21 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
     # print data
     self.assertTrue('build = "' in data)
     self.assertTrue('nimpyVersion = "' in data)
+
+  def test_setup(self):
+    # Add the setup.py file to the path so it can be imported.
+    path = os.path.join(os.path.dirname(absolute_path), "metar")
+    assert(os.path.exists(os.path.join(path, "setup.py")))
+    sys.path.insert(0, path)
+
+    import setup
+
+    self.assertEqual(setup.get_version(), metar.get_version())
+
+    desc = setup.get_long_description()
+    self.assertTrue('Metar' in desc)
+    self.assertTrue('JPEG' in desc)
+    self.assertTrue('XMP' in desc)
 
 
 if __name__ == '__main__':
