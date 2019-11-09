@@ -24,7 +24,7 @@ RUN echo 'steve:metar' | chpasswd
 USER steve
 WORKDIR /home/steve
 
-# Install nim and nimpy module.
+# Install choosenim and nim.
 RUN curl -sSfLo init.sh https://nim-lang.org/choosenim/init.sh \
   && sed -i 's/need_tty=yes/need_tty=no/' init.sh \
   && bash init.sh \
