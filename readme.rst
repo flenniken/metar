@@ -4,8 +4,9 @@ Metar
 
 Metar is a library and command line program for reading image metadata.
 
-It reads JPEG, DNG and TIFF images and it understands the standard
-image metadata formats: XMP, IPTC, Exif, and Tiff tags.
+You can read metadata from JPEG, DNG and TIFF images. Metar
+understands the standard image metadata formats: XMP, IPTC, Exif,
+and Tiff tags.
 
 * `How to Run Metar`_
 * `How Use Metar in Python Programs`_
@@ -126,12 +127,11 @@ The read_metadata function returns a more human readable string.
   y = 240
   ...
 
-todo: add install instructions after posting it.
+You install the one file python library using pip
+after you build it in a folder on your machine.
+For more details see the development section below.
 
-You can install metar with pip::
-
-  pip install metar
-
+  pip install ~/code/metar/python/metar
 
 More Pages
 =================
@@ -139,12 +139,18 @@ More Pages
 You can learn how metar deals with special images with unknown
 sections or corrupt files and other details on the details page.
 
-You can view the metar source documentation on the index page and
-learn how to contribute to the project on the development page.
+* `details <docs/main.html>`_ -- metadata processing details
 
-* `development <docs/html/project.html>`_ -- how to develop,
-  install, build and test Metar.
-* `index <docs/html/theindex.html>`_ -- index to all the internal
-  modules and procedures.
-* `details <docs/html/main.html>`_ -- metadata processing details
-* `dependencies <docs/html//dependencies.svg>`_ -- the modules dependencies graph
+You can view the documentation for all the modules and procedures on the index
+page. This documentation is created from embedded doc comments in
+the source.
+
+* `index <docs/html/theindex.html>`_ -- index to source documentation
+
+You can learn how to build, test and install on the development page.
+
+* `development <docs/project.html>`_ -- how to build, test and install
+
+The link below shows an svg graph of the module dependencies.
+
+* `dependencies <docs/html/dependencies.svg>`_ -- the modules dependencies graph

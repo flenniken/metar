@@ -4,17 +4,18 @@ Metar Development
 
 You develop metar on the Mac or Linux using nim, nimble and other programs.
 
-1. [Nimble Tasks](#nimble-tasks)
-2. [Platforms](#platforms)
-3. [Install](#install)
-4. [Build](#build)
-5. [Test](#test)
-6. [Docs](#docs)
+* [Nimble Tasks](#nimble-tasks)
+* [Platforms](#platforms)
+* [Install](#install)
+* [Build](#build)
+* [Test](#test)
+* [Docs](#docs)
+* [Python Install](#python-install)
 
 Nimble Tasks
 =================
 
-You run the build, test and other tasks with nimble.
+You run the build, test and perform many other tasks with nimble.
 
 Note: It's suggested you create an alias n to run nimble since it
 is used so much.
@@ -96,4 +97,16 @@ Docs
 The module and procedure documention is created by extracting
 comments from the modules.
 
+Python Install
+=================
+
+You install the one file python library using pip
+after you build it in a folder on your machine.
+For more details see the development section below.
+
+  pip install ~/code/metar/python/metar
+
+Uninstall using pip:
+
+  pip remove metar
 

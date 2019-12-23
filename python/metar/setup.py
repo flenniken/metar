@@ -2,6 +2,12 @@ import os
 import re
 from setuptools import setup, find_packages
 
+# This python package installs the metar library built locally by nim.
+# pip will search folder for a setup.py, then install it.
+#
+# pip install ~/code/metar/python/metar
+
+
 base_folder = os.path.dirname(os.path.abspath(__file__))
 
 def get_version():
