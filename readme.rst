@@ -139,7 +139,7 @@ More Pages
 You can learn how metar deals with special images with unknown
 sections or corrupt files and other details on the details page.
 
-* `details <docs/main.html>`_ -- metadata processing details
+* `details <docs/main.rst>`_ -- metadata processing details
 
 You can view the documentation for all the modules and procedures on the index
 page. This documentation is created from embedded doc comments in
@@ -149,7 +149,7 @@ the source.
 
 You can learn how to build, test and install on the development page.
 
-* `development <docs/project.html>`_ -- how to build, test and install
+* `development <docs/project.rst>`_ -- how to build, test and install
 
 The link below shows an svg graph of the module dependencies.
 
