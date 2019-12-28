@@ -23,21 +23,33 @@ skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
 
-proc git_bin_folder(debug: bool=false): string =
-  ## Return the folder to store the binaries dependent on the
-  ## platform.
-  when hostOS == "macosx":
-    if debug:
-      result = "bin/mac/debug"
-    else:
-      result = "bin/mac"
-  elif hostOS == "linux":
-    if debug:
-      result = "bin/linux/debug"
-    else:
-      result = "bin/linux"
+proc get_output_path(host: string, baseName: string="", debug: bool=false): string =
+  ## Return the path to a folder or file for the output binaries. The
+  ## path is dependent on the host platform and whether it is a debug
+  ## or release build.  Pass hostOS for the current platform. Pass a
+  ## baseName to get a full path to the file.
+
+  # Possible values: "windows", "macosx", "linux", "netbsd",
+  # "freebsd", "openbsd", "solaris", "aix", "haiku", "standalone".
+
+  var pdir = ""
+  if host == "macosx":
+    pdir = "mac"
+  elif host == "linux":
+    pdir = "linux"
+  elif host == "windows":
+    pdir = "win"
   else:
-    error("add new platform")
+    assert false, "add a new platform"
+
+  var components = newSeq[string]()
+  components.add("bin")
+  components.add(pdir)
+  if debug:
+    components.add("debug")
+  if baseName != "":
+    components.add(baseName)
+  result = joinPath(components)
 
 
 proc build_metar_and_python_module(ignoreOutput = false) =
@@ -47,13 +59,13 @@ proc build_metar_and_python_module(ignoreOutput = false) =
   else:
     ignore = ""
 
-  echo "----- Building metar"
-  let output = git_bin_folder()
+  echo "----- Building metar $1" % [hostOS]
+  let output = get_output_path(hostOS)
   exec r"rm -f $1/metar" % [output]
   exec r"rm -f $1/metar.so" % [output]
   exec r"nim c --out:$1/metar -d:release metar/metar $2" % [output, ignore]
 
-  echo "----- Building lib"
+  echo "----- Building lib $1" % [hostOS]
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buildingLib -d:release --app:lib --out:$1/metar.so metar/metar $2" % [output, ignore]
   exec r"strip $1/metar" % [output]
@@ -76,7 +88,7 @@ task mall, "Build metar exe and python module both debug and release.":
   build_metar_and_python_module()
 
   echo "----- Building debug metar"
-  let output = git_bin_folder(debug=true)
+  let output = get_output_path(hostOS, debug=true)
   exec r"rm -f $1/metar" % [output]
   exec r"nim c --out:$1/metar metar/metar" % [output]
 
@@ -87,15 +99,13 @@ task mall, "Build metar exe and python module both debug and release.":
 
 
 task md, "Build debug version of metar.":
-  let output = git_bin_folder(debug=true)
-  exec r"rm -f $1/metar" % [output]
-  # -d:nimTypeNames use this with:
-  # when defined(nimTypeNames):
-  #   dumpNumberOfInstances()
-  exec r"nim c --out:$1/metar metar/metar" % [output]
+  let output = get_output_path(hostOS, "metar", debug=true)
+  echo "Building $1" % [output]
+  exec r"rm -f $1" % [output]
+  exec r"nim c --out:$1 metar/metar" % [output]
 
 task mdlib, "Build debug version of the python module.":
-  let output = git_bin_folder(debug=true)
+  let output = get_output_path(hostOS, debug=true)
   exec r"rm -f $1/metar.so" % [output]
   exec r"find . -name \*.pyc -delete"
   exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
@@ -147,12 +157,12 @@ proc runTests(release: bool) =
 
 
 # task mp, "Make python module only.":
-#   let output = git_bin_folder()
+#   let output = get_output_path(hostOS)
 #   exec r"nim c -d:buildingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:%1/metar.so metar/metar " % [output]
 
 
 # task mpdb, "Make python module with debug info.":
-#   let output = git_bin_folder(debug=true)
+#   let output = get_output_path(hostOS, debug=true)
 #   exec r"nim c -d:buildingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
 #   echo "You can debug the python shared lib like this:"
 #   echo "lldb -- /usr/bin/python python/example.py"
@@ -223,7 +233,7 @@ task clean, "Delete unneeded files.":
   exec "rm -f coverage.info"
   exec "rm -fr metar/coverage"
   # exec r"find tests -type f -perm +001 | grep -v '\.' | xargs -r rm"
-  
+
   exec "rm -f docs/*.json"
 
   # Delete unneeded files in bin folder.
@@ -243,7 +253,7 @@ proc doc_module(name: string) =
 
 proc open_in_browser(filename: string) =
   ## Open the given file in a browser if the system has an open command.
-  exec "(hash open 2>/dev/null && open $1) || echo 'open $1'" % filename  
+  exec "(hash open 2>/dev/null && open $1) || echo 'open $1'" % filename
 
 # pandoc works as well.
 # task docp, "Build project.md document":
@@ -406,3 +416,28 @@ task dlist, "List the metar linux docker image and container.":
     exec r"echo 'image:';docker images | grep metar-image ; echo '\ncontainer:';docker ps -a | grep metar-container"
   except:
     discard
+
+task mwin, "Compile for windows 64 bit.":
+  let output = get_output_path("windows", "metar.exe")
+  echo "Building $1" % [output]
+  exec r"rm -f $1" % [output]
+  exec r"nim c -d:release --os:windows --cpu:amd64 --out:$1 metar/metar" % [output]
+
+task mwinx, "Compile for windows 64 bit using xcompile docker image.":
+  # Compile using docker image containing cross platform compilers.
+  let output = get_output_path("windows", "metar.exe")
+  echo "Building $1" % [output]
+  exec r"rm -f $1" % [output]
+  exec r"docker run --rm -v `pwd`:/usr/local/src xcompile nim c -d:release --os:windows --cpu:amd64 --out:$1 metar/metar" % [output]
+
+task mmac, "Compile for mac 64 bit.":
+  let output = get_output_path("macosx", "metar")
+  echo "Building $1" % [output]
+  exec r"rm -f $1" % [output]
+  exec r"nim c -d:release --os:macosx --cpu:amd64 --out:$1 metar/metar" % [output]
+
+task mlinux, "Compile for linux 64 bit.":
+  let output = get_output_path("linux", "metar")
+  echo "Building $1" % [output]
+  exec r"rm -f $1" % [output]
+  exec r"nim c -d:release --os:linux --cpu:amd64 --out:$1 metar/metar" % [output]
