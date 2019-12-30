@@ -2,6 +2,8 @@ import os
 import re
 from setuptools import setup, find_packages
 
+# todo: remove this file.
+
 # This python package installs the metar library built locally by nim.
 # pip will search folder for a setup.py, then install it.
 #

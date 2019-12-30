@@ -6,25 +6,25 @@ MAINTAINER Steve Flenniken
 
 RUN apt-get update \
   && apt-get -qy install curl libssl-dev build-essential gcc \
-  python python3 xz-utils less git man sudo tree \
-  python-pip python3-pip
+    python python3 xz-utils less git man sudo tree \
+    python-pip python3-pip
 
 # Set sudo so user steve doesn't need to type in a password.
-RUN mkdir -p /etc/sudoers.d
-RUN echo "steve ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/steve
-RUN chmod 440 /etc/sudoers.d/steve
+RUN mkdir -p /etc/sudoers.d \
+  && echo "steve ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/steve \
+  && chmod 440 /etc/sudoers.d/steve
 
 # Create user steve with sudo permissions.
-RUN adduser --disabled-password --gecos '' steve
-RUN usermod -aG sudo steve
-RUN echo 'steve:metar' | chpasswd
+RUN adduser --disabled-password --gecos '' steve \
+  && usermod -aG sudo steve \
+  && echo 'steve:metar' | chpasswd
 
 # Switch to user steve for the following commands.
 
 USER steve
 WORKDIR /home/steve
 
-# Install choosenim and nim.
+# Install choosenim and the latest version of nim.
 RUN curl -sSfLo init.sh https://nim-lang.org/choosenim/init.sh \
   && sed -i 's/need_tty=yes/need_tty=no/' init.sh \
   && bash init.sh \
@@ -36,16 +36,13 @@ RUN curl -sSfLo init.sh https://nim-lang.org/choosenim/init.sh \
 RUN echo "alias ll='ls -l'" >> .bashrc \
   && echo "alias n='nimble'" >> .bashrc
 
-RUN mkdir -p /home/steve/code/metarnim/
-
 # Put metar on the path.
-RUN sudo ln -s /home/steve/code/metarnim/bin/linux/metar /usr/local/bin/metar
+RUN mkdir -p /home/steve/code/metar/ \
+  && sudo ln -s /home/steve/code/metar/bin/linux/metar /usr/local/bin/metar
 
-WORKDIR /home/steve/code/metarnim/
+RUN export PATH=/home/steve/.nimble/bin:$PATH \
+  && nimble install -y nimpy@#c8ec14a # metarVersion*
+
+WORKDIR /home/steve/code/metar/
 CMD /bin/bash
 
-# Get the correct version of nim and nimpy.
-# See ~/code/nimpy for the latest version number.
-# Change version.nim to match.
-# choosenim 1.0.0
-# nimble install -y nimpy@#c8ec14a

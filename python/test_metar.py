@@ -13,11 +13,17 @@ else:
   print "Untested platform."
   exit(1)
 
+rel = ""
+if len(sys.argv) > 1:
+  if sys.argv[1] != 'release':
+    rel = "debug"
+  del(sys.argv[1])
 
 # Add the metar library to the path so it can be imported.
 absolute_path = os.path.abspath(__file__)
 parent_dir = os.path.dirname(os.path.dirname(absolute_path))
-path = os.path.join(parent_dir, "bin", folder)
+path = os.path.join(parent_dir, "bin", folder, rel)
+# print(path)
 assert(os.path.exists(os.path.join(path, "metar.so")))
 sys.path.insert(0, path)
 
@@ -123,22 +129,6 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
     # print data
     self.assertTrue('build = "' in data)
     self.assertTrue('nimpyVersion = "' in data)
-
-  def test_setup(self):
-    # Add the setup.py file to the path so it can be imported.
-    path = os.path.join(os.path.dirname(absolute_path), "metar")
-    assert(os.path.exists(os.path.join(path, "setup.py")))
-    sys.path.insert(0, path)
-
-    import setup
-
-    self.assertEqual(setup.get_version(), metar.get_version())
-
-    desc = setup.get_long_description()
-    self.assertTrue('Metar' in desc)
-    self.assertTrue('JPEG' in desc)
-    self.assertTrue('XMP' in desc)
-
 
 if __name__ == '__main__':
   unittest.main()

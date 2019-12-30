@@ -17,7 +17,7 @@ binDir = "bin"
 # 0.1.0. So we use the git version number instead. See the package
 # source code at ~/.nimble/pkgs. Update the version.nim file and the
 # Dockerfile when you update the version.
-requires "nim >= 0.20.0", "nimpy@#f6b6654"
+requires "nim >= 1.0.4", "nimpy@#c8ec14a" # Search for nimpyVersion*.
 
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
@@ -52,24 +52,56 @@ proc get_output_path(host: string, baseName: string="", debug: bool=false): stri
   result = joinPath(components)
 
 
-proc build_metar_and_python_module(ignoreOutput = false) =
+proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "metar.so",
+    ignoreOutput = false, release = true, strip = true, xcompile = false,
+    nimOptions = "") =
+
+  let hints = "--hint[Processing]:off --hint[CC]:off --hint[Link]:off "
+
   var ignore: string
   if ignoreOutput:
     ignore = ">/dev/null 2>&1"
   else:
     ignore = ""
 
-  echo "----- Building metar $1" % [hostOS]
-  let output = get_output_path(hostOS)
-  exec r"rm -f $1/metar" % [output]
-  exec r"rm -f $1/metar.so" % [output]
-  exec r"nim c --out:$1/metar -d:release metar/metar $2" % [output, ignore]
+  var rel: string
+  var relDisplay: string
+  if release:
+    rel = "-d:release "
+    relDisplay = "release"
+  else:
+    rel = ""
+    relDisplay = "debug"
 
-  echo "----- Building lib $1" % [hostOS]
+  var docker: string
+  if xcompile:
+    docker = "docker run --rm -v `pwd`:/usr/local/src xcompile "
+  else:
+    docker = ""
+
+  var output = get_output_path(host, name)
+  echo "===> Building $1 $2 for $3 <===" % [relDisplay, name, host]
+  exec r"rm -f $1" % [output]
+
+  var cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
+  echo cmd
+  exec cmd
+
+  if strip:
+    exec r"strip $1" % [output]
+
+  output = get_output_path(host, libName)
+  echo "===> Building $1 $2 for $3 <===" % [relDisplay, libName, host]
+  exec r"rm -f $1" % [output]
+
+  cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
+  echo cmd
+  exec cmd
+
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib -d:release --app:lib --out:$1/metar.so metar/metar $2" % [output, ignore]
-  exec r"strip $1/metar" % [output]
-  exec r"strip -x $1/metar.so" % [output]
+
+  if strip:
+    exec r"strip -x $1" % [output]
 
 
 proc createDependencyGraph() =
@@ -86,16 +118,7 @@ task m, "Build metar exe and python module, release versions.":
 
 task mall, "Build metar exe and python module both debug and release.":
   build_metar_and_python_module()
-
-  echo "----- Building debug metar"
-  let output = get_output_path(hostOS, debug=true)
-  exec r"rm -f $1/metar" % [output]
-  exec r"nim c --out:$1/metar metar/metar" % [output]
-
-  echo "----- Building debug lib"
-  exec r"rm -f $1/metar.so" % [output]
-  exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
+  build_metar_and_python_module(release=false)
 
 
 task md, "Build debug version of metar.":
@@ -105,24 +128,25 @@ task md, "Build debug version of metar.":
   exec r"nim c --out:$1 metar/metar" % [output]
 
 task mdlib, "Build debug version of the python module.":
-  let output = get_output_path(hostOS, debug=true)
-  exec r"rm -f $1/metar.so" % [output]
+  let output = get_output_path(hostOS, "metar.so", debug=true)
+  exec r"rm -f $1" % [output]
   exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib --app:lib --out:$1/metar.so metar/metar " % [output]
+  exec r"nim c -d:buildingLib --app:lib --out:$1 metar/metar " % [output]
   # Keep the python version in setup in sync with metar.
   exec r"cp metar/version.nim python/metar/"
 
-proc test_module(filename: string, release = false): string =
-  ## Test one module.
+proc get_test_module_cmd(filename: string, release = false): string =
+  ## Return the command line to test one module.
 
   # You can add -f to force a recompile of imported modules, good for
   # testing "imported but not used" warnings.
 
-  const cmd = "nim c -f --verbosity:0 -d:test $2 --hints:off -r -p:metar --out:bin/test/$1 tests/$1"
+  var rel: string
   if release:
-    result = (cmd % [filename, "-d:release"])
+    rel = "-d:release "
   else:
-    result = (cmd % [filename, ""])
+    rel = ""
+  result = "nim c -f --verbosity:0 -d:test $2--hints:off -r -p:metar --out:bin/test/$1 tests/$1" % [filename, rel]
 
 proc get_test_filenames(): seq[string] =
   ## Return each nim file in the tests folder.
@@ -134,54 +158,32 @@ proc get_test_filenames(): seq[string] =
       result.add(filename)
   exec "rm -f testfiles.txt"
 
-proc runShellTests() =
+proc runShellTests(release: bool) =
   echo ""
   echo "\e[1;34m[Suite] \e[00mShell Tests"
-  exec "bash -c tests/test_shell.sh"
+  if release:
+    exec "bash -c \"tests/test_shell.sh release\""
+  else:
+    exec "bash -c tests/test_shell.sh"
 
 proc runTests(release: bool) =
+  # build_metar_and_python_module()
+  # todo: honor the release flag.
+  runShellTests(release)
+
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
-    let source = test_module(filename, release)
-    # echo source
-    exec source
+    let cmd = get_test_module_cmd(filename, release)
+    exec cmd
 
-  # Build the python module and run its tests.
-  build_metar_and_python_module(true)
+  # Test the python module.
   echo ""
   echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
   # echo "\e[1;32m    [OK] \e[00mtest getAppeInfo\n"
-  exec "python python/test_metar.py"
-
-  runShellTests()
-
-
-# task mp, "Make python module only.":
-#   let output = get_output_path(hostOS)
-#   exec r"nim c -d:buildingLib -d:release --opt:size --threads:on --tlsEmulation:off --app:lib --out:%1/metar.so metar/metar " % [output]
-
-
-# task mpdb, "Make python module with debug info.":
-#   let output = get_output_path(hostOS, debug=true)
-#   exec r"nim c -d:buildingLib  --debugger:native --verbosity:0 --hints:off --threads:on --tlsEmulation:off --app:lib --out:$1/metar.so metar/metar " % [output]
-#   echo "You can debug the python shared lib like this:"
-#   echo "lldb -- /usr/bin/python python/example.py"
-#   echo "process launch"
-#   echo "breakpoint set -f metar.nim -l 91"
-#   echo "breakpoint set -f readMetadata.nim -l 60"
-#   echo "continue"
-#   echo "see \"lldb debugger\" note for more info."
-
-
-# task py, "Run python tests.":
-#   exec r"find . -name \*.pyc -delete"
-#   exec "python python/test_metar.py"
-
-
-# task shell, "Run tests from the shell.":
-#   echo "building metar and python module"
-#   build_metar_and_python_module(true)
-#   runShellTests()
+  if release:
+    exec "python python/test_metar.py release"
+  else:
+    exec "python python/test_metar.py"
 
 
 task args, "Show command line arguments.":
@@ -200,16 +202,12 @@ task testall, "Run all the tests in both debug and release.":
 
 task showtests, "Show the command lines to run unit tests individually.":
   for filename in get_test_filenames():
-    let source = test_module(filename)
-    echo source
+    let cmd = get_test_module_cmd(filename)
+    echo cmd
   echo ""
   echo "Run one test called \"happy path\" in the moduled test_metar:"
-  let source = test_module("test_metar.nim")
-  echo source & """ "happy path""""
-
-# Is there a way to pass a filename?
-# task one, "Test the test_readerJpeg file.":
-#   test_module("test_readerJpeg")
+  let cmd = get_test_module_cmd("test_metar.nim")
+  echo cmd & """ "happy path""""
 
 task clean, "Delete unneeded files.":
   # ## Delete binary files in the test dir (files with no extension).
@@ -417,27 +415,15 @@ task dlist, "List the metar linux docker image and container.":
   except:
     discard
 
-task mwin, "Compile for windows 64 bit.":
-  let output = get_output_path("windows", "metar.exe")
-  echo "Building $1" % [output]
-  exec r"rm -f $1" % [output]
-  exec r"nim c -d:release --os:windows --cpu:amd64 --out:$1 metar/metar" % [output]
+task mxwin, "Compile for windows 64 bit using the xcompile docker image.":
 
-task mwinx, "Compile for windows 64 bit using xcompile docker image.":
-  # Compile using docker image containing cross platform compilers.
-  let output = get_output_path("windows", "metar.exe")
-  echo "Building $1" % [output]
-  exec r"rm -f $1" % [output]
-  exec r"docker run --rm -v `pwd`:/usr/local/src xcompile nim c -d:release --os:windows --cpu:amd64 --out:$1 metar/metar" % [output]
+  build_metar_and_python_module(host = "windows", name = "metar.exe", libName = "metar.dll", release = true, strip = false, nimOptions = "--os:windows --cpu:amd64 ", xcompile = true)
 
-task mmac, "Compile for mac 64 bit.":
-  let output = get_output_path("macosx", "metar")
-  echo "Building $1" % [output]
-  exec r"rm -f $1" % [output]
-  exec r"nim c -d:release --os:macosx --cpu:amd64 --out:$1 metar/metar" % [output]
+task mxmac, "Compile for mac 64 bit using the xcompile docker image.":
 
-task mlinux, "Compile for linux 64 bit.":
-  let output = get_output_path("linux", "metar")
-  echo "Building $1" % [output]
-  exec r"rm -f $1" % [output]
-  exec r"nim c -d:release --os:linux --cpu:amd64 --out:$1 metar/metar" % [output]
+  build_metar_and_python_module(host = "macosx", name = "metar", libName = "metar.so", release = true, strip = false, nimOptions = "--os:macosx --cpu:amd64 ", xcompile = true)
+
+
+task mxlinux, "Compile for linux 64 bit using the xcompile docker image.":
+
+  build_metar_and_python_module(host = "linux", name = "metar", libName = "metar.so", release = true, strip = true, nimOptions = "--os:linux --cpu:amd64 ", xcompile = true)
