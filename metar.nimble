@@ -105,7 +105,7 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
 
 
 proc createDependencyGraph() =
-  exec "nim genDepend metar/metar.nim"
+  exec "nim --hint[Processing]:off genDepend metar/metar.nim"
   # Create my.dot file with the contents of metar.dot after stripping
   # out nim modules.
   exec """find metar -maxdepth 1 -name \*.nim | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
@@ -125,7 +125,9 @@ task md, "Build debug version of metar.":
   let output = get_output_path(hostOS, "metar", debug=true)
   echo "Building $1" % [output]
   exec r"rm -f $1" % [output]
-  exec r"nim c --out:$1 metar/metar" % [output]
+  let cmd = r"nim --hint[Processing]:off c --out:$1 metar/metar" % [output]
+  echo cmd
+  exec cmd
 
 task mdlib, "Build debug version of the python module.":
   let output = get_output_path(hostOS, "metar.so", debug=true)
@@ -243,6 +245,7 @@ task clean, "Delete unneeded files.":
   exec r"find . -type f -name \*~ -delete"
 
   exec "rm -f readme.html"
+  # exec "rm -f *.nims"
 
 proc doc_module(name: string) =
   const cmd = "nim doc -d:test --index:on --out:docs/html/$1.html metar/$1.nim"
@@ -316,11 +319,10 @@ task coverage, "Run unit tests to collect and show code coverage data.":
   var test_filenames = newSeq[string]()
   if true:
     # Run one module and its test file. Replace module name as needed.
-    test_filenames.add("test_hexDump.nim")
+    test_filenames.add("test_readerJpeg.nim")
   else:
     test_filenames = get_test_filenames()
 
-  # todo: coverage broke
   # Compile test code with coverage support.
   for filename in test_filenames:
     echo "compiling: " & filename
@@ -333,15 +335,23 @@ task coverage, "Run unit tests to collect and show code coverage data.":
 
   # Run test code.
   for filename in test_filenames:
-    exec "tests/" & filename
+    let baseName = changeFileExt(filename, "")
+    let cmd = "bin/test/$1" % [baseName]
+    echo cmd
+    exec cmd
 
-  exec "lcov --base-directory . --directory ~/.cache/nim/ -c -o coverage.info"
+  # Delete the system files since we do not care about their coverage data.
+  exec r"find ~/.cache/nim -name stdlib\*gcda -delete"
+
+  # Collect the coverate info.
+  exec r"lcov --base-directory . --directory ~/.cache/nim/ -c -o coverage.info"
 
   # Remove Nim system libs from the coverage info.
-  exec "lcov --remove coverage.info \"*/lib/*\" -o coverage.info"
+  # exec r"lcov --remove coverage.info \"*/lib/*\" -o coverage.info"
 
-  exec "genhtml -o metar/coverage/html coverage.info"
-  open_in_browser("metar/coverage/html/index.html")
+  # Generate the html from the coverage info.
+  exec r"genhtml -o metar/coverage/html coverage.info"
+  open_in_browser(r"metar/coverage/html/index.html")
 
 
 task dot, "Create and show the metar modules dependency graph.":

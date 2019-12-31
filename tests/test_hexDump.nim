@@ -89,3 +89,11 @@ var buffer = [
       discard file.hexDumpFileRange(0'i64, 16'i64 * 1024'i64+1)
     expect IOError:
       discard file.hexDumpFileRange(999988'i64, 999999'i64)
+
+  test "test hexDump string":
+    var hex = hexDump("my string")
+    # echo hex
+    let expected = """
+0000  6D 79 20 73 74 72 69 6E 67                       my string
+"""
+    check(hex == expected)

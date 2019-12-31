@@ -525,18 +525,136 @@ precision: 8, width: 150, height: 100, num components: 3
     #   echo $section
     check(sections.len == 4)
 
-  # test "test readJpeg":
-  #   let filename = "testfiles.save/agency-photographer-example.jpg"
-  #   # let filename = "testfiles/IMG_6093.JPG"
-  #   var file = openTestFile(filename)
-  #   defer: file.close()
-  #   var metadata = readJpeg(file)
-  #   discard metadata
-  #   # echo readable(metadata, "jpeg")
+  test "test readJpeg":
+    let filename = "testfiles/image.jpg"
+    var file = openTestFile(filename)
+    defer: file.close()
+    var metadata = readJpeg(file)
+    discard metadata
+    # echo readable(metadata, "jpeg")
+    check("APP0" in metadata)
 
-  # test "dump file":
-  #   var file = openTestFile("testfiles/IMG_6093.JPG")
-  #   defer: file.close()
+  when false:
+    test "write iptc.bin":
+      # Write iptc data to file iptc.bin.
 
-  #   # 59932 = "2060 byte blob starting at 122"
-  #   hexDumpFileRange(file, 122, 122 + 2060)
+      var file = openTestFile("testfiles.extra/agency-photographer-example.jpg")
+      defer: file.close()
+
+      let bufferSize = 33422 - 24528
+      var buffer = newSeq[uint8](bufferSize)
+      file.setFilePos((int64)24528)
+      if file.readBytes(buffer, 0, bufferSize) != bufferSize:
+        fail()
+
+      file = open("testfiles/iptc.bin", fmReadWrite)
+      defer: file.close()
+      if file.writeBytes(buffer, 0, buffer.len) != bufferSize:
+        fail()
+
+      # echo hexDumpSource(buffer)
+      # echo hexDumpFileRange(file, 24528, 99706)
+
+  test "iptc invalid buffer size":
+    var ranges = newSeq[Range]()
+    var buffer = [
+      0xFF'u8, 0xED, 0x22, 0xBC, 0x50, 0x68, 0x6F, 0x74,
+      0x6F, 0x73, 0x68, 0x6F, 0x70, 0x20, 0x33, 0x2E,
+    ]
+    try:
+      let node = readIptc(buffer, 0, 7, ranges)
+    except NotSupportedError:
+      let msg = getCurrentExceptionMsg()
+      check(msg == "Iptc: Invalid buffer size.")
+    except:
+      check("false" == "unexpected error")
+
+
+  test "iptc invalid header":
+    var ranges = newSeq[Range]()
+    var buffer = [
+      0xFF'u8, 0xEE, 0x22, 0xBC, 0x50, 0x68, 0x6F, 0x74,
+      0x6F, 0x73, 0x68, 0x6F, 0x70, 0x20, 0x33, 0x2E,
+      0x30, 0x00, 0x38, 0x42, 0x49, 0x4D, 0x04, 0x04,
+      0x00, 0x00, 0x00, 0x00, 0x04, 0x8A, 0x1C, 0x02,
+      0x00, 0x00, 0x02, 0x00, 0x02, 0x1C, 0x02, 0x05,
+      0x00, 0x0B, 0x64, 0x72, 0x70, 0x32, 0x30, 0x39,
+      0x31, 0x31,
+    ]
+    try:
+      let node = readIptc(buffer, 0, buffer.len, ranges)
+    except NotSupportedError:
+      let msg = getCurrentExceptionMsg()
+      check(msg == "Iptc: Invalid header.")
+    except:
+      check("false" == "unexpected error")
+
+
+  test "iptc happy path":
+    var ranges = newSeq[Range]()
+
+    # Read the iptc data into the memory buffer.
+    var file = openTestFile("testfiles/iptc.bin")
+    defer: file.close()
+    let fileSize = file.getFileSize()
+    var buffer = newSeq[uint8](fileSize)
+    file.setFilePos((int64)0)
+    if file.readBytes(buffer, 0, buffer.len) != fileSize:
+      fail()
+
+    let node = readIptc(buffer, 0, buffer.len, ranges)
+    # echo pretty(node)
+    check(node["Headline(105)"].getStr() == "Lincoln Memorial")
+    # for range in ranges:
+    #   echo $range
+    check(ranges.len > 20)
+    check(ranges[0].start == 0)
+    check(ranges[0].finish == 22)
+    check(ranges[0].name == "iptc")
+    check(ranges[0].message == "header")
+    check(ranges[0].known == true)
+
+  test "getDriInfo 4":
+    var buffer = [
+      0xFF'u8, 0xdd, 0x00, 0x04, 0x00, 0x01,
+    ]
+    let node = getDriInfo(buffer)
+    echo pretty(node)
+    check(node["interval"].getInt() == 4)
+
+  test "getDriInfo 1":
+    var buffer = [
+      0xFF'u8, 0xdd, 0x00, 0x04, 0x00,
+    ]
+    try:
+      let node = getDriInfo(buffer)
+    except NotSupportedError:
+      let msg = getCurrentExceptionMsg()
+      check(msg == "DRI: wrong size buffer.")
+    except:
+      check("false" == "unexpected error")
+
+  test "getDriInfo 2":
+    var buffer = [
+      0xFE'u8, 0xdd, 0x00, 0x04, 0x00, 0x01,
+    ]
+    try:
+      let node = getDriInfo(buffer)
+    except NotSupportedError:
+      let msg = getCurrentExceptionMsg()
+      check(msg == "DRI: not 0xffdd.")
+    except:
+      check("false" == "unexpected error")
+
+
+  test "getDriInfo 3":
+    var buffer = [
+      0xFF'u8, 0xdd, 0x00, 0x03, 0x00, 0x01,
+    ]
+    try:
+      let node = getDriInfo(buffer)
+    except NotSupportedError:
+      let msg = getCurrentExceptionMsg()
+      check(msg == "DRI: length not 4.")
+    except:
+      check("false" == "unexpected error")
