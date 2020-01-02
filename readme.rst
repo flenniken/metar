@@ -127,12 +127,6 @@ The read_metadata function returns a more human readable string.
   y = 240
   ...
 
-You install the one file python library using pip
-after you build it in a folder on your machine.
-For more details see the development section below.
-
-  pip install ~/code/metar/python/metar
-
 More Pages
 =================
 

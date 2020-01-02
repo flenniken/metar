@@ -6,3 +6,5 @@ metar/private/
 docs/html/
 *.pyc
 *.nims
+metarpy/
+testfiles.extra/

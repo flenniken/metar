@@ -619,7 +619,7 @@ precision: 8, width: 150, height: 100, num components: 3
       0xFF'u8, 0xdd, 0x00, 0x04, 0x00, 0x01,
     ]
     let node = getDriInfo(buffer)
-    echo pretty(node)
+    # echo pretty(node)
     check(node["interval"].getInt() == 4)
 
   test "getDriInfo 1":

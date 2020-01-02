@@ -24,9 +24,16 @@ else
 
 fi
 
-$program testfiles/image.jpg > t.txt
+# Check that the program exists.
+if [ ! -s "$program" ]; then
+  echo "  Skipping: metar exe is missing: $program"
+  exit
+fi
 
-size=$(wc -c <t.txt | sed -e 's/\ //g')
+
+$program testfiles/image.jpg > tshell.txt
+
+size=$(wc -c <tshell.txt | sed -e 's/\ //g')
 
 for last; do true; done
 # echo "last = $last"
@@ -39,8 +46,8 @@ fi
 
 if [ $size -gt 1000 ]; then
     printf "\e[1;32m  [OK]\e[00m test redirection $rel\n"
-    rm t.txt
+    rm tshell.txt
 else
     printf "\e[1;31m  [FAILED]\e[00m test redirection $rel\n"
-    echo "Re-direction to the file t.txt failed"
+    echo "Re-direction to the file tshell.txt failed"
 fi

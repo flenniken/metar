@@ -23,7 +23,7 @@ skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
 
-proc get_output_path(host: string, baseName: string="", debug: bool=false): string =
+proc get_output_path(host: string, baseName: string="", release: bool=true): string =
   ## Return the path to a folder or file for the output binaries. The
   ## path is dependent on the host platform and whether it is a debug
   ## or release build.  Pass hostOS for the current platform. Pass a
@@ -45,7 +45,7 @@ proc get_output_path(host: string, baseName: string="", debug: bool=false): stri
   var components = newSeq[string]()
   components.add("bin")
   components.add(pdir)
-  if debug:
+  if not release:
     components.add("debug")
   if baseName != "":
     components.add(baseName)
@@ -54,7 +54,7 @@ proc get_output_path(host: string, baseName: string="", debug: bool=false): stri
 
 proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "metar.so",
     ignoreOutput = false, release = true, strip = true, xcompile = false,
-    nimOptions = "") =
+    nimOptions = "", buildExe=true, buildLib=true) =
 
   let hints = "--hint[Processing]:off --hint[CC]:off --hint[Link]:off "
 
@@ -79,35 +79,37 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
   else:
     docker = ""
 
-  var output = get_output_path(host, name)
-  echo "===> Building $1 $2 for $3 <===" % [relDisplay, name, host]
-  exec r"rm -f $1" % [output]
+  if buildExe:
+    let output = get_output_path(host, name, release)
+    echo "===> Building $1 $2 for $3 <===" % [relDisplay, name, host]
+    exec r"rm -f $1" % [output]
 
-  var cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
-  echo cmd
-  exec cmd
+    let cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
+    echo cmd
+    exec cmd
 
-  if strip:
-    exec r"strip $1" % [output]
+    if strip:
+      exec r"strip $1" % [output]
 
-  output = get_output_path(host, libName)
-  echo "===> Building $1 $2 for $3 <===" % [relDisplay, libName, host]
-  exec r"rm -f $1" % [output]
+  if buildLib:
+    let output = get_output_path(host, libName, release)
+    echo "===> Building $1 $2 for $3 <===" % [relDisplay, libName, host]
+    exec r"rm -f $1" % [output]
 
-  cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
-  echo cmd
-  exec cmd
+    let cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
+    echo cmd
+    exec cmd
 
-  exec r"find . -name \*.pyc -delete"
+    exec r"find . -name \*.pyc -delete"
 
-  if strip:
-    exec r"strip -x $1" % [output]
+    if strip:
+      exec r"strip -x $1" % [output]
 
 
 proc createDependencyGraph() =
-  exec "nim --hint[Processing]:off genDepend metar/metar.nim"
   # Create my.dot file with the contents of metar.dot after stripping
   # out nim modules.
+  exec "nim --hints:off genDepend metar/metar.nim"
   exec """find metar -maxdepth 1 -name \*.nim | sed "s:metar/::" | sed "s:.nim::" >names.txt"""
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o docs/html//dependencies.svg"
@@ -122,20 +124,12 @@ task mall, "Build metar exe and python module both debug and release.":
 
 
 task md, "Build debug version of metar.":
-  let output = get_output_path(hostOS, "metar", debug=true)
-  echo "Building $1" % [output]
-  exec r"rm -f $1" % [output]
-  let cmd = r"nim --hint[Processing]:off c --out:$1 metar/metar" % [output]
-  echo cmd
-  exec cmd
+  build_metar_and_python_module(buildLib=false, release=false)
+
 
 task mdlib, "Build debug version of the python module.":
-  let output = get_output_path(hostOS, "metar.so", debug=true)
-  exec r"rm -f $1" % [output]
-  exec r"find . -name \*.pyc -delete"
-  exec r"nim c -d:buildingLib --app:lib --out:$1 metar/metar " % [output]
-  # Keep the python version in setup in sync with metar.
-  exec r"cp metar/version.nim python/metar/"
+  build_metar_and_python_module(buildExe=false, release=false)
+
 
 proc get_test_module_cmd(filename: string, release = false): string =
   ## Return the command line to test one module.
@@ -169,8 +163,13 @@ proc runShellTests(release: bool) =
     exec "bash -c tests/test_shell.sh"
 
 proc runTests(release: bool) =
-  # build_metar_and_python_module()
-  # todo: honor the release flag.
+  var relDisplay: string
+  if release:
+    relDisplay = "release"
+  else:
+    relDisplay = "debug"
+  echo "==> Run $1 unit tests. <==" % [relDisplay]
+
   runShellTests(release)
 
   ## Test each nim file in the tests folder.
@@ -189,6 +188,9 @@ proc runTests(release: bool) =
 
 
 task args, "Show command line arguments.":
+  # Nimble needs to improve it command line processing.
+  # https://github.com/nim-lang/nimble/issues/723
+  # todo: pass arguments to the tasks.
   let count = system.paramCount()+1
   echo "argument count: $1" % $count
   for i in 0..count-1:
@@ -211,7 +213,7 @@ task showtests, "Show the command lines to run unit tests individually.":
   let cmd = get_test_module_cmd("test_metar.nim")
   echo cmd & """ "happy path""""
 
-task clean, "Delete unneeded files.":
+task clean, "Delete unneeded temporary files created by the build processes.":
   # ## Delete binary files in the test dir (files with no extension).
   # exec "find tests -type f ! -name \"*.*\" | xargs rm"
 
@@ -247,10 +249,13 @@ task clean, "Delete unneeded files.":
   exec "rm -f readme.html"
   # exec "rm -f *.nims"
 
+  exec "rm -f tshell.txt"
+
+
 proc doc_module(name: string) =
-  const cmd = "nim doc -d:test --index:on --out:docs/html/$1.html metar/$1.nim"
-  let source = cmd % name
-  exec source
+  let cmd = "nim doc --hints:off -d:test --index:on --out:docs/html/$1.html metar/$1.nim" % [name]
+  echo cmd
+  exec cmd
 
 proc open_in_browser(filename: string) =
   ## Open the given file in a browser if the system has an open command.
@@ -265,32 +270,35 @@ proc open_in_browser(filename: string) =
 #   exec "markdown docs/project.md -o docs/html/project.html"
 #   open_in_browser("docs/html/project.html")
 
-task docs1, "Build docs for one module.":
-  doc_module("hexDump")
-  exec "nim rst2html --out:docs/html/main.html docs/main.rst"
-  exec "nim rst2html --out:docs/html/project.html docs/project.rst"
-  exec "nim rst2html --out:readme.html readme.rst"
-  exec "nim buildIndex -d:test --out:docs/html/theindex.html docs/html/"
+
+proc buildMainDocs() =
+  exec "nim rst2html --hints:off --out:docs/html/main.html docs/main.rst"
+  exec "nim rst2html --hints:off --out:docs/html/project.html docs/project.rst"
+  exec "nim rst2html --hints:off --out:readme.html readme.rst"
+  exec "nim buildIndex --hints:off -d:test --out:docs/html/theindex.html docs/html/"
+  exec "rm docs/html/*.idx"
   createDependencyGraph()
+  # Open the main.html file in a browser when the open command exists.
+  # exec "(hash open 2>/dev/null && open docs/html/main.html) || echo 'open docs/html/main.html'"
   open_in_browser("readme.html")
 
-task docs, "Build all the docs.":
 
+task docs1, "Build docs for one module.":
+  doc_module("hexDump")
+  buildMainDocs()
+
+
+task docs, "Build all the docs.":
   exec "find metar -type f -name \\*.nim | grep -v metar/private | sed 's;metar/;;' | grep -v '^private' | sed 's/.nim//' >docfiles.txt"
   let fileLines = slurp("docfiles.txt")
   for filename in fileLines.splitLines():
     if filename.len > 0:
-      echo filename
+      # echo filename
       doc_module(filename)
   exec "rm docfiles.txt"
 
-  exec "nim buildIndex -d:test --out:docs/html/theindex.html docs/html/"
-  exec "nim rst2html --out:docs/html/main.html docs/main.rst"
-  exec "nim rst2html --out:readme.html readme.rst"
-  exec "rm docs/html/*.idx"
-  # Open the main.html file in a browser when the open command exists.
-  # exec "(hash open 2>/dev/null && open docs/html/main.html) || echo 'open docs/html/main.html'"
-  open_in_browser("readme.html")
+  buildMainDocs()
+
 
 task tree, "Show the project directory tree.":
   exec "tree -I '*~|nimcache' | less"

@@ -108,7 +108,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##     </rdf:Alt>
   ##   </dc:title>
   ##
-  ## become dictionaries:
+  ## becomes dictionaries:
   ##
   ## .. code-block::
   ##
@@ -148,7 +148,7 @@ proc xmpParser*(xmp: string): JsonNode =
   ##   <rdf:Description rdf:about=""
   ##          xmlns:tiff="http://ns.adobe.com/tiff/1.0/">
   ##
-  ## become:
+  ## becomes:
   ##
   ## .. code-block::
   ##
