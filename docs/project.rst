@@ -197,24 +197,29 @@ command shows the installed custom packages, in this case metar.
 todo: make pip installer work.
 
 ::
-   pip install ~/code/metar/python/metar
+   cd ~/code/metar
+   pip install python/metar
    pip freeze
 
-   metar-1.22.0
+   metar==0.1.22
 
 
 You can test run metar:
 
 ::
-   python
-   >>> import metar
-   >>> metar.get_version()
-   1.22.0
+  python
+  >>> import metar
+  >>> metar.get_version()
+  1.22.0
+  >>> exit()
+
+  pip freeze
+  metar==0.1.22
 
 Uninstall metar using pip:
 
 ::
-  pip uninstall metar
+  pip uninstall -y metar
 
 Stop using the virtual python environment using the deactivate
 command:
