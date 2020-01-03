@@ -23,28 +23,32 @@ skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
 
+proc getDirName(host: string): string =
+  ## Return the host dir name given the nim hostOS name.
+  ## Current possible host values: "windows", "macosx", "linux", "netbsd",
+  ## "freebsd", "openbsd", "solaris", "aix", "haiku", "standalone".
+  
+  if host == "macosx":
+    result = "mac"
+  elif host == "linux":
+    result = "linux"
+  elif host == "windows":
+    result = "win"
+  else:
+    assert false, "add a new platform"
+
+
 proc get_output_path(host: string, baseName: string="", release: bool=true): string =
   ## Return the path to a folder or file for the output binaries. The
   ## path is dependent on the host platform and whether it is a debug
   ## or release build.  Pass hostOS for the current platform. Pass a
   ## baseName to get a full path to the file.
 
-  # Possible values: "windows", "macosx", "linux", "netbsd",
-  # "freebsd", "openbsd", "solaris", "aix", "haiku", "standalone".
-
-  var pdir = ""
-  if host == "macosx":
-    pdir = "mac"
-  elif host == "linux":
-    pdir = "linux"
-  elif host == "windows":
-    pdir = "win"
-  else:
-    assert false, "add a new platform"
+  var dirName = getDirName(host)
 
   var components = newSeq[string]()
   components.add("bin")
-  components.add(pdir)
+  components.add(dirName)
   if not release:
     components.add("debug")
   if baseName != "":
@@ -99,6 +103,14 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     let cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
     echo cmd
     exec cmd
+
+    # Put the setup file next to the lib ready to install.
+    var dirName = getDirName(host)
+    let setupFilename = "bin/$1/setup.py" % [dirName]
+    if not system.fileExists(setupFilename):
+      let cmd = r"cp python/setup.py $1" % [setupFilename]
+      echo cmd
+      exec cmd
 
     exec r"find . -name \*.pyc -delete"
 
