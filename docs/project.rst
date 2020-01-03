@@ -4,13 +4,13 @@ Metar Development
 
 You develop metar on the Mac or Linux using nim, nimble and other programs.
 
-* [Nimble Tasks](#nimble-tasks)
-* [Platforms](#platforms)
-* [Install](#install)
-* [Build](#build)
-* [Test](#test)
-* [Docs](#docs)
-* [Python Install](#python-install)
+* `Nimble Tasks`_
+* `Platforms`_
+* `Install`_
+* `Build`_
+* `Test]`_
+* `Docs]`_
+* `Python Install`_
 
 Nimble Tasks
 =================
@@ -69,31 +69,56 @@ You need nim and docker to build metar.
 Platforms
 =================
 
-Metar is developed and tested on two platforms, mac and
-linux (Debian). It is cross compiled for Windows.
+Metar is developed and tested on mac and linux (Debian) and is
+cross compiled for Windows.
 
-### Mac
+I use the mac to host docker. Docker containers are used to build
+the linux and windows versions. You could probably host on linux
+without much trouble. Hosting on Windows has issues since the nimble
+tasks use unix commands and paths.
 
-I use the mac to host docker and to share the metar source code
-with the linux docker system.
+The host file system contains the code and the docker containers
+share the same files.
 
-### Linux
-
-There are nimble tasks manage the linux Docker environment. They are
-the tasks at the bottom that start with "d".
+There are nimble tasks manage the linux Docker environment. They appear
+near the bottom of the list and start with "d".
 
 ```
   dcreate      Create a metar linux docker image.
   drun         Run the metar linux docker container.
   ddelete      Delete the metar linux docker container.
   dlist        List the metar linux docker image and container.
+
 ```
 
-### Windows
+You can cross compile for Windows, Linux and Mac using the
+xcompile docker image. There are nimble tasks for this.
 
-You can cross compile for Windows using the xcompile docker image
-using the mxwin nimble task.
+```
+  mxwin        Compile for windows 64 bit using the xcompile docker image.
+  mxmac        Compile for mac 64 bit using the xcompile docker image.
+  mxlinux      Compile for linux 64 bit using the xcompile docker image.
 
+```
+
+The xcompile docker image comes from
+
+* `docker-nim-cross <https://hub.docker.com/r/chrishellerappsian/docker-nim-cross>`_
+
+You make the xcompile image from it as follows:
+
+::
+  mkdir -p ~/code/docker-nim-cross
+  cd ~/code/docker-nim-cross
+  git clone https://github.com/chrisheller/docker-nim-cross.git .
+  docker build -t xcompile .
+
+  docker images | grep xcompile
+  xcompile    latest    f55dcbecd036     10 days ago      2.86GB
+
+todo: add nimpy to the image (or a new image based on it) so you
+can build the python libraries this way. The metar-image shows
+how to install nimpy.
 
 Install
 =================
@@ -176,17 +201,17 @@ test command or for both debug and release using the testall command.
 Create Python Environment
 =================
 
-Create a python virtual environment for working with metar python
-library, then activate it. Your prompt will be prefixed with
-(metarpy) showing that it is the active environment.
+Create a python virtual environment called metar for working with
+the metar python library, then activate it. Your prompt will be
+prefixed with (metar) showing that it is the active environment.
 
 ::
 
   cd ~/code/metar
-  python3 -m venv metarpy
-  source metarpy/bin/activate
+  python3 -m venv env/mac/metarenv
+  source env/mac/metarenv/bin/activate
+  pip install --upgrade pip
 
-  (metarpy) ~/code/metar $
 
 Python Install
 =================
@@ -194,15 +219,12 @@ Python Install
 Install metar in the virtual environment using pip. The freeze
 command shows the installed custom packages, in this case metar.
 
-todo: make pip installer work.
-
 ::
    cd ~/code/metar
-   pip install python/metar
+   pip install bin/mac
    pip freeze
 
    metar==0.1.22
-
 
 You can test run metar:
 
@@ -210,8 +232,8 @@ You can test run metar:
   python
   >>> import metar
   >>> metar.get_version()
-  1.22.0
-  >>> exit()
+  '0.1.22'
+  >>> ctrl-d
 
   pip freeze
   metar==0.1.22
@@ -231,9 +253,7 @@ Remove the virtual environment by deleting the metarpy folder.
 
 ::
    cd ~/code/metar
-   rm -r metarpy
-
-
+   rm -r env/mac/metar
 
 Docs
 =================

@@ -1,13 +1,13 @@
 # Create a build and test environment for metar.
 
-FROM debian:8
+FROM debian:latest
 
 MAINTAINER Steve Flenniken
 
-RUN apt-get update \
-  && apt-get -qy install curl libssl-dev build-essential gcc \
-    python python3 xz-utils less git man sudo tree \
-    python-pip python3-pip
+RUN apt update \
+  && apt -qy install curl libssl-dev build-essential gcc \
+    python3 xz-utils less git man sudo tree \
+    python3-pip python3-venv
 
 # Set sudo so user steve doesn't need to type in a password.
 RUN mkdir -p /etc/sudoers.d \
@@ -40,6 +40,7 @@ RUN echo "alias ll='ls -l'" >> .bashrc \
 RUN mkdir -p /home/steve/code/metar/ \
   && sudo ln -s /home/steve/code/metar/bin/linux/metar /usr/local/bin/metar
 
+# Install nimpy.
 RUN export PATH=/home/steve/.nimble/bin:$PATH \
   && nimble install -y nimpy@#c8ec14a # metarVersion*
 

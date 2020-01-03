@@ -301,7 +301,7 @@ task docs, "Build all the docs.":
 
 
 task tree, "Show the project directory tree.":
-  exec "tree -I '*~|nimcache' | less"
+  exec "tree -I 'metarenv|private|testfiles.extra|*.nims' | less"
 
 task bins, "Show the binary file details.":
   exec r"find bin -name metar\* -type f | xargs ls -l"
@@ -440,7 +440,6 @@ task mxwin, "Compile for windows 64 bit using the xcompile docker image.":
 task mxmac, "Compile for mac 64 bit using the xcompile docker image.":
 
   build_metar_and_python_module(host = "macosx", name = "metar", libName = "metar.so", release = true, strip = false, nimOptions = "--os:macosx --cpu:amd64 ", xcompile = true)
-
 
 task mxlinux, "Compile for linux 64 bit using the xcompile docker image.":
 
