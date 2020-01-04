@@ -147,5 +147,4 @@ the source.
 
 Here is the metar module dependencies graph:
 
-![Alt text](docs/html/dependencies.svg)
-<img src="docs/html/dependencies.svg">
+.. image:: docs/html/dependencies.svg
