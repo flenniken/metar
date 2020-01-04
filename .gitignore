@@ -3,7 +3,6 @@ nimcache/
 *~
 bin/
 metar/private/
-docs/html/
 *.pyc
 *.nims
 metarenv/

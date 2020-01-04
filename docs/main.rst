@@ -53,9 +53,9 @@ information. Example section keys: "meta", "xmp", "iptc", "ranges".
 In a json sudo notation::
 
   metadata = {
-    key: value,  # section 1
-    key: value,  # section 2
-    key: value,  # section 3
+    key: sectionValue,  # section 1
+    key: sectionValue,  # section 2
+    key: sectionValue,  # section 3
     ...
   }
 
@@ -241,7 +241,7 @@ Range columns:
 * the next optional column is an asterisk.  The asterisk means
   the reader did not understand this part of the file.
 * the next column, [start, finish) is the offset of the beginning
-of the range and finish is one past the end.
+  of the range and finish is one past the end.
 * the next optional column is a description of the range.
 
 
@@ -338,7 +338,7 @@ Iptc Section
 
 International Press Telecommunications Council (IPTC)
 standardized the metadata used between new agencies and
-newspapers around 1990.
+newspapers created around 1990.
 
 Here is a sample iptc section from an image::
 

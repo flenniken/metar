@@ -43,17 +43,17 @@ def dotFilter(names, filename):
   filename except the lines where the right side name is in the names
   dictionary.
   """
-  print 'digraph metar {'
+  print('digraph metar {')
 
   with open(filename, 'r') as fh:
     for line in fh:
       left, right = parse_line(line)
       if left != '' and left in names and right in names:
-        print '%s -> %s;' % (left, right)
+        print('%s -> %s;' % (left, right))
 
   # Add dotted line between version.nim and ver.nim.
   # print 'version -> ver [style = dotted];'
-  print '}'
+  print('}')
 
 def readNames(filename):
   """
@@ -69,10 +69,10 @@ def readNames(filename):
 def main(args):
   # print args
   if not os.path.exists(args.filename):
-    print "file doesn't exist: " + args.filename
+    print("file doesn't exist: " + args.filename)
     return
   if not os.path.exists(args.dotFilename):
-    print "file doesn't exist: " + args.dotFilename
+    print("file doesn't exist: " + args.dotFilename)
     return
   names = readNames(args.filename)
   # for k, v in names.items():
