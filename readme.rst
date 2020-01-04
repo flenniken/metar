@@ -139,12 +139,13 @@ sections or corrupt files and other details on the details page.
 
 * `details <docs/main.rst>`_ -- metadata processing details
 
-The link below shows an svg graph of the module dependencies.
-
-* `dependencies <docs/html/dependencies.svg>`_ -- the modules dependencies graph
-
 You can view the documentation for all the modules and procedures on the index
 page. This documentation is created from embedded doc comments in
 the source.
 
 * `index <docs/html/theindex.html>`_ -- index to source documentation
+
+Here is the metar module dependencies graph:
+
+![Alt text](docs/html/dependencies.svg)
+<img src="docs/html/dependencies.svg">
