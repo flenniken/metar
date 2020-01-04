@@ -2,26 +2,29 @@
 Metar Development
 =================
 
-You develop metar on the Mac or Linux using nim, nimble and other programs.
+You can build and devlop metar following these instructions.
 
 * `Nimble Tasks`_
 * `Platforms`_
 * `Install`_
 * `Build`_
-* `Test]`_
-* `Docs]`_
+* `Test`_
+* `Docs`_
 * `Python Install`_
 
 Nimble Tasks
 =================
 
-You run the build, test and perform many other tasks with nimble.
+You use nimble tasks to build, test metar. Most all development
+scripts are nimble tasks.
+
+You can list all the available tasks using nimble's tasks command as shown
+below.
 
 Note: It's suggested you create an alias n to run nimble to save typing.
 
-You can list all the tasks running nimble's tasks command::
+::
 
-```
   nimble tasks
 
   m            Build metar exe and python module, release versions
@@ -47,8 +50,6 @@ You can list all the tasks running nimble's tasks command::
   mxmac        Compile for mac 64 bit using the xcompile docker image.
   mxlinux      Compile for linux 64 bit using the xcompile docker image.
 
-```
-
 Prerequisites
 =================
 
@@ -56,6 +57,8 @@ You need nim and docker to build metar.
 
 * `Install Nim <https://nim-lang.org/install.html>`_
 * `Docker <https://docs.docker.com/>`_
+
+You can verify you have then by checking their version numbers.
 
 ::
 
@@ -83,29 +86,32 @@ share the same files.
 There are nimble tasks manage the linux Docker environment. They appear
 near the bottom of the list and start with "d".
 
-```
+::
   dcreate      Create a metar linux docker image.
   drun         Run the metar linux docker container.
   ddelete      Delete the metar linux docker container.
   dlist        List the metar linux docker image and container.
 
-```
+== Cross Compile ==
 
 You can cross compile for Windows, Linux and Mac using the
 xcompile docker image. There are nimble tasks for this.
 
-```
+::
   mxwin        Compile for windows 64 bit using the xcompile docker image.
   mxmac        Compile for mac 64 bit using the xcompile docker image.
   mxlinux      Compile for linux 64 bit using the xcompile docker image.
 
-```
-
-The xcompile docker image comes from
+The xcompile docker image comes from chrishellerappsian.
 
 * `docker-nim-cross <https://hub.docker.com/r/chrishellerappsian/docker-nim-cross>`_
 
-You make the xcompile image from it as follows:
+The following post talks about the image:
+
+* `Nim Forum Post <https://forum.nim-lang.org/t/5569>`_
+
+You make the xcompile image by downloading Chris's code then
+building the image and tagging it as follows:
 
 ::
   mkdir -p ~/code/docker-nim-cross
@@ -116,14 +122,14 @@ You make the xcompile image from it as follows:
   docker images | grep xcompile
   xcompile    latest    f55dcbecd036     10 days ago      2.86GB
 
-todo: add nimpy to the image (or a new image based on it) so you
-can build the python libraries this way. The metar-image shows
-how to install nimpy.
+todo: add nimpy to the image (or build a new image based on it) so you
+can build the python libraries using it. See the metar-image
+which shows how to install nimpy.
 
-Install
+Download
 =================
 
-Install the source into a folder on your machine using git.
+Download the metar source into a folder on your machine using git.
 
 ::
 
@@ -134,8 +140,9 @@ Install the source into a folder on your machine using git.
 
 Build
 =================
-You build metar using the m nimble task.  This builds the release
-version of the exe and python library.
+
+You build the release version of metar using the m nimble task.
+This builds both the exe and python library. For example:
 
 ::
   cd ~/code/metar
@@ -151,7 +158,8 @@ version of the exe and python library.
   Hint: used config file '/Users/steve/.choosenim/toolchains/nim-1.0.4/config/nim.cfg' [Conf]
   Hint: operation successful (52877 lines compiled; 3.087 sec total; 89.445MiB peakmem; Release Build) [SuccessX]
 
-The binary files are stored in the bin folder as shown below.
+The binary files are stored in the bin folder as shown below. You
+can verify the metar version with the version switch.
 
 ::
 
@@ -167,7 +175,8 @@ Test
 =================
 
 You can run the unit tests for the debug version using the nimble
-test command or for both debug and release using the testall command.
+test command or for both debug and release using the testall
+command. Here is what that looks like:
 
 ::
 
@@ -197,27 +206,31 @@ test command or for both debug and release using the testall command.
     [OK] test hexDump 17
     ...
 
-
-Create Python Environment
+Python Environment
 =================
 
-Create a python virtual environment called metar for working with
-the metar python library, then activate it. Your prompt will be
-prefixed with (metar) showing that it is the active environment.
+The are a number of commands to develop metar in a python environment.
+
+Create Virtual Environment
+--------------------------
+
+Create a python virtual environment called metarenv for working with
+the metar python library. After activating it your prompt will change.
 
 ::
-
   cd ~/code/metar
   python3 -m venv env/mac/metarenv
   source env/mac/metarenv/bin/activate
   pip install --upgrade pip
 
+Install Metar Library
+---------------------
 
-Python Install
-=================
+You can install metar in your virtual environment to test it in a
+isolated environment. Do this using pip as show below.
 
-Install metar in the virtual environment using pip. The freeze
-command shows the installed custom packages, in this case metar.
+The freeze command shows the installed custom packages, in this
+case just metar.
 
 ::
    cd ~/code/metar
@@ -226,7 +239,11 @@ command shows the installed custom packages, in this case metar.
 
    metar==0.1.22
 
-You can test run metar:
+Test Metar Library
+------------------
+
+You can test run metar in python by importing it and calling the
+get_version procedure.
 
 ::
   python
@@ -238,10 +255,16 @@ You can test run metar:
   pip freeze
   metar==0.1.22
 
+Uninstall Metar Library
+-----------------------
+
 Uninstall metar using pip:
 
 ::
   pip uninstall -y metar
+
+Stop using Environment
+----------------------
 
 Stop using the virtual python environment using the deactivate
 command:
@@ -249,14 +272,20 @@ command:
 ::
    deactivate
 
-Remove the virtual environment by deleting the metarpy folder.
+Delete Environment
+------------------
+
+Remove the virtual environment by deleting the metarenv folder.
 
 ::
    cd ~/code/metar
-   rm -r env/mac/metar
+   rm -r env/mac/metarenv
 
 Docs
 =================
 
-The module and procedure documention is created by extracting
-comments from the modules.
+You create the nim modules and procedures documention by extracting
+comments from the modules with the nimble docs task. After
+building all the docs it opens the main readme in your browser.
+
+You can build one doc using the doc1 command.

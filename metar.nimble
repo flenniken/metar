@@ -398,7 +398,7 @@ task dot, "Create and show the metar modules dependency graph.":
   # metar -> ver [style = dotted]
 
 
-task showdebugger, "Show example command line to debug code.":
+task showdebugger, "Show example command line to debug code with lldb.":
   echo ""
   echo "Common switches:"
   echo "  nimswitches='c --debugger:native --verbosity:0 --hints:off'"
