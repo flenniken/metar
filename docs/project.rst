@@ -5,26 +5,24 @@ Metar Development
 You can build and devlop metar following these instructions.
 
 * `Nimble Tasks`_
-* `Platforms`_
-* `Install`_
+* `Prerequisites`_
+* `Download`_
 * `Build`_
 * `Test`_
+* `Python Environment`_
+* `Platforms`_
 * `Docs`_
-* `Python Install`_
 
 Nimble Tasks
 =================
 
-You use nimble tasks to build, test metar. Most all development
-scripts are nimble tasks.
-
-You can list all the available tasks using nimble's tasks command as shown
-below.
+You use nimble tasks to build and test metar. Most all
+development scripts are nimble tasks. You can see all the
+available tasks using nimble's tasks command as shown below.
 
 Note: It's suggested you create an alias n to run nimble to save typing.
 
 ::
-
   nimble tasks
 
   m            Build metar exe and python module, release versions
@@ -53,86 +51,29 @@ Note: It's suggested you create an alias n to run nimble to save typing.
 Prerequisites
 =================
 
-You need nim and docker to build metar.
+The source code is written in the nim language so nim is
+required.  Docker is needed to support your non host platforms
+which is linux and windows for me.
 
 * `Install Nim <https://nim-lang.org/install.html>`_
 * `Docker <https://docs.docker.com/>`_
 
-You can verify you have then by checking their version numbers.
+You can verify you have them installed by checking their version numbers.
 
 ::
-
   docker --version
   Docker version 19.03.4, build 9013bf5
 
   nim --version | head -1
   Nim Compiler Version 1.0.4 [MacOSX: amd64]
 
-
-Platforms
-=================
-
-Metar is developed and tested on mac and linux (Debian) and is
-cross compiled for Windows.
-
-I use the mac to host docker. Docker containers are used to build
-the linux and windows versions. You could probably host on linux
-without much trouble. Hosting on Windows has issues since the nimble
-tasks use unix commands and paths.
-
-The host file system contains the code and the docker containers
-share the same files.
-
-There are nimble tasks manage the linux Docker environment. They appear
-near the bottom of the list and start with "d".
-
-::
-  dcreate      Create a metar linux docker image.
-  drun         Run the metar linux docker container.
-  ddelete      Delete the metar linux docker container.
-  dlist        List the metar linux docker image and container.
-
-== Cross Compile ==
-
-You can cross compile for Windows, Linux and Mac using the
-xcompile docker image. There are nimble tasks for this.
-
-::
-  mxwin        Compile for windows 64 bit using the xcompile docker image.
-  mxmac        Compile for mac 64 bit using the xcompile docker image.
-  mxlinux      Compile for linux 64 bit using the xcompile docker image.
-
-The xcompile docker image comes from chrishellerappsian.
-
-* `docker-nim-cross <https://hub.docker.com/r/chrishellerappsian/docker-nim-cross>`_
-
-The following post talks about the image:
-
-* `Nim Forum Post <https://forum.nim-lang.org/t/5569>`_
-
-You make the xcompile image by downloading Chris's code then
-building the image and tagging it as follows:
-
-::
-  mkdir -p ~/code/docker-nim-cross
-  cd ~/code/docker-nim-cross
-  git clone https://github.com/chrisheller/docker-nim-cross.git .
-  docker build -t xcompile .
-
-  docker images | grep xcompile
-  xcompile    latest    f55dcbecd036     10 days ago      2.86GB
-
-todo: add nimpy to the image (or build a new image based on it) so you
-can build the python libraries using it. See the metar-image
-which shows how to install nimpy.
-
 Download
 =================
 
-Download the metar source into a folder on your machine using git.
+You download the metar source into a folder on your machine using
+git clone.
 
 ::
-
   mkdir -p ~/code/metar
   cd ~/code/metar
   git clone https://github.com/flenniken/metar.git .
@@ -162,7 +103,6 @@ The binary files are stored in the bin folder as shown below. You
 can verify the metar version with the version switch.
 
 ::
-
   n bins
     Executing task bins in /Users/steve/code/metar/metar.nimble
   -rwxr-xr-x  1 steve  staff  297156 Dec 31 14:33 bin/mac/metar
@@ -179,7 +119,6 @@ test command or for both debug and release using the testall
 command. Here is what that looks like:
 
 ::
-
   nimble test
 
   Executing task test in /Users/steve/code/metar/metar.nimble
@@ -281,11 +220,77 @@ Remove the virtual environment by deleting the metarenv folder.
    cd ~/code/metar
    rm -r env/mac/metarenv
 
+
+Platforms
+=================
+
+Metar is developed and tested on mac and linux (Debian) and is
+cross compiled for Windows.
+
+I use the mac to host docker. Docker containers are used to build
+the linux and windows versions. You could probably host on linux
+without much trouble. Hosting on Windows has issues since the nimble
+tasks use unix commands and paths.
+
+The host file system shares the code with the docker containers.
+
+There are nimble tasks manage the linux Docker environment. They appear
+near the bottom of the list and start with "d".
+
+I have a terminal window for my mac version and one window for
+the linux version. I edit on my mac, then run and test in both
+mac and linux.
+
+The dcreate command creates the image from a Dockerfile and names
+it metar-image. The drun command creates a docker container
+called metar-container when it is missing, then runs it.
+
+::
+  dcreate      Create a metar linux docker image.
+  drun         Run the metar linux docker container.
+  ddelete      Delete the metar linux docker container.
+  dlist        List the metar linux docker image and container.
+
+Cross Compile
+-------------
+
+You can cross compile for Windows, Linux and Mac using the
+xcompile docker image. There are nimble tasks for this.
+
+::
+  mxwin        Compile for windows 64 bit using the xcompile docker image.
+  mxmac        Compile for mac 64 bit using the xcompile docker image.
+  mxlinux      Compile for linux 64 bit using the xcompile docker image.
+
+The xcompile docker image comes from chrishellerappsian.
+
+* `docker-nim-cross <https://hub.docker.com/r/chrishellerappsian/docker-nim-cross>`_
+
+The following post talks about the image:
+
+* `Nim Forum Post <https://forum.nim-lang.org/t/5569>`_
+
+You make the xcompile image by downloading Chris's code then
+building the image and naming it xcompile as follows:
+
+::
+  mkdir -p ~/code/docker-nim-cross
+  cd ~/code/docker-nim-cross
+  git clone https://github.com/chrisheller/docker-nim-cross.git .
+  docker build -t xcompile .
+
+  docker images | grep xcompile
+  xcompile    latest    f55dcbecd036     10 days ago      2.86GB
+
+todo: add nimpy to the image (or build a new image based on it) so you
+can build the python libraries using it. See the metar-image
+docker file which shows how to install nimpy.
+
 Docs
 =================
 
-You create the nim modules and procedures documention by extracting
+You create the nim module and procedure documention by extracting
 comments from the modules with the nimble docs task. After
-building all the docs it opens the main readme in your browser.
+building all the docs the command opens the main readme in your browser.
 
 You can build one doc using the doc1 command.
