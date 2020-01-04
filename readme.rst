@@ -65,7 +65,7 @@ See the follow link for more documentation on the methods:
 * `metar <docs/html/metar.html>`_ -- how to use the public procedures.
 
 In a python interactive session you can see the methods::
-   
+
   >>> import metar
   >>> dir(metar)
 
@@ -104,7 +104,7 @@ Then you can extract the metadata you are interested in from the
 dictionary.
 
 ::
-   
+
   >>> image = metadata['image']
   >>> print('width = %s' % image['width'])
   width = 3329
@@ -115,7 +115,7 @@ dictionary.
 The read_metadata function returns a more human readable string.
 
 ::
-   
+
   >>> string = metar.read_metadata(filename)
   >>> print(string[0:84]+'\n...')
   ========== APP0 ==========
@@ -130,21 +130,21 @@ The read_metadata function returns a more human readable string.
 More Pages
 =================
 
+You can learn how to build, test and install on the development page.
+
+* `development <docs/project.rst>`_ -- how to build, test and install
+
 You can learn how metar deals with special images with unknown
 sections or corrupt files and other details on the details page.
 
 * `details <docs/main.rst>`_ -- metadata processing details
+
+The link below shows an svg graph of the module dependencies.
+
+* `dependencies <docs/html/dependencies.svg>`_ -- the modules dependencies graph
 
 You can view the documentation for all the modules and procedures on the index
 page. This documentation is created from embedded doc comments in
 the source.
 
 * `index <docs/html/theindex.html>`_ -- index to source documentation
-
-You can learn how to build, test and install on the development page.
-
-* `development <docs/project.rst>`_ -- how to build, test and install
-
-The link below shows an svg graph of the module dependencies.
-
-* `dependencies <docs/html/dependencies.svg>`_ -- the modules dependencies graph
