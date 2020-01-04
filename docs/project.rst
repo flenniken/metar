@@ -23,6 +23,7 @@ available tasks using nimble's tasks command as shown below.
 Note: It's suggested you create an alias n to run nimble to save typing.
 
 ::
+
   nimble tasks
 
   m            Build metar exe and python module, release versions
@@ -61,6 +62,7 @@ which is linux and windows for me.
 You can verify you have them installed by checking their version numbers.
 
 ::
+
   docker --version
   Docker version 19.03.4, build 9013bf5
 
@@ -74,6 +76,7 @@ You download the metar source into a folder on your machine using
 git clone.
 
 ::
+
   mkdir -p ~/code/metar
   cd ~/code/metar
   git clone https://github.com/flenniken/metar.git .
@@ -86,6 +89,7 @@ You build the release version of metar using the m nimble task.
 This builds both the exe and python library. For example:
 
 ::
+
   cd ~/code/metar
   nimble m
 
@@ -103,6 +107,7 @@ The binary files are stored in the bin folder as shown below. You
 can verify the metar version with the version switch.
 
 ::
+
   n bins
     Executing task bins in /Users/steve/code/metar/metar.nimble
   -rwxr-xr-x  1 steve  staff  297156 Dec 31 14:33 bin/mac/metar
@@ -119,6 +124,7 @@ test command or for both debug and release using the testall
 command. Here is what that looks like:
 
 ::
+
   nimble test
 
   Executing task test in /Users/steve/code/metar/metar.nimble
@@ -157,6 +163,7 @@ Create a python virtual environment called metarenv for working with
 the metar python library. After activating it your prompt will change.
 
 ::
+
   cd ~/code/metar
   python3 -m venv env/mac/metarenv
   source env/mac/metarenv/bin/activate
@@ -172,6 +179,7 @@ The freeze command shows the installed custom packages, in this
 case just metar.
 
 ::
+
    cd ~/code/metar
    pip install bin/mac
    pip freeze
@@ -185,6 +193,7 @@ You can test run metar in python by importing it and calling the
 get_version procedure.
 
 ::
+
   python
   >>> import metar
   >>> metar.get_version()
@@ -200,6 +209,7 @@ Uninstall Metar Library
 Uninstall metar using pip:
 
 ::
+
   pip uninstall -y metar
 
 Stop using Environment
@@ -209,6 +219,7 @@ Stop using the virtual python environment using the deactivate
 command:
 
 ::
+
    deactivate
 
 Delete Environment
@@ -217,6 +228,7 @@ Delete Environment
 Remove the virtual environment by deleting the metarenv folder.
 
 ::
+
    cd ~/code/metar
    rm -r env/mac/metarenv
 
@@ -246,6 +258,7 @@ it metar-image. The drun command creates a docker container
 called metar-container when it is missing, then runs it.
 
 ::
+
   dcreate      Create a metar linux docker image.
   drun         Run the metar linux docker container.
   ddelete      Delete the metar linux docker container.
@@ -258,6 +271,7 @@ You can cross compile for Windows, Linux and Mac using the
 xcompile docker image. There are nimble tasks for this.
 
 ::
+
   mxwin        Compile for windows 64 bit using the xcompile docker image.
   mxmac        Compile for mac 64 bit using the xcompile docker image.
   mxlinux      Compile for linux 64 bit using the xcompile docker image.
@@ -274,6 +288,7 @@ You make the xcompile image by downloading Chris's code then
 building the image and naming it xcompile as follows:
 
 ::
+
   mkdir -p ~/code/docker-nim-cross
   cd ~/code/docker-nim-cross
   git clone https://github.com/chrisheller/docker-nim-cross.git .
