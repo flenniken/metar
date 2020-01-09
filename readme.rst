@@ -57,12 +57,8 @@ How Use Metar in Python Programs
 =================
 
 You can use the metar python module to read image file metadata
-using your python programs. It contains four public methods: get_version, key_name,
-read_metadata and read_metadata_json.
-
-See the follow link for more documentation on the methods:
-
-* `metar <docs/html/metar.html>`_ -- how to use the public procedures.
+in your python programs. It contains four public methods:
+read_metadata_json, read_metadata, key_name, and get_version.
 
 In a python interactive session you can see the methods::
 
@@ -117,7 +113,7 @@ The read_metadata function returns a more human readable string.
 ::
 
   >>> string = metar.read_metadata(filename)
-  >>> print(string[0:84]+'\n...')
+  >>> print(string)
   ========== APP0 ==========
   id = "JFIF"
   major = 1

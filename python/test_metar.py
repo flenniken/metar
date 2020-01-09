@@ -2,55 +2,10 @@
 import os
 import sys
 import platform
-
-# Determine the bin folder name based on the platform.
-if platform.system() == "Darwin":
-  folder = "mac"
-elif platform.system() == "Linux":
-  folder = "linux"
-else:
-  print platform.system()
-  print "Untested platform."
-  exit(1)
-
-rel = ""
-if len(sys.argv) > 1:
-  if sys.argv[1] != 'release':
-    rel = "debug"
-  del(sys.argv[1])
-
-# Add the metar library to the path so it can be imported.
-absolute_path = os.path.abspath(__file__)
-parent_dir = os.path.dirname(os.path.dirname(absolute_path))
-path = os.path.join(parent_dir, "bin", folder, rel)
-# print(path)
-assert(os.path.exists(os.path.join(path, "metar.so")))
-sys.path.insert(0, path)
-
-try:
-  import metar
-except:
-  print("Error: The metar python library was not found.")
-  exit(1)
 import unittest
 import re
 import json
-
-# get_version(...)
-#     Return the version number.
-#
-# key_name(...)
-#     Return a human readable name for the given key.
-#
-# read_metadata(...)
-#     Read the given image file's metadata and return it as a human
-#     readable string. Return an empty string when the file is not
-#     recognized.
-#
-# read_metadata_json(...)
-#     Read the given image file's metadata and return it as a JSON
-#     string. Return an empty string when the file is not recognized.
-
+import metar
 
 version_pattern = re.compile('^[0-9]+\.[0-9]+\.[0-9]+$')
 
@@ -76,7 +31,6 @@ class TestMetar(unittest.TestCase):
 
   def test_read_metadata(self):
     data = metar.read_metadata("testfiles/image.jpg")
-    # print data
     part1 = """\
 ========== APP0 ==========
 id = "JFIF"
@@ -118,7 +72,6 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
 
   def test_read_metadata_json(self):
     string = metar.read_metadata_json("testfiles/image.jpg")
-    # print data
     metadata = json.loads(string)
     keys = sorted(metadata.keys())
     expected_keys = ['APP0', 'DHT', 'DQT', 'SOF0', 'SOS', 'image', 'meta', 'ranges']
@@ -126,7 +79,6 @@ components = [[1, 2, 2, 0], [2, 1, 1, 1], [3, 1, 1, 1]]
 
   def test_read_metadata_debug(self):
     data = metar.read_metadata("testfiles/image.jpg")
-    # print data
     self.assertTrue('build = "' in data)
     self.assertTrue('nimpyVersion = "' in data)
 
