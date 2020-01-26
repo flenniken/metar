@@ -19,6 +19,7 @@ binDir = "bin"
 # Dockerfile when you update the version.
 requires "nim >= 1.0.4", "nimpy#c8ec14a" # Search for nimpyVersion*.
 
+bin = @["metar/metar"]
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
 
