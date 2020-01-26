@@ -7,3 +7,4 @@ metar/private/
 *.nims
 metarenv/
 testfiles.extra/
+*.DS_Store

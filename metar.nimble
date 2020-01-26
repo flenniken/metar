@@ -28,7 +28,7 @@ proc getDirName(host: string): string =
   ## Return the host dir name given the nim hostOS name.
   ## Current possible host values: "windows", "macosx", "linux", "netbsd",
   ## "freebsd", "openbsd", "solaris", "aix", "haiku", "standalone".
-  
+
   if host == "macosx":
     result = "mac"
   elif host == "linux":
@@ -175,6 +175,17 @@ proc runShellTests(release: bool) =
   else:
     exec "bash -c tests/test_shell.sh"
 
+proc testPython() =
+  ## Test the python module.
+  echo ""
+  echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
+
+  var result = gorgeEx("hash python3 2>/dev/null")
+  if result.exitCode != 0:
+    echo "Skipping because python3 does not exist."
+  else:
+    exec "python3 python/test_metar.py"
+
 proc runTests(release: bool) =
   var relDisplay: string
   if release:
@@ -184,30 +195,25 @@ proc runTests(release: bool) =
   echo "==> Run $1 unit tests. <==" % [relDisplay]
 
   runShellTests(release)
+  testPython()
 
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     let cmd = get_test_module_cmd(filename, release)
     exec cmd
 
-  # Test the python module.
-  echo ""
-  echo "\e[1;34m[Suite] \e[00mTest Python Module\n"
-  # echo "\e[1;32m    [OK] \e[00mtest getAppeInfo\n"
-  if release:
-    exec "python python/test_metar.py release"
-  else:
-    exec "python python/test_metar.py"
+task testpython, "Test the python module.":
+  testPython()
 
 
-task args, "Show command line arguments.":
-  # Nimble needs to improve it command line processing.
-  # https://github.com/nim-lang/nimble/issues/723
-  # todo: pass arguments to the tasks.
-  let count = system.paramCount()+1
-  echo "argument count: $1" % $count
-  for i in 0..count-1:
-    echo "$1: $2" % [$i, system.paramStr(i)]
+# task args, "Show command line arguments.":
+#   # Nimble needs to improve it command line processing.
+#   # https://github.com/nim-lang/nimble/issues/723
+#   # todo: pass arguments to the tasks.
+#   let count = system.paramCount()+1
+#   echo "argument count: $1" % $count
+#   for i in 0..count-1:
+#     echo "$1: $2" % [$i, system.paramStr(i)]
 
 
 task test, "Run all the tests in debug.":
@@ -264,6 +270,10 @@ task clean, "Delete unneeded temporary files created by the build processes.":
 
   exec "rm -f tshell.txt"
 
+  exec "rm -f .DS_Store"
+  exec "rm -f docs/.DS_Store"
+
+
 
 proc doc_module(name: string) =
   let cmd = "nim doc --hints:off -d:test --index:on --out:docs/html/$1.html metar/$1.nim" % [name]
@@ -319,10 +329,10 @@ task tree, "Show the project directory tree.":
 task bins, "Show the binary file details.":
   exec r"find bin -name metar\* -type f | xargs ls -l"
 
-task t, "Build and run t.nim.":
-  let cmd = "nim c -r -d:release --out:bin/test/t metar/private/t"
-  echo cmd
-  exec cmd
+# task t, "Build and run t.nim.":
+#   let cmd = "nim c -r -d:release --out:bin/test/t metar/private/t"
+#   echo cmd
+#   exec cmd
 
 # task tlib, "Build t python library":
 #   # Note the nim and the lib name must match, for example: t.so and t.nim.

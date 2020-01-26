@@ -4,7 +4,7 @@ from setuptools import setup
 def main():
   setup(
     name='metar',
-    version="0.1.22", # metarVersion*
+    version="0.1.23", # metarVersion*
     description='Image metadata reader.',
     long_description='See: https://github.com/flenniken/metar',
     url='http://github.com/sflennik/metar/python/metar',

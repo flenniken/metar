@@ -5,7 +5,14 @@ import platform
 import unittest
 import re
 import json
-import metar
+try:
+  import metar
+except:
+  print("""\
+Unable to import metar. Create a virtual python env and install metar.
+pip3 install bin/linux
+""")
+  exit(1)
 
 version_pattern = re.compile('^[0-9]+\.[0-9]+\.[0-9]+$')
 

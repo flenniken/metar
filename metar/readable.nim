@@ -2,7 +2,7 @@
 ## You use the readable module to display the metadata in a human
 ## readable format.
 
-import Metadata
+import metadata
 import json
 import tpub
 import strutils
