@@ -17,7 +17,7 @@ binDir = "bin"
 # 0.1.0. So we use the git version number instead. See the package
 # source code at ~/.nimble/pkgs. Update the version.nim file and the
 # Dockerfile when you update the version.
-requires "nim >= 1.0.4", "nimpy@#c8ec14a" # Search for nimpyVersion*.
+requires "nim >= 1.0.4", "nimpy#c8ec14a" # Search for nimpyVersion*.
 
 skipExt = @["nim"]
 # skipDirs = @["tests", "private"]
