@@ -263,7 +263,7 @@ proc readIptc(buffer: var openArray[uint8], start: int64, finish: int64,
 
   let all_size = get2(buffer, 28)  # index 28, 29
   if all_size == 0 or all_size + 30 > size:
-    echo "all_size=$1 size=$2" % [$all_size, $size]
+    # echo "all_size=$1 size=$2" % [$all_size, $size]
     raise newException(NotSupportedError, "Iptc: Inconsistent size.")
   ranges.add(newRange(start+28'i64, start+30'i64, "iptc", true, "header"))
 
