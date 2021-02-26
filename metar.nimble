@@ -86,7 +86,7 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
 
   if buildExe:
     let output = get_output_path(host, name, release)
-    echo "===> Building $1 $2 for $3 <===" % [relDisplay, name, host]
+    echo "===> Building Command Line Exe $1 $2 for $3 <===" % [relDisplay, name, host]
     exec r"rm -f $1" % [output]
 
     let cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
@@ -98,7 +98,7 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
 
   if buildLib:
     let output = get_output_path(host, libName, release)
-    echo "===> Building $1 $2 for $3 <===" % [relDisplay, libName, host]
+    echo "===> Building Python Lib $1 $2 for $3 <===" % [relDisplay, libName, host]
     exec r"rm -f $1" % [output]
 
     let cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]

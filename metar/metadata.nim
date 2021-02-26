@@ -10,12 +10,12 @@
 import json
 
 type
-  UnknownFormatError* = object of Exception ## \
+  UnknownFormatError* = object of ValueError ## \
   ## UnknownFormatError is raised when the image is not recognized. The
   ## image is recognized quickly by looking at the first few bytes of
   ## the file.
 
-  NotSupportedError* = object of Exception ## \ The reader recognized
+  NotSupportedError* = object of ValueError ## \ The reader recognized
   ## the image but it cannot handle it.  The image might be corrupt or
   ## the reader cannot decode the file.  NotSupportedError is raised
   ## when the reader cannot continue. Readers are forgiving, they skip

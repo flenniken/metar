@@ -8,3 +8,4 @@ metar/private/
 metarenv/
 testfiles.extra/
 *.DS_Store
+metarpy/
