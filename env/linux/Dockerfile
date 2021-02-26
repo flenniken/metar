@@ -44,6 +44,14 @@ RUN mkdir -p /home/steve/code/metar/ \
 RUN export PATH=/home/steve/.nimble/bin:$PATH \
   && nimble install -y nimpy@#c8ec14a # metarVersion*
 
+# Create metarenv virtual environment.
+ENV VIRTUAL_ENV=/home/steve/code/metar/env/linux/metarenv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN python3 -m venv $VIRTUAL_ENV \
+  && pip3 install wheel \
+  && echo ". $VIRTUAL_ENV/bin/activate" >> .bashrc
+
 WORKDIR /home/steve/code/metar/
 CMD /bin/bash
 
