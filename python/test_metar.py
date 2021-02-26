@@ -9,8 +9,13 @@ try:
   import metar
 except:
   print("""\
-Unable to import metar. Create a virtual python env and install metar.
+Unable to import metar. Create a virtual python env, activate it and install metar.
+
+python3 -m venv env/linux/metarenv
+source env/linux/metarenv/bin/activate
+pip3 install wheel
 pip3 install bin/linux
+
 """)
   exit(1)
 

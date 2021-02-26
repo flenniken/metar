@@ -108,7 +108,8 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     # Put the setup file next to the lib ready to install.
     var dirName = getDirName(host)
     let setupFilename = "bin/$1/setup.py" % [dirName]
-    if not system.fileExists(setupFilename):
+    # if not system.fileExists(setupFilename):
+    if true:
       let cmd = r"cp python/setup.py $1" % [setupFilename]
       echo cmd
       exec cmd
