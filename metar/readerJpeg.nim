@@ -374,7 +374,7 @@ proc readSectionsRaw(file: File): seq[Section] =
     if length < 2:
       raise newException(NotSupportedError, "Jpeg: block is less than 2 bytes.")
 
-    finish = start + int64(length + 2)
+    finish = start + int64(length) + 2
     result.add((marker, start, finish))
     file.setFilePos(finish)
 
