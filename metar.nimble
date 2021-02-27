@@ -61,7 +61,7 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     ignoreOutput = false, release = true, strip = true, xcompile = false,
     nimOptions = "", buildExe=true, buildLib=true) =
 
-  let hints = "--hint[Processing]:off --hint[CC]:off --hint[Link]:off "
+  let hints = "--hint[Processing]:off --hint[CC]:off --hint[Link]:off --hint[Conf]:off "
 
   var ignore: string
   if ignoreOutput:
@@ -101,7 +101,7 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     echo "===> Building Python Lib $1 $2 for $3 <===" % [relDisplay, libName, host]
     exec r"rm -f $1" % [output]
 
-    let cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
+    var cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
     echo cmd
     exec cmd
 
@@ -109,16 +109,14 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     var dirName = getDirName(host)
     let setupFilename = "bin/$1/setup.py" % [dirName]
     # if not system.fileExists(setupFilename):
-    if true:
-      let cmd = r"cp python/setup.py $1" % [setupFilename]
-      echo cmd
-      exec cmd
+    cmd = r"cp python/setup.py $1" % [setupFilename]
+    echo cmd
+    exec cmd
 
     exec r"find . -name \*.pyc -delete"
 
     if strip:
       exec r"strip -x $1" % [output]
-
 
 proc createDependencyGraph() =
   # Create my.dot file with the contents of metar.dot after stripping
@@ -128,6 +126,8 @@ proc createDependencyGraph() =
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o docs/html//dependencies.svg"
 
+task t, "Show the list of tasks.":
+  exec "nimble tasks"
 
 task m, "Build metar exe and python module, release versions.":
   build_metar_and_python_module()
@@ -144,6 +144,11 @@ task md, "Build debug version of metar.":
 task mdlib, "Build debug version of the python module.":
   build_metar_and_python_module(buildExe=false, release=false)
 
+task pipinstall, "Install the release python metar module in the virtual env.":
+    # Install the version just built in the virtual environment.
+    var cmd = "pip3 install bin/linux"
+    echo cmd
+    exec cmd
 
 proc get_test_module_cmd(filename: string, release = false): string =
   ## Return the command line to test one module.
@@ -468,3 +473,23 @@ task mxmac, "Compile for mac 64 bit using the xcompile docker image.":
 task mxlinux, "Compile for linux 64 bit using the xcompile docker image.":
 
   build_metar_and_python_module(host = "linux", name = "metar", libName = "metar.so", release = true, strip = true, nimOptions = "--os:linux --cpu:amd64 ", xcompile = true)
+
+task pyactivate, "Activate the python virtual env.  Create it when missing.":
+  var dirName = getDirName(hostOS)
+  let virtualEnv = "env/$1/metarenv" % dirName
+  if system.dirExists(virtualEnv):
+    if system.getEnv("VIRTUAL_ENV", "") == "":
+      var cmd = ". $1/bin/activate" % [virtualEnv]
+      echo "run:"
+      echo cmd
+  else:
+    echo "Creating virtual environment: $1" % [virtualEnv]
+    var cmd = "python3 -m venv $1" % [virtualEnv]
+    echo cmd
+    exec cmd
+    cmd = "source $1/bin/activate" % [virtualEnv]
+    echo cmd
+    exec cmd
+    cmd = "pip3 install wheel"
+    echo cmd
+    exec cmd
