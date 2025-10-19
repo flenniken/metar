@@ -1,0 +1,30 @@
+
+# Show the current folder in the prompt.
+PS1='(debian)\w $ '
+
+# Allow aliases to work with sudo, i.e.: "sudo ll".
+alias sudo='sudo '
+
+# List the most recent files.
+alias l='ls -ltr | tail -10'
+
+alias ls='ls --color=auto'
+alias ll='ls -l'
+alias n='nimble'
+
+# Use the manually built version of nim.
+export PATH=/home/coder/Nim/bin:$PATH
+
+# Check that the nim is built.
+blueWarning="\033[34mWarning\033[0m"
+if command -v nim >/dev/null 2>&1; then
+  echo "Using Nim version:"
+  nim -v | grep Version
+else
+  echo -e "$blueWarning Nim is not built."
+  echo "Build Nim with:"
+  echo "cd ~/Nim"
+  echo "./build_all.sh"
+fi
+
+

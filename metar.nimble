@@ -11,18 +11,8 @@ author = "Steve Flenniken"
 description = "Metadata Reader for Images"
 license = "MIT"
 binDir = "bin"
-
-# The nimpy package is required for the library module but not the
-# exe.  Nimpy does not update the its version number, its always at
-# 0.1.0. So we use the git version number instead. See the package
-# source code at ~/.nimble/pkgs. Update the version.nim file and the
-# Dockerfile when you update the version.
-requires "nim >= 1.0.4", "nimpy#c8ec14a" # Search for nimpyVersion*.
-
+requires "nim >= 2.2.4"
 bin = @["metar/metar"]
-# skipExt = @["nim"]
-# skipDirs = @["tests", "private"]
-
 
 proc getDirName(host: string): string =
   ## Return the host dir name given the nim hostOS name.
@@ -36,10 +26,15 @@ proc getDirName(host: string): string =
   elif host == "windows":
     result = "win"
   else:
-    assert false, "add a new platform"
+    echo "add a new platform for: '$1'" % [host]
+    assert false, "add a new platform for: '$1'" % [host]
 
+task getDirName, "getDirName for host OS":
+  let dirName = getDirName(hostOS)
+  echo "the host: '$1' dir name is: '$2'" % [hostOS, dirName]
+  echo "done"
 
-proc get_output_path(host: string, baseName: string="", release: bool=true): string =
+proc getOutputPath(host: string, baseName: string="", release: bool=true): string =
   ## Return the path to a folder or file for the output binaries. The
   ## path is dependent on the host platform and whether it is a debug
   ## or release build.  Pass hostOS for the current platform. Pass a
@@ -56,18 +51,16 @@ proc get_output_path(host: string, baseName: string="", release: bool=true): str
     components.add(baseName)
   result = joinPath(components)
 
+task getOutputPath, "getOutputPath for exe":
+  let outputPath = getOutputPath(hostOS)
+  echo "the host: '$1' output path is: '$2'" % [hostOS, outputPath]
+  echo "done"
 
-proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "metar.so",
-    ignoreOutput = false, release = true, strip = true, xcompile = false,
-    nimOptions = "", buildExe=true, buildLib=true) =
+proc build_metar(name = "metar", release = true, nimOptions = "", host = "debian") =
 
   let hints = "--hint[Processing]:off --hint[CC]:off --hint[Link]:off --hint[Conf]:off "
 
-  var ignore: string
-  if ignoreOutput:
-    ignore = ">/dev/null 2>&1"
-  else:
-    ignore = ""
+  var ignore: string = ""
 
   var rel: string
   var relDisplay: string
@@ -78,45 +71,16 @@ proc build_metar_and_python_module(host = hostOS, name = "metar", libName = "met
     rel = ""
     relDisplay = "debug"
 
-  var docker: string
-  if xcompile:
-    docker = "docker run --rm -v `pwd`:/usr/local/src xcompile "
-  else:
-    docker = ""
+  var docker: string = ""
 
-  if buildExe:
-    let output = get_output_path(host, name, release)
-    echo "===> Building Command Line Exe $1 $2 for $3 <===" % [relDisplay, name, host]
-    exec r"rm -f $1" % [output]
+  let output = getOutputPath(hostOS, name, release)
+  echo "===> Building Command Line Exe $1 $2 for $3 <===" % [relDisplay, name, host]
+  exec r"rm -f $1" % [output]
 
-    let cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
-    echo cmd
-    exec cmd
-
-    if strip:
-      exec r"strip $1" % [output]
-
-  if buildLib:
-    let output = get_output_path(host, libName, release)
-    echo "===> Building Python Lib $1 $2 for $3 <===" % [relDisplay, libName, host]
-    exec r"rm -f $1" % [output]
-
-    var cmd = "$5nim c $2--out:$1 $3-d:buildingLib --app:lib $6metar/metar $4" % [output, rel, nimOptions, ignore, docker, hints]
-    echo cmd
-    exec cmd
-
-    # Put the setup file next to the lib ready to install.
-    var dirName = getDirName(host)
-    let setupFilename = "bin/$1/setup.py" % [dirName]
-    # if not system.fileExists(setupFilename):
-    cmd = r"cp python/setup.py $1" % [setupFilename]
-    echo cmd
-    exec cmd
-
-    exec r"find . -name \*.pyc -delete"
-
-    if strip:
-      exec r"strip -x $1" % [output]
+  let cmd = "$5nim c $2--out:$1 $3$6$4metar/metar" % [output, rel, nimOptions, ignore, docker, hints]
+  echo cmd
+  # exec cmd
+  # exec r"strip $1" % [output]
 
 proc createDependencyGraph() =
   # Create my.dot file with the contents of metar.dot after stripping
@@ -126,29 +90,18 @@ proc createDependencyGraph() =
   exec "python python/dotMetar.py names.txt metar/metar.dot >metar/my.dot"
   exec "dot -Tsvg metar/my.dot -o docs/html//dependencies.svg"
 
-task t, "Show the list of tasks.":
+task n, "Show the list of tasks.":
   exec "nimble tasks"
 
-task m, "Build metar exe and python module, release versions.":
-  build_metar_and_python_module()
-
-task mall, "Build metar exe and python module both debug and release.":
-  build_metar_and_python_module()
-  build_metar_and_python_module(release=false)
-
+task m, "Build the release version of metar":
+  build_metar()
 
 task md, "Build debug version of metar.":
-  build_metar_and_python_module(buildLib=false, release=false)
+  build_metar(release=false)
 
-
-task mdlib, "Build debug version of the python module.":
-  build_metar_and_python_module(buildExe=false, release=false)
-
-task pipinstall, "Install the release python metar module in the virtual env.":
-    # Install the version just built in the virtual environment.
-    var cmd = "pip3 install bin/linux"
-    echo cmd
-    exec cmd
+task mall, "Build both debug and release versions of metar.":
+  build_metar()
+  build_metar(release=false)
 
 proc get_test_module_cmd(filename: string, release = false): string =
   ## Return the command line to test one module.
@@ -206,11 +159,8 @@ proc runTests(release: bool) =
   ## Test each nim file in the tests folder.
   for filename in get_test_filenames():
     let cmd = get_test_module_cmd(filename, release)
-    exec cmd
-
-task testpython, "Test the python module.":
-  testPython()
-
+    echo cmd
+    # exec cmd
 
 # task args, "Show command line arguments.":
 #   # Nimble needs to improve it command line processing.
@@ -432,64 +382,4 @@ task showdebugger, "Show example command line to debug code with lldb.":
   echo "  lldb bin/linux/metar testfiles/image.jpg"
   echo ""
 
-# task jsondoc, "Write doc comments to a json file for metar.nim.":
-#   exec r"nim jsondoc0 --out:docs/metar.json metar/metar"
-#   exec "open -a Firefox docs/metar.json"
 
-# task jsondoct, "Write doc comments to a json file for t.nim.":
-#   exec r"nim jsondoc0 --out:docs/tdoc0.json metar/private/t"
-#   exec r"nim jsondoc --out:docs/tdoc.json metar/private/t"
-#   exec "open -a Firefox docs/tdoc.json"
-
-# The metar image is called metar_image
-# The container is called metar_container
-
-task dcreate, "Create a metar linux docker image.":
-  exec r"docker build -t metar-image env/linux/."
-
-task drun, "Run the metar linux docker container.":
-  exec r"./env/run-metar-container.sh"
-
-task ddelete, "Delete the metar linux docker container.":
-  try:
-    exec r"docker stop metar-container; docker rm metar-container"
-  except:
-    discard
-
-task dlist, "List the metar linux docker image and container.":
-  try:
-    exec r"echo 'image:';docker images | grep metar-image ; echo '\ncontainer:';docker ps -a | grep metar-container"
-  except:
-    discard
-
-task mxwin, "Compile for windows 64 bit using the xcompile docker image.":
-
-  build_metar_and_python_module(host = "windows", name = "metar.exe", libName = "metar.dll", release = true, strip = false, nimOptions = "--os:windows --cpu:amd64 ", xcompile = true)
-
-task mxmac, "Compile for mac 64 bit using the xcompile docker image.":
-
-  build_metar_and_python_module(host = "macosx", name = "metar", libName = "metar.so", release = true, strip = false, nimOptions = "--os:macosx --cpu:amd64 ", xcompile = true)
-
-task mxlinux, "Compile for linux 64 bit using the xcompile docker image.":
-
-  build_metar_and_python_module(host = "linux", name = "metar", libName = "metar.so", release = true, strip = true, nimOptions = "--os:linux --cpu:amd64 ", xcompile = true)
-
-task pyactivate, "Activate the python virtual env.  Create it when missing.":
-  var dirName = getDirName(hostOS)
-  let virtualEnv = "env/$1/metarenv" % dirName
-  if system.dirExists(virtualEnv):
-    if system.getEnv("VIRTUAL_ENV", "") == "":
-      var cmd = ". $1/bin/activate" % [virtualEnv]
-      echo "run:"
-      echo cmd
-  else:
-    echo "Creating virtual environment: $1" % [virtualEnv]
-    var cmd = "python3 -m venv $1" % [virtualEnv]
-    echo cmd
-    exec cmd
-    cmd = "source $1/bin/activate" % [virtualEnv]
-    echo cmd
-    exec cmd
-    cmd = "pip3 install wheel"
-    echo cmd
-    exec cmd

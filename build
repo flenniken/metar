@@ -1,0 +1,122 @@
+#!/bin/bash
+
+# Build and test metar.
+# Run with no arguments to see the available commands.
+
+metarDir="/home/coder/metar"
+
+option=$1
+
+# Make sure we're running inside the docker container.
+if [[ -z "${coder_env}" ]]; then
+  echo "Run in the docker container not on the host."
+  exit
+fi
+
+# Make sure we are running in the metar folder.
+if [[ ! $(pwd) == "$metarDir" ]]; then
+  echo "Run from the metar folder: $metarDir"
+  exit
+fi
+
+function buildReleaseCmd() {
+  # Build the release version of metar.
+
+  # --hint[Processing]:off --hint[CC]:off --hint[Link]:off
+
+  metarExe='bin/linux/metar'
+  rm $metarExe
+
+  nim c -d:release --out:$metarExe metar/metar
+
+  # Make sure the exe exists.
+  if [[ ! -e $metarExe ]]; then
+    echo "Error creating the exe: $metarExe"
+  fi
+  
+  exit
+}
+
+function buildDebugCmd() {
+  # Build the debug version of metar.
+
+  metarExe='bin/linux/debug/metar'
+  rm $metarExe
+
+  nim c -d:release --out:$metarExe metar/metar
+
+  # Make sure the exe exists.
+  if [[ ! -e $metarExe ]]; then
+    echo "Error creating the exe: $metarExe"
+  fi
+  
+  exit
+}
+
+function testDebugCmd() {
+  # Test each nim file in the tests folder using the debug version of
+  # metar.
+
+  # for filename in get_test_filenames():
+  #   let cmd = get_test_module_cmd(filename, release)
+  #   exec cmd
+  echo "test debug"
+  exit
+}
+
+function testReleaseCmd() {
+  # Test the release version of metar.
+  # Run each nim file in the tests folder.
+
+  # for filename in get_test_filenames():
+  #   let cmd = get_test_module_cmd(filename, release)
+  #   exec cmd
+  echo "test release"
+
+  # Run each test file in the test folder.
+  for file in tests/test_*.nim; do
+    basename=$(basename $file)
+
+    cmd="nim c -f -d:nimDebugDlOpen --verbosity:0 -d:test --hints:off -r \
+      -p:metar --out:bin/tests/$basename $file"
+    echo $cmd
+    $cmd
+  done
+
+  exit
+}
+
+case $option in
+  br)
+    buildReleaseCmd
+    ;;
+  bd)
+    buildDebugCmd
+    ;;
+  tr)
+    testReleaseCmd
+    ;;
+  td)
+    testDebugCmd
+    ;;
+  *)
+
+cat << EOF
+options:
+
+br             Build the release version of metar.
+bd             Build the debug version of metar.
+tr             Test the release metar version.
+td             Test the debug metar version.
+
+testall        Run all the tests in both debug and release.
+showtests      Show the command lines to run unit tests individually.
+clean          Delete unneeded temporary files created by the build processes.
+docs1          Build docs for one module.
+docs           Build all the docs.
+tree           Show the project directory tree.
+bins           Show the binary file details.
+coverage       Run unit tests to collect and show code coverage data.
+EOF
+    ;;
+esac

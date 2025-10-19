@@ -1,0 +1,133 @@
+#!/bin/bash
+
+# Build or run the docker build environment.  Type runenv
+# with no arguments to see the available commands.
+
+rootDir=$(pwd)
+dockerFolder=$rootDir/env/linux
+dockerFile=$dockerFolder/Dockerfile
+
+dockerImage="metar-image"
+dockerContainer="metar-container"
+shared_option="-v $rootDir:/home/coder/metar"
+
+option=$1
+
+function buildMe() {
+  ## Create the docker image.
+
+  # Create the image if missing.
+  imageExists=$(docker inspect $dockerImage 2>/dev/null | grep "Id" | grep "sha256:")
+  if [[ "${imageExists}" == "" ]]; then
+
+    echo "The $dockerImage image does not exist, creating it."
+
+    docker build --tag=$dockerImage $dockerFolder
+  else
+    echo "The $dockerImage image already exists."
+  fi
+}
+
+function runMe() {
+  ## Create run the docker container.
+
+  # Make sure the image exists.
+  imageExists=$(docker inspect $dockerImage 2>/dev/null | grep "Id" | grep "sha256:")
+  if [[ "${imageExists}" == "" ]]; then
+
+    echo "The $dockerImage image does not exist. Create it first with the b command."
+    exit
+  fi
+
+  # Run the container.
+  status=$(docker inspect $dockerContainer 2>/dev/null | grep Status)
+  mapports='-p 127.0.0.1:8000:8000'
+  case $status in
+    *running*)
+      echo "The $dockerContainer container is running, attaching to it."
+      docker attach $dockerContainer
+      ;;
+    *exited*)
+      echo "The $dockerContainer container exists but its not running, starting it."
+      docker start -ai $dockerContainer
+      ;;
+    *)
+      echo "The $dockerContainer container does not exist, creating it."
+      docker run $mapports --name=$dockerContainer -it $shared_option $dockerImage
+      ;;
+  esac
+
+}
+
+function deleteMe() {
+  ## Delete the container and image.
+
+  # Delete the container if it exists and isn't running.
+  status=$(docker inspect $dockerContainer 2>/dev/null | grep Status)
+  case $status in
+    *running*)
+      echo "The container is running, exit it and try again."
+      exit
+      ;;
+    *exited*)
+      echo "Deleting the container."
+      docker rm $dockerContainer 2>&1 >/dev/null
+      ;;
+  esac
+
+  # Delete the image if it exists.
+  imageExists=$(docker inspect $dockerImage 2>/dev/null | grep "Id" | grep "sha256:")
+  if [[ "${imageExists}" != "" ]]; then
+    echo "Deleting the image."
+    docker image rm $dockerImage 2>&1 >/dev/null
+  fi
+}
+
+function listMe() {
+  ## List the container and image.
+
+  imageStatus=$(docker inspect $dockerImage 2>/dev/null)
+  if [[ "${imageStatus}" == "[]" ]]; then
+    echo "No $dockerImage image."
+  else
+    echo "The $dockerImage image exists."
+  fi
+
+  containerStatus=$(docker inspect $dockerContainer 2>/dev/null )
+  if [[ "${containerStatus}" == "[]" ]]; then
+    echo "No $dockerContainer"
+  else
+    echo "The $dockerContainer container exists."
+  fi
+}
+
+# Verify we are running in the root folder by looking for the Docker
+# file.
+if [ ! -s "$dockerFile" ]; then
+  echo "Error: run from the root folder."
+  exit
+fi
+
+# Make sure we're not running inside the docker container.
+if [[ ! -z "${coder_env}" ]]; then
+  echo "Error: run on the host not in the docker container."
+  exit
+fi
+
+case $option in
+  b | build)
+    buildMe
+    ;;
+  d | delete)
+    deleteMe
+    ;;
+  l | list)
+    listMe
+    ;;
+  r | run)
+    runMe
+    ;;
+  *)
+    echo "options: build (b), run (r),  delete (d),  list (l)."
+    ;;
+esac

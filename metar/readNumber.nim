@@ -23,24 +23,28 @@ proc getNumber*[T](buffer: openArray[uint8], index=0,
     static:
       doAssert(false, "T is not a number type.")
 
+  when not (sizeof(T) == 1 or sizeof(T) == 2 or sizeof(T) == 4 or sizeof(T) == 8):
+    static:
+      doAssert(false, "T size is unexpected.")
+
   let pointer = unsafeAddr(buffer[index])
   when sizeof(T) == 1:
     copyMem(addr(result), pointer, 1)
-    return
-  if endian == littleEndian:
-    when sizeof(T) == 2:
-      littleEndian16(addr(result), pointer)
-    elif sizeof(T) == 4:
-      littleEndian32(addr(result), pointer)
-    else: #sizeof(T) == 8:
-      littleEndian64(addr(result), pointer)
   else:
-    when sizeof(T) == 2:
-      bigEndian16(addr(result), pointer)
-    elif sizeof(T) == 4:
-      bigEndian32(addr(result), pointer)
-    else: # sizeof(T) == 8:
-      bigEndian64(addr(result), pointer)
+    if endian == littleEndian:
+      when sizeof(T) == 2:
+        littleEndian16(addr(result), pointer)
+      elif sizeof(T) == 4:
+        littleEndian32(addr(result), pointer)
+      else: #sizeof(T) == 8:
+        littleEndian64(addr(result), pointer)
+    else:
+      when sizeof(T) == 2:
+        bigEndian16(addr(result), pointer)
+      elif sizeof(T) == 4:
+        bigEndian32(addr(result), pointer)
+      else: # sizeof(T) == 8:
+        bigEndian64(addr(result), pointer)
 
 
 proc readNumber*[T](file: File, endian: Endianness=littleEndian): T =
@@ -82,4 +86,3 @@ proc get2l*(buffer: var openArray[uint8], index: Natural=0): int =
   ## Read two bytes from the buffer in little-endian starting at the
   ## given index.
   return (int)getNumber[uint16](buffer, index, littleEndian)
-

@@ -1,58 +1,47 @@
 # Create a build and test environment for metar.
 
-FROM debian:latest
+FROM debian:12
 
-MAINTAINER Steve Flenniken
+# Define the coder_env environment variable used to detect when we are
+# running in the docker container.
+ENV coder_env=debian
+
+# Install the needed apps and libraries.
+
+# todo: libpcre3 and libpre3-dev are needed for the shared library
+# libpcre.so used by the nim reqular expression library. You can
+# statically link it, look up nimpcre.
 
 RUN apt update \
   && apt -qy install curl libssl-dev build-essential gcc \
-    python3 xz-utils less git man sudo tree \
-    python3-pip python3-venv
+  less git man sudo tree libpcre3 libpcre3-dev
 
-# Set sudo so user steve doesn't need to type in a password.
+# Create a linux user called coder with sudo permissions and no
+# password.
 RUN mkdir -p /etc/sudoers.d \
-  && echo "steve ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/steve \
-  && chmod 440 /etc/sudoers.d/steve
+  && echo "coder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/coder \
+  && chmod 440 /etc/sudoers.d/coder \
+  && adduser --disabled-password --gecos '' coder \
+  && usermod -aG sudo coder \
+  && echo 'coder:devenv' | chpasswd
 
-# Create user steve with sudo permissions.
-RUN adduser --disabled-password --gecos '' steve \
-  && usermod -aG sudo steve \
-  && echo 'steve:metar' | chpasswd
+# Correct the coder home folder permissions.
+RUN chown coder:coder /home/coder
 
-# Switch to user steve for the following commands.
+# Switch to coder user for following commands.
+USER coder
+WORKDIR /home/coder/
 
-USER steve
-WORKDIR /home/steve
+# Get nim source for manually building nim.
+RUN git clone https://github.com/nim-lang/Nim.git
+ARG nim_version=v2.2.4
+RUN cd Nim \
+  && git checkout $nim_version \
+  && git switch -c $nim_version
 
-# Install choosenim and the latest version of nim.
-RUN curl -sSfLo init.sh https://nim-lang.org/choosenim/init.sh \
-  && sed -i 's/need_tty=yes/need_tty=no/' init.sh \
-  && bash init.sh \
-  && rm init.sh \
-  && export PATH=/home/steve/.nimble/bin:$PATH \
-  && echo "export PATH=$PATH" >> .bashrc
+# Install bashrc for the prompt and some aliases.
+COPY --chown=coder:coder bashrc .bashrc
 
-# Add aliases.
-RUN echo "alias ll='ls -l'" >> .bashrc \
-  && echo "alias n='nimble'" >> .bashrc
-
-# Put metar on the path.
-RUN mkdir -p /home/steve/code/metar/ \
-  && sudo ln -s /home/steve/code/metar/bin/linux/metar /usr/local/bin/metar
-
-# Install nimpy.
-RUN export PATH=/home/steve/.nimble/bin:$PATH \
-  && nimble install -y nimpy@#c8ec14a # metarVersion*
-
-RUN echo "PS1='\u:\w\$ '" >> .bashrc
-
-# Create metarenv virtual environment.
-ENV VIRTUAL_ENV=/home/steve/code/metar/env/linux/metarenv
-RUN python3 -m venv $VIRTUAL_ENV
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-RUN python3 -m venv $VIRTUAL_ENV \
-  && pip3 install wheel \
-  && echo ". $VIRTUAL_ENV/bin/activate" >> .bashrc
-
-WORKDIR /home/steve/code/metar/
-CMD /bin/bash
+# Start in the metar directory.
+WORKDIR /home/coder/metar
+CMD ["/bin/bash"]

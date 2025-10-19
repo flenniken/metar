@@ -28,7 +28,7 @@ suite "Test bytesToString.nim":
       try:
         discard bytesToString(buffer, 0, buffer.len+1)
         fail()
-      except:
+      except CatchableError:
         # echo repr(getCurrentException())
         # echo getCurrentException().name
         # echo getCurrentExceptionMsg()
@@ -40,7 +40,7 @@ suite "Test bytesToString.nim":
       try:
         discard bytesToString(buffer, 4, 1)
         fail()
-      except:
+      except CatchableError:
         # echo repr(getCurrentException())
         # echo getCurrentException().name
         # echo getCurrentExceptionMsg()
@@ -52,7 +52,7 @@ suite "Test bytesToString.nim":
       try:
         discard bytesToString(buffer, 3, 2)
         fail()
-      except:
+      except CatchableError:
         # echo getCurrentExceptionMsg()
         discard
 
@@ -62,7 +62,7 @@ suite "Test bytesToString.nim":
       try:
         discard bytesToString(buffer, 0, 4)
         fail()
-      except:
+      except CatchableError:
         # echo getCurrentExceptionMsg()
         discard
 
@@ -72,7 +72,7 @@ suite "Test bytesToString.nim":
       try:
         discard bytesToString(buffer, 0, 4)
         fail()
-      except:
+      except CatchableError:
         # echo getCurrentExceptionMsg()
         discard
 
