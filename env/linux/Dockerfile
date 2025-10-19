@@ -16,6 +16,12 @@ RUN apt update \
   && apt -qy install curl libssl-dev build-essential gcc \
   less git man sudo tree libpcre3 libpcre3-dev
 
+# Install graphviz for creating svg dependency graphs.
+# Install python for dotFilter.py.
+# todo: port dotFilter to nim then python is not needed.
+# https://graphviz.org/
+RUN apt install -qy graphviz python3
+
 # Create a linux user called coder with sudo permissions and no
 # password.
 RUN mkdir -p /etc/sudoers.d \

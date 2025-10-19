@@ -9,3 +9,4 @@ metarenv/
 testfiles.extra/
 *.DS_Store
 metarpy/
+docs/html/

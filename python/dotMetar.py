@@ -19,7 +19,7 @@ import argparse
 import re
 
 
-line_pattern = re.compile('^([0-9a-zA-Z]+) -> \"([0-9a-zA-Z]+)\";$')
+line_pattern = re.compile('^\"([0-9a-zA-Z]+)\" -> \"([0-9a-zA-Z]+)\";$')
 
 def parse_line(line):
   """
@@ -30,6 +30,7 @@ def parse_line(line):
 
   match = line_pattern.match(line)
   if not match:
+    # print(f"line: {line}")
     return "", ""
   left = match.group(1)
   right = match.group(2)
@@ -48,6 +49,7 @@ def dotFilter(names, filename):
   with open(filename, 'r') as fh:
     for line in fh:
       left, right = parse_line(line)
+      # print(f"{left}: {right}")
       if left != '' and left in names and right in names:
         print('%s -> %s;' % (left, right))
 
@@ -75,13 +77,11 @@ def main(args):
     print("file doesn't exist: " + args.dotFilename)
     return
   names = readNames(args.filename)
+  # print("names:")
   # for k, v in names.items():
-  #   print '%s = %s' % (k, v)
+  #   print('%s = %s' % (k, v))
 
   dotFilter(names, args.dotFilename)
-  # with open(args.dotFilename, 'r') as fh:
-  #   for line in fh:
-  #     print line
 
 def parse_command_line():
   """

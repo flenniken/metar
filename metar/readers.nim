@@ -47,8 +47,6 @@ proc getMetaInfo(filename: string, readerName: string,
     result["build"] = newJString("release")
   result["os"] = newJString(hostOS)
   result["cpu"] = newJString(hostCPU)
-  when defined(buildingLib):
-    result["nimpyVersion"] = newJString(nimpyVersion)
   var p = newJArray()
   for item in problems:
     var jarray = newJArray()
