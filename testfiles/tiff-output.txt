@@ -1,0 +1,42 @@
+========== ifd1 ==========
+offset = 8
+next = 0
+NewSubfileType(254) = [0]
+ImageWidth(256) = [124]
+ImageHeight(257) = [124]
+BitsPerSample(258) = [8, 8, 8]
+Compression(259) = [1]
+PhotometricInterpretation(262) = [2]
+StripOffsets(273) = [243, 20703, 41163]
+SamplesPerPixel(277) = [3]
+RowsPerStrip(278) = [55]
+StripByteCounts(279) = [20460, 20460, 5208]
+XResolution(282) = [[31, 1]]
+YResolution(283) = [[31, 1]]
+ResolutionUnit(296) = [2]
+Software(305) = ["¼"]
+========== image ==========
+width = 124
+height = 124
+pixels = [[243, 46371]]
+========== ranges ==========
+header (0, 8) 
+ifd1   (8, 182) entries
+ifd1   (182, 188) BitsPerSample(258)
+gap*   (188, 203) 15 gap bytes: 49 6D 61 67 65 50 72 65...  ImagePre
+ifd1   (203, 211) XResolution(282)
+ifd1   (211, 219) YResolution(283)
+ifd1   (219, 231) StripOffsets(273)
+ifd1   (231, 243) StripByteCounts(279)
+image  (243, 46371) 
+========== meta ==========
+filename = "image.tif"
+reader = "tiff"
+size = 46371
+version = "0.1.26"
+nimVersion = "2.2.4"
+build = "release"
+os = "linux"
+cpu = "arm64"
+problems = []
+readers = ["jpeg", "tiff"]

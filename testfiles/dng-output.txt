@@ -1,0 +1,288 @@
+========== ifd1 ==========
+offset = 8
+next = 0
+NewSubfileType(254) = [1]
+ImageWidth(256) = [256]
+ImageHeight(257) = [171]
+BitsPerSample(258) = [8, 8, 8]
+Compression(259) = [1]
+PhotometricInterpretation(262) = [2]
+Make(271) = ["Canon"]
+Model(272) = ["Canon EOS 20D"]
+StripOffsets(273) = [37312]
+Orientation(274) = [1]
+SamplesPerPixel(277) = [3]
+RowsPerStrip(278) = [171]
+StripByteCounts(279) = [131328]
+PlanarConfiguration(284) = [1]
+ModifyDate(306) = ["2014:10:04 06:14:16"]
+Artist(315) = ["unknown"]
+SubIFDs(330) = [16388, 36698]
+XMP(700) = "xmp"
+ExifOffset(34665) = "exif"
+ImageNumber(37393) = [205]
+DNGVersion(50706) = [1, 1, 0, 0]
+DNGBackwardVersion(50707) = [1, 1, 0, 0]
+UniqueCameraModel(50708) = ["Canon EOS 20D"]
+ColorMatrix1(50721) = [[7565, 10000], [-1680, 10000], [-264, 10000], [-6543, 10000], ...]
+ColorMatrix2(50722) = [[6599, 10000], [-537, 10000], [-891, 10000], [-8071, 10000], ...]
+CameraCalibration1(50723) = [[10016, 10000], [0, 10000], [0, 10000], [0, 10000], ...]
+CameraCalibration2(50724) = [[10016, 10000], [0, 10000], [0, 10000], [0, 10000], ...]
+AnalogBalance(50727) = [[1000000, 1000000], [1000000, 1000000], [1000000, 1000000]]
+AsShotNeutral(50728) = [[526999, 1000000], [1000000, 1000000], [623848, 1000000]]
+BaselineExposure(50730) = [[25, 100]]
+BaselineNoise(50731) = [[125, 100]]
+BaselineSharpness(50732) = [[150, 100]]
+LinearResponseLimit(50734) = [[100, 100]]
+CameraSerialNumber(50735) = ["620423455"]
+DNGLensInfo(50736) = [[24, 1], [70, 1], [0, 0], [0, 0]]
+ShadowScale(50739) = [[1, 1]]
+PrivateData(50740) = "8388 bytes starting at 7970"
+CalibrationIlluminant1(50778) = [17]
+CalibrationIlluminant2(50779) = [21]
+RawDataUniqueID(50781) = [206, 77, 24, 94, 95, 144, 171, 169, 253, 170, 131, 227, 201, 37, ...]
+OriginalRawFileName(50827) = ["IMG_6093.CR2"]
+========== xmp ==========
+xpacket:begin = "﻿"
+xpacket:id = "W5M0MpCehiHzreSzNTczkc9d"
+crs:Version = "3.2"
+crs:RawFileName = "IMG_6093.dng"
+crs:WhiteBalance = "As Shot"
+crs:Temperature = "5000"
+crs:Tint = "0"
+crs:Exposure = "-0.20"
+crs:Shadows = "2"
+crs:Brightness = "50"
+crs:Contrast = "+25"
+crs:Saturation = "0"
+crs:Sharpness = "25"
+crs:LuminanceSmoothing = "0"
+crs:ColorNoiseReduction = "25"
+crs:ChromaticAberrationR = "0"
+crs:ChromaticAberrationB = "0"
+crs:VignetteAmount = "0"
+crs:ShadowTint = "0"
+crs:RedHue = "0"
+crs:RedSaturation = "0"
+crs:GreenHue = "0"
+crs:GreenSaturation = "0"
+crs:BlueHue = "0"
+crs:BlueSaturation = "0"
+crs:ToneCurveName = "Medium Contrast"
+crs:ToneCurve = ["0, 0", "32, 22", "64, 56", "128, 128", "192, 196", "255, 255"]
+crs:CameraProfile = "ACR 2.4"
+crs:HasSettings = "True"
+crs:CropTop = "0.002557"
+crs:CropLeft = "0.050593"
+crs:CropBottom = "1"
+crs:CropRight = "0.978571"
+crs:CropAngle = "1.934207"
+crs:HasCrop = "True"
+exif:ExifVersion = "0221"
+exif:ExposureTime = "1/40"
+exif:ShutterSpeedValue = "5321928/1000000"
+exif:FNumber = "28/10"
+exif:ApertureValue = "2970854/1000000"
+exif:ExposureProgram = "2"
+exif:DateTimeOriginal = "2014-10-04T06:14:16-07:00"
+exif:DateTimeDigitized = "2014-10-04T06:14:16-07:00"
+exif:ExposureBiasValue = "0/1"
+exif:MeteringMode = "1"
+exif:FocalLength = "27/1"
+exif:CustomRendered = "0"
+exif:ExposureMode = "0"
+exif:WhiteBalance = "1"
+exif:SceneCaptureType = "0"
+exif:FocalPlaneXResolution = "3504000/885"
+exif:FocalPlaneYResolution = "2336000/590"
+exif:FocalPlaneResolutionUnit = "2"
+exif:ISOSpeedRatings = ["100"]
+exif:Fired = "False"
+exif:Return = "0"
+exif:Mode = "2"
+exif:Function = "False"
+exif:RedEyeMode = "False"
+aux:SerialNumber = "620423455"
+aux:LensInfo = "24/1 70/1 0/0 0/0"
+aux:Lens = "24.0-70.0 mm"
+aux:ImageNumber = "205"
+aux:FlashCompensation = "0/1"
+aux:OwnerName = "unknown"
+aux:Firmware = "1.1.0"
+tiff:Make = "Canon"
+tiff:Model = "Canon EOS 20D"
+tiff:Orientation = "1"
+tiff:DateTime = "2014-10-04T06:14:16-07:00"
+xap:ModifyDate = "2014-10-04T06:14:16-07:00"
+xap:Rating = "2"
+xap:MetadataDate = "2014-10-14T20:32:57-07:00"
+dc:creator = ["unknown"]
+xpacket:end = "w'?"
+xmlns:x = "adobe:ns:meta/"
+x:xmptk = "XMP toolkit 3.0-28, framework 1.6"
+xmlns:rdf = "http://www.w3.org/1999/02/22-rdf-syn...
+xmlns:iX = "http://ns.adobe.com/iX/1.0/"
+xmlns:crs = "http://ns.adobe.com/camera-raw-setti...
+xmlns:exif = "http://ns.adobe.com/exif/1.0/"
+xmlns:aux = "http://ns.adobe.com/exif/1.0/aux/"
+xmlns:pdf = "http://ns.adobe.com/pdf/1.3/"
+xmlns:photoshop = "http://ns.adobe.com/photoshop/1.0/"
+xmlns:tiff = "http://ns.adobe.com/tiff/1.0/"
+xmlns:xap = "http://ns.adobe.com/xap/1.0/"
+xmlns:dc = "http://purl.org/dc/elements/1.1/"
+========== image ==========
+-- 1 --
+width = 256
+height = 171
+pixels = [[37312, 168640]]
+-- 2 --
+width = 3596
+height = 2360
+pixels = [[261420, 6777513]]
+-- 3 --
+width = 1024
+height = 683
+pixels = [[168640, 261420]]
+========== ifd2 ==========
+offset = 16388
+next = 0
+NewSubfileType(254) = [0]
+ImageWidth(256) = [3596]
+ImageHeight(257) = [2360]
+BitsPerSample(258) = [16]
+Compression(259) = [7]
+PhotometricInterpretation(262) = [32803]
+SamplesPerPixel(277) = [1]
+PlanarConfiguration(284) = [1]
+TileWidth(322) = [240]
+TileLength(323) = [272]
+TileOffsets(324) = "135 longs starting at 16730"
+TileByteCounts(325) = "135 longs starting at 17270"
+CFARepeatPatternDim(33421) = [2, 2]
+CFAPattern2(33422) = [0, 1, 1, 2]
+CFAPlaneColor(50710) = [0, 1, 2]
+CFALayout(50711) = [1]
+BlackLevelRepeatDim(50713) = [1, 1]
+BlackLevel(50714) = [[0, 256]]
+BlackLevelDeltaV(50716) = "2348 srationals starting at 17818"
+WhiteLevel(50717) = [4095]
+DefaultScale(50718) = [[1, 1], [1, 1]]
+DefaultCropOrigin(50719) = [[10, 1], [7, 1]]
+DefaultCropSize(50720) = [[3504, 1], [2336, 1]]
+BayerGreenSplit(50733) = [0]
+AntiAliasStrength(50738) = [[100, 100]]
+BestQualityScale(50780) = [[1, 1]]
+ActiveArea(50829) = [12, 74, 2360, 3596]
+MaskedAreas(50830) = [12, 0, 2360, 72]
+========== ifd3 ==========
+offset = 36698
+next = 0
+NewSubfileType(254) = [1]
+ImageWidth(256) = [1024]
+ImageHeight(257) = [683]
+BitsPerSample(258) = [8, 8, 8]
+Compression(259) = [7]
+PhotometricInterpretation(262) = [6]
+StripOffsets(273) = [168640]
+SamplesPerPixel(277) = [3]
+RowsPerStrip(278) = [683]
+StripByteCounts(279) = [92780]
+PlanarConfiguration(284) = [1]
+YCbCrCoefficients(529) = [[299, 1000], [587, 1000], [114, 1000]]
+YCbCrSubSampling(530) = [2, 2]
+YCbCrPositioning(531) = [2]
+ReferenceBlackWhite(532) = [[0, 1], [255, 1], [128, 1], [255, 1], [128, 1], [255, 1]]
+========== exif4 ==========
+offset = 36962
+next = 0
+ExposureTime(33434) = [[1, 40]]
+FNumber(33437) = [[28, 10]]
+ExposureProgram(34850) = [2]
+ISO(34855) = [100]
+ExifVersion(36864) = [48, 50, 50, 49]
+DateTimeOriginal(36867) = ["2014:10:04 06:14:16"]
+CreateDate(36868) = ["2014:10:04 06:14:16"]
+ShutterSpeedValue(37377) = [[5321928, 1000000]]
+ApertureValue(37378) = [[2970854, 1000000]]
+ExposureCompensation(37380) = [[0, 2]]
+MeteringMode(37383) = [1]
+Flash(37385) = [16]
+FocalLength(37386) = [[27, 1]]
+FocalPlaneXResolution2(41486) = [[3504000, 885]]
+FocalPlaneYResolution2(41487) = [[2336000, 590]]
+FocalPlaneResolutionUnit2(41488) = [2]
+CustomRendered(41985) = [0]
+ExposureMode(41986) = [0]
+WhiteBalance(41987) = [1]
+SceneCaptureType(41990) = [0]
+========== ranges ==========
+header (0, 8) 
+ifd1   (8, 506) entries
+ifd1   (506, 512) BitsPerSample(258)
+ifd1   (512, 518) Make(271)
+ifd1   (518, 532) Model(272)
+ifd1   (532, 552) ModifyDate(306)
+ifd1   (552, 560) Artist(315)
+ifd1   (560, 568) SubIFDs(330)
+ifd1   (568, 7537) XMP(700)
+gap*   (7537, 7538) 1 gap byte: 00  .
+ifd1   (7538, 7552) UniqueCameraModel(50708)
+ifd1   (7552, 7624) ColorMatrix1(50721)
+ifd1   (7624, 7696) ColorMatrix2(50722)
+ifd1   (7696, 7768) CameraCalibration1(50723)
+ifd1   (7768, 7840) CameraCalibration2(50724)
+ifd1   (7840, 7864) AnalogBalance(50727)
+ifd1   (7864, 7888) AsShotNeutral(50728)
+ifd1   (7888, 7896) BaselineExposure(50730)
+ifd1   (7896, 7904) BaselineNoise(50731)
+ifd1   (7904, 7912) BaselineSharpness(50732)
+ifd1   (7912, 7920) LinearResponseLimit(50734)
+ifd1   (7920, 7930) CameraSerialNumber(50735)
+ifd1   (7930, 7962) DNGLensInfo(50736)
+ifd1   (7962, 7970) ShadowScale(50739)
+ifd1   (7970, 16358) PrivateData(50740)
+ifd1   (16358, 16374) RawDataUniqueID(50781)
+ifd1   (16374, 16387) OriginalRawFileName(50827)
+gap*   (16387, 16388) 1 gap byte: 00  .
+ifd2   (16388, 16730) entries
+ifd2   (16730, 17270) TileOffsets(324)
+ifd2   (17270, 17810) TileByteCounts(325)
+ifd2   (17810, 17818) BlackLevel(50714)
+ifd2   (17818, 36602) BlackLevelDeltaV(50716)
+ifd2   (36602, 36618) DefaultScale(50718)
+ifd2   (36618, 36634) DefaultCropOrigin(50719)
+ifd2   (36634, 36650) DefaultCropSize(50720)
+ifd2   (36650, 36658) AntiAliasStrength(50738)
+ifd2   (36658, 36666) BestQualityScale(50780)
+ifd2   (36666, 36682) ActiveArea(50829)
+ifd2   (36682, 36698) MaskedAreas(50830)
+ifd3   (36698, 36884) entries
+ifd3   (36884, 36890) BitsPerSample(258)
+ifd3   (36890, 36914) YCbCrCoefficients(529)
+ifd3   (36914, 36962) ReferenceBlackWhite(532)
+exif4  (36962, 37208) entries
+exif4  (37208, 37216) ExposureTime(33434)
+exif4  (37216, 37224) FNumber(33437)
+exif4  (37224, 37244) DateTimeOriginal(36867)
+exif4  (37244, 37264) CreateDate(36868)
+exif4  (37264, 37272) ShutterSpeedValue(37377)
+exif4  (37272, 37280) ApertureValue(37378)
+exif4  (37280, 37288) ExposureCompensation(37380)
+exif4  (37288, 37296) FocalLength(37386)
+exif4  (37296, 37304) FocalPlaneXResolution2(41486)
+exif4  (37304, 37312) FocalPlaneYResolution2(41487)
+image  (37312, 168640) 
+image  (168640, 261420) 
+image  (261420, 6777513) 
+gap*   (6777513, 6777514) 1 gap byte: 00  .
+========== meta ==========
+filename = "image.dng"
+reader = "tiff"
+size = 6777514
+version = "0.1.26"
+nimVersion = "2.2.4"
+build = "release"
+os = "linux"
+cpu = "arm64"
+problems = []
+readers = ["jpeg", "tiff"]

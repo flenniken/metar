@@ -1,0 +1,7 @@
+Show metadata information for the given image(s).
+Usage: metar [-j] [-v] file [file...]
+-j --json     Output JSON data.
+-v --version  Show the version number.
+-h --help     Show this help.
+file          Image filename to analyze.
+
