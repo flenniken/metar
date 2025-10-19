@@ -54,11 +54,13 @@ function testCmd() {
 
     debugCmd="nim c -f -d:nimDebugDlOpen --verbosity:0 -d:test --hints:off -r \
       -p:metar --out:bin/tests/$basename $file"
+    echo
     echo $debugCmd
     $debugCmd
 
     releaseCmd="nim c -f -d:release -d:nimDebugDlOpen --verbosity:0 -d:test --hints:off -r \
       -p:metar --out:bin/tests/$basename $file"
+    echo
     echo $releaseCmd
     $releaseCmd
   done

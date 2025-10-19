@@ -365,7 +365,7 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       var msg = "SOF: buffer too small."
       check(msg == getCurrentExceptionMsg())
-    except:
+    except CatchableError:
       echo getCurrentExceptionMsg()
       check(false == true)
 
@@ -566,7 +566,7 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       let msg = getCurrentExceptionMsg()
       check(msg == "Iptc: Invalid buffer size.")
-    except:
+    except CatchableError:
       check("false" == "unexpected error")
 
 
@@ -586,7 +586,7 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       let msg = getCurrentExceptionMsg()
       check(msg == "Iptc: Invalid header.")
-    except:
+    except CatchableError:
       check("false" == "unexpected error")
 
 
@@ -631,7 +631,7 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       let msg = getCurrentExceptionMsg()
       check(msg == "DRI: wrong size buffer.")
-    except:
+    except CatchableError:
       check("false" == "unexpected error")
 
   test "getDriInfo 2":
@@ -643,7 +643,7 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       let msg = getCurrentExceptionMsg()
       check(msg == "DRI: not 0xffdd.")
-    except:
+    except CatchableError:
       check("false" == "unexpected error")
 
 
@@ -656,5 +656,5 @@ precision: 8, width: 150, height: 100, num components: 3
     except NotSupportedError:
       let msg = getCurrentExceptionMsg()
       check(msg == "DRI: length not 4.")
-    except:
+    except CatchableError:
       check("false" == "unexpected error")

@@ -70,6 +70,10 @@ proc bytesToString*(buffer: openArray[uint8|char], index: Natural=0,
   if length == 0:
     return ""
 
+  # Make sure the index is in the buffer.
+  if index+length > buffer.len:
+    raise newException(NotSupportedError, "Invalid index")
+
   result = newStringOfCap(length)
   for ix in index..<index+length:
     result.add((char)buffer[ix])

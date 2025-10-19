@@ -23,7 +23,6 @@ suite "Test bytesToString.nim":
       check(bytesToString(buffer) == "")
 
     test "test bytesToString error length":
-      # invalid start index
       var buffer = [0x1u8, 0x02, 0x03, 0x04]
       try:
         discard bytesToString(buffer, 0, buffer.len+1)
