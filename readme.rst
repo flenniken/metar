@@ -8,10 +8,6 @@ You can read metadata from JPEG, DNG and TIFF images. Metar
 understands the standard image metadata formats: XMP, IPTC, Exif,
 and Tiff tags.
 
-* `How to Run Metar`_
-* `How Use Metar in Python Programs`_
-* `More Pages`_
-
 How to Run Metar
 =================
 
