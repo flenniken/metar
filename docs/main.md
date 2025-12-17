@@ -1,16 +1,16 @@
 # Processing Details
 
-* [Reader Processing and Error Handling](#reader_processing_and_error_handling)
-* [Metadata Structure](#metadata_structure)
-* [Required & Common Sections](#required_common_sections)
-* [Image Section](#image_section)
-* [The Meta Section](#the_meta_section)
-* [Ranges Section](#ranges_section)
-* [Xmp Section](#xmp_section)
-* [Exif Section](#exif_section)
-* [Iptc Section](#iptc_section)
-* [Key Names](#key_names)
-* [Scan Disk for Images](#scan_disk_for_images)
+* [Reader Processing and Error Handling](#reader-processing-and-error-handling)
+* [Metadata Structure](#metadata-structure)
+* [Required & Common Sections](#required-common-sections)
+* [Image Section](#image-section)
+* [The Meta Section](#the-meta-section)
+* [Ranges Section](#ranges-section)
+* [Xmp Section](#xmp-section)
+* [Exif Section](#exif-section)
+* [Iptc Section](#iptc-section)
+* [Key Names](#key-names)
+* [Scan Disk for Images](#scan-disk-for-images)
 
 ## Reader Processing and Error Handling
 
