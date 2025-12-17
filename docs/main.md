@@ -2,7 +2,7 @@
 
 * [Reader Processing and Error Handling](#reader-processing-and-error-handling)
 * [Metadata Structure](#metadata-structure)
-* [Required & Common Sections](#required-common-sections)
+* [Required & Common Sections](#required-&-common-sections)
 * [Image Section](#image-section)
 * [The Meta Section](#the-meta-section)
 * [Ranges Section](#ranges-section)
