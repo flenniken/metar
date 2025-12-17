@@ -1,6 +1,6 @@
-# Metar Development
+# Development
 
-# Download
+## Download
 
 You download the metar source into a folder on your machine using git
 clone.
@@ -11,7 +11,7 @@ cd ~/code/metar
 git clone https://github.com/flenniken/metar.git .
 ~~~
 
-# Docker Environment
+## Docker Environment
 
 You build and test metar in a docker environment. You create the
 environment with the runenv b command:
@@ -38,7 +38,7 @@ cd -
 
 <style>body { max-width: 40em}</style>
 
-# Build Tasks
+## Build Tasks
 
 You use the build script commands to build and test metar.  You can
 see all the available tasks by running build without any arguments.
@@ -65,7 +65,7 @@ b b
 The binary files are stored in the bin folder. The debug version
 is in the debug folder and the release version is one level up.
 
-# Test
+## Test
 
 You can run the unit tests for the debug and release versions
 using the t build command.

@@ -55,12 +55,12 @@ metar testfiles/image.dng | wc -l
 
 You can learn how to build, test and install on the development page.
 
-* ![development](docs/project.md) -- how to build, test and install
+* [development](docs/project.md) — how to develop, test and debug.
 
 You can learn how metar deals with special images with unknown
 sections or corrupt files and other details on the details page.
 
-* ![details](docs/main.rst) -- metadata processing details
+* [details](docs/main.rst) -- metadata processing details
 
 Here is the metar module dependencies graph:
 
