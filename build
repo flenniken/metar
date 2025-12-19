@@ -193,6 +193,11 @@ function sanityCmd() {
   rm $dngOutputFile
 }
 
+function stfCmd() {
+  # Run stf files.
+  bin/linux/stfrunner -d stf-files
+}
+
 case $option in
   b)
     buildCmd
@@ -209,6 +214,9 @@ case $option in
   ts)
     sanityCmd
     ;;
+  stf)
+    stfCmd
+    ;;
   *)
 
 cat << EOF
@@ -217,6 +225,7 @@ t         Test the debug and release versions of metar.
 docs      Build all the docs.
 dot       Build the dependency graph.
 ts        Run metar sanity checks.
+stf       Run metar stf test.
 EOF
     ;;
 esac

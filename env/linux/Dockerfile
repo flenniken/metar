@@ -8,13 +8,9 @@ ENV coder_env=debian
 
 # Install the needed apps and libraries.
 
-# todo: libpcre3 and libpre3-dev are needed for the shared library
-# libpcre.so used by the nim reqular expression library. You can
-# statically link it, look up nimpcre.
-
 RUN apt update \
   && apt -qy install curl libssl-dev build-essential gcc \
-  less git man sudo tree libpcre3 libpcre3-dev
+  less git man sudo tree nano
 
 # Install graphviz for creating svg dependency graphs.
 # Install python for dotFilter.py.

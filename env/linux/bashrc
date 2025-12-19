@@ -12,6 +12,9 @@ alias ls='ls --color=auto'
 alias ll='ls -l'
 alias b='./build'
 
+# Define the metar environment variable for use inside the stf files.
+export metar=/home/coder/metar/bin/linux/metar
+
 # Use the manually built version of nim.
 export PATH=/home/coder/Nim/bin:$PATH
 
