@@ -4,6 +4,12 @@ You can read metadata from JPEG, DNG and TIFF images. Metar
 understands the standard image metadata formats: XMP, IPTC, Exif,
 and Tiff tags.
 
+You can use metar’s range feature to reverse engineer file formats. It
+tells all known and unknown bytes in the file. You write code to
+handle the unknown byte ranges until all are known. This allows you
+quickly get the basics working and gradually fill in the edge cases
+over time.
+
 # How to Run Metar
 
 You can run metar from the command line to display image
