@@ -45,5 +45,6 @@ RUN cd Nim \
 COPY --chown=coder:coder bashrc .bashrc
 
 # Start in the metar directory.
+ENV project=/home/coder/metar
 WORKDIR /home/coder/metar
 CMD ["/bin/bash"]

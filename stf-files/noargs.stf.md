@@ -1,13 +1,11 @@
 stf file, version 0.1.0
 
-# Test running without specifying a file.
+# Test running without specifying any args.
 
 ### File cmd.sh command
 
 ~~~
-echo "running metar: '$metar'"
 $metar >stdout 2>stderr
-echo "done"
 ~~~
 
 ### File stdout.expected
@@ -19,6 +17,7 @@ Usage: metar [-j] [-v] file [file...]
 -v --version  Show the version number.
 -h --help     Show this help.
 file          Image filename to analyze.
+
 ~~~
 
 ### Expected stdout == stdout.expected
