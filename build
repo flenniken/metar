@@ -20,22 +20,12 @@ if [[ ! $(pwd) == "$metarDir" ]]; then
 fi
 
 function buildCmd() {
-  # Build the debug and release versions of metar.
-
-  debugExe='bin/linux/debug/metar'
-  rm $debugExe
-  nim c --out:$debugExe metar/metar
+  # Build the release version of metar.
 
   releaseExe='bin/linux/metar'
   rm $releaseExe
   nim c -d:release --out:$releaseExe metar/metar
 
-  # Make sure the exes exists.
-  if [[ ! -e $debugExe ]]; then
-    echo "Error creating the debug exe: $debugExe"
-  else
-    echo "Created: $debugExe"
-  fi
   if [[ ! -e $releaseExe ]]; then
     echo "Error creating the release exe: $releaseExe"
   else
@@ -46,17 +36,11 @@ function buildCmd() {
 }
 
 function testCmd() {
-  # Test the debug and release versions of metar.
+  # Test the release version of metar.
 
   # Run each test file in the test folder.
   for file in tests/test_*.nim; do
     basename=$(basename $file)
-
-    debugCmd="nim c -f -d:nimDebugDlOpen --verbosity:0 -d:test --hints:off -r \
-      -p:metar --out:bin/tests/$basename $file"
-    echo
-    echo $debugCmd
-    $debugCmd
 
     releaseCmd="nim c -f -d:release -d:nimDebugDlOpen --verbosity:0 -d:test --hints:off -r \
       -p:metar --out:bin/tests/$basename $file"
@@ -66,21 +50,6 @@ function testCmd() {
   done
 
   exit
-}
-
-function docsCmd() {
-  # Build all the docs.
-
-  # Run each source file in the metar folder.
-  for file in metar/*.nim; do
-    basename=$(basename $file)
-    # printf "$basename\t$file\n"
-    # --hints:off
-
-    cmd="nim doc -d:test --index:on --out:docs/html/$basename.html $file"
-    echo $cmd
-    $cmd
-  done
 }
 
 function dotCmd() {
@@ -137,62 +106,6 @@ function dotCmd() {
 
 }
 
-function sanityCmd() {
-  # Run metar on the test files.
-
-  # Check the version number.
-  versionNum=$(bin/linux/metar -v)
-  if [[ ! "$versionNum" == "0.1.26" ]]; then
-    echo "Invalid version number: $versionNum"
-    exit
-  fi
-
-  # Check the help message.
-  helpFile=help.txt
-  bin/linux/metar > $helpFile
-  if ! diff $helpFile testfiles/$helpFile >/dev/null 2>&1; then
-    echo "Invalid help message."
-    exit
-  fi
-  rm $helpFile
-
-  # Check the jpg output
-  jpgOutputFile=jpg-output.txt
-  bin/linux/metar testfiles/image.jpg > $jpgOutputFile
-  if ! diff $jpgOutputFile testfiles/$jpgOutputFile >/dev/null 2>&1; then
-    echo "Invalid jpg output."
-    exit
-  fi
-  rm $jpgOutputFile
-
-  # Check the jpg json output
-  jpgJsonFile=jpg-output.json
-  bin/linux/metar -j testfiles/image.jpg > $jpgJsonFile
-  if ! diff $jpgJsonFile testfiles/$jpgJsonFile >/dev/null 2>&1; then
-    echo "Invalid jpg json output."
-    exit
-  fi
-  rm $jpgJsonFile
-
-  # Check the tiff output
-  tiffOutputFile=tiff-output.txt
-  bin/linux/metar testfiles/image.tif > $tiffOutputFile
-  if ! diff $tiffOutputFile testfiles/$tiffOutputFile >/dev/null 2>&1; then
-    echo "Invalid tiff output."
-    exit
-  fi
-  rm $tiffOutputFile
-
-  # Check the dng output
-  dngOutputFile=dng-output.txt
-  bin/linux/metar testfiles/image.dng > $dngOutputFile
-  if ! diff $dngOutputFile testfiles/$dngOutputFile >/dev/null 2>&1; then
-    echo "Invalid dng output."
-    exit
-  fi
-  rm $dngOutputFile
-}
-
 function stfCmd() {
   # Run stf files.
   bin/linux/stfrunner -d stf-files
@@ -205,14 +118,8 @@ case $option in
   t)
     testCmd
     ;;
-  docs)
-    docsCmd
-    ;;
   dot)
     dotCmd
-    ;;
-  ts)
-    sanityCmd
     ;;
   stf)
     stfCmd
@@ -220,12 +127,10 @@ case $option in
   *)
 
 cat << EOF
-b         Build the debug and release versions of metar.
-t         Test the debug and release versions of metar.
-docs      Build all the docs.
+b         Build the release version of metar.
+t         Test the release version of metar.
 dot       Build the dependency graph.
-ts        Run metar sanity checks.
-stf       Run metar stf test.
+stf       Run metar stf tests.
 EOF
     ;;
 esac
