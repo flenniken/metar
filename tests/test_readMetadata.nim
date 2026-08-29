@@ -34,6 +34,11 @@ suite "Test readMetadata.nim":
   test "keyName jpeg":
     check(keyName("jpeg", "exif", "258") == "BitsPerSample(258)")
 
+  test "keyName gps":
+    check(keyName("jpeg", "gps", "1") == "GPSLatitudeRef(1)")
+    check(keyName("tiff", "gps2", "2") == "GPSLatitude(2)")
+    check(keyName("jpeg", "exif", "34853") == "GPSInfo(34853)")
+
   test "test getMetaInfo":
     var problems = newSeq[tuple[reader: string, message: string]]()
     let info = getMetaInfo("filename", "readerName", 12345, problems)

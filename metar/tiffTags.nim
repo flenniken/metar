@@ -474,6 +474,44 @@ const tagToString = {
 }.toOrderedTable
 
 
+# GPS tags live in their own IFD, so the same numbers as Interop tags
+# have different names here. See CIPA DC-008 / Exif GPS IFD.
+const gpsTagToString = {
+  0'u16: "GPSVersionID",
+  1'u16: "GPSLatitudeRef",
+  2'u16: "GPSLatitude",
+  3'u16: "GPSLongitudeRef",
+  4'u16: "GPSLongitude",
+  5'u16: "GPSAltitudeRef",
+  6'u16: "GPSAltitude",
+  7'u16: "GPSTimeStamp",
+  8'u16: "GPSSatellites",
+  9'u16: "GPSStatus",
+  10'u16: "GPSMeasureMode",
+  11'u16: "GPSDOP",
+  12'u16: "GPSSpeedRef",
+  13'u16: "GPSSpeed",
+  14'u16: "GPSTrackRef",
+  15'u16: "GPSTrack",
+  16'u16: "GPSImgDirectionRef",
+  17'u16: "GPSImgDirection",
+  18'u16: "GPSMapDatum",
+  19'u16: "GPSDestLatitudeRef",
+  20'u16: "GPSDestLatitude",
+  21'u16: "GPSDestLongitudeRef",
+  22'u16: "GPSDestLongitude",
+  23'u16: "GPSDestBearingRef",
+  24'u16: "GPSDestBearing",
+  25'u16: "GPSDestDistanceRef",
+  26'u16: "GPSDestDistance",
+  27'u16: "GPSProcessingMethod",
+  28'u16: "GPSAreaInformation",
+  29'u16: "GPSDateStamp",
+  30'u16: "GPSDifferential",
+  31'u16: "GPSHPositioningError",
+}.toOrderedTable
+
+
 iterator tags*(): tuple[key: uint16, value: string] =
   ## Iterates over all tiff tags.
   for k, v in tagToString.pairs():
@@ -503,10 +541,33 @@ proc tagName*(tagString: string): string =
   result = tagName(tag)
 
 
+proc gpsTagName*(tag: uint16): string =
+  ## Return the human readable name of the given GPS IFD tag. If the
+  ## tag isn't found, the tag is converted to a string and returned.
+
+  let name = gpsTagToString.getOrDefault(tag)
+  if name != "":
+    result = "$1($2)" % [name, $tag]
+  else:
+    result = $tag
+
+
+proc gpsTagName*(tagString: string): string =
+  ## Return the human readable name of the given GPS IFD tag. If the
+  ## tag isn't found, the tagString is returned.
+
+  var tag: uint16
+  try:
+    tag = (uint16)parseUint(tagString)
+  except:
+    return tagString
+  result = gpsTagName(tag)
+
+
 proc keyNameTiff*(section: string, key: string): string =
   ## Return the name of the key for the given section of metadata or
   ## "" when not known.
-  let name = tagName(key)
+  let name = if section.startsWith("gps"): gpsTagName(key) else: tagName(key)
   if name == key:
     result = ""
   else:

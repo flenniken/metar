@@ -7,6 +7,19 @@ suite "Test test_tiffTags.nim":
 
   test "keyNameTiff":
     check(keyNameTiff("ifd", "254") == "NewSubfileType(254)")
+    check(keyNameTiff("gps", "1") == "GPSLatitudeRef(1)")
+    check(keyNameTiff("gps2", "2") == "GPSLatitude(2)")
+    check(keyNameTiff("ifd", "1") == "InteropIndex(1)")
+
+  test "gpsTagName":
+    check(gpsTagName(0'u16) == "GPSVersionID(0)")
+    check(gpsTagName(1'u16) == "GPSLatitudeRef(1)")
+    check(gpsTagName(2'u16) == "GPSLatitude(2)")
+    check(gpsTagName(4'u16) == "GPSLongitude(4)")
+    check(gpsTagName(6'u16) == "GPSAltitude(6)")
+    check(gpsTagName(32'u16) == "32")
+    check(gpsTagName("1") == "GPSLatitudeRef(1)")
+    check(gpsTagName("abc") == "abc")
 
   test "tagName uint16":
     check(tagName(254'u16) == "NewSubfileType(254)")

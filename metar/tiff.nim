@@ -34,6 +34,7 @@ This is the layout of a Tiff file:
 * IFD.next -> IFD or 0
 * IFD.SubIFDs = [->IFD, ->IFD,...]
 * IFD.Exif_IFD -> IFD
+* IFD.GPSInfo -> IFD
 
 Tags are always found in contiguous groups within each IFD.
 ]#
@@ -497,12 +498,13 @@ proc handleEntry(file: File,
     let xmp = xmpParser(xml)
     nodeList.add((name, xmp))
 
-  of 34665'u16: # exif
-    ifd[$entry.tag] = newJString("exif")
+  of 34665'u16, 34853'u16: # ExifOffset, GPSInfo
+    let name = if entry.tag == 34665'u16: "exif" else: "gps"
+    ifd[$entry.tag] = newJString(name)
     let tempList = readLongs(file, entry, 1)
     if tempList.len != 1:
-      raise newException(NotSupportedError, "Tiff: more than one exif.")
-    nextList.add( ("exif", tempList[0]))
+      raise newException(NotSupportedError, "Tiff: more than one " & name & ".")
+    nextList.add((name, tempList[0]))
 
   of 273'u16, 324'u16: # StripOffsets, TileOffsets
     ifd[$entry.tag] = readValueListMax(file, entry, 100)
@@ -614,8 +616,10 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
     if entrySize > 4'u32:
       externalStart = getNumber[uint32](entry.packed, 0, entry.endian)
       externalFinish = externalStart + entrySize
+      let message = if nodeName.startsWith("gps"): gpsTagName(entry.tag)
+                    else: tagName(entry.tag)
       ranges.add(newRange(externalStart, externalFinish, name=nodeName,
-                          message=tagName(entry.tag)))
+                          message=message))
     handleEntry(file, entry, endian, ifd, nodeList, nextList, tiffImageData, ranges)
 
     # todo: not done
@@ -642,9 +646,11 @@ proc readIFD*(file: File, id: int, headerOffset: uint32, ifdOffset: uint32,
 
 
 proc readExif*(file: File, headerOffset: uint32, finish: uint32,
-               ranges: var seq[Range]): Metadata =
-  ## Parse the exif bytes and return its metadata.  The ranges list is
-  ## filled in with the ranges found in the IFD.
+               ranges: var seq[Range]): tuple[node: JsonNode,
+               extras: seq[tuple[name: string, node: JsonNode]]] =
+  ## Parse the exif bytes and return the main IFD node plus extra
+  ## nodes (for example gps). The ranges list is filled in with the
+  ## ranges found in the IFDs.
 
   # echo "current file pos = " & $getFilePos(file)
   # echo "headerOffset = " & $headerOffset
@@ -659,10 +665,25 @@ proc readExif*(file: File, headerOffset: uint32, finish: uint32,
   ranges.add(newRange(headerOffset, headerOffset+8'u32, "exif", true, "header"))
 
   let ifdInfo = readIFD(file, 1, headerOffset, ifdOffset, endian, "exif", ifdRanges)
-  if ifdInfo.nodeList.len != 1:
-    raise newException(NotSupportedError, "exif: more than one IFD.")
-  # todo: support more than one ifd in exif. ifdInfo.nextList
-  result = ifdInfo.nodeList[0].node
+  if ifdInfo.nodeList.len < 1:
+    raise newException(NotSupportedError, "exif: no IFD.")
+  result.node = ifdInfo.nodeList[0].node
+  result.extras = newSeq[tuple[name: string, node: JsonNode]]()
+  for ix in 1..<ifdInfo.nodeList.len:
+    if ifdInfo.nodeList[ix].name != "image":
+      result.extras.add(ifdInfo.nodeList[ix])
+
+  # Follow the GPS IFD when GPSInfo points at one. Skip the next-IFD
+  # thumbnail pointer and the Exif SubIFD so existing JPEG output
+  # stays stable.
+  var id = 1
+  for name, offset in ifdInfo.nextList.items():
+    if offset != 0 and name == "gps":
+      id += 1
+      let nested = readIFD(file, id, headerOffset, offset, endian, name, ifdRanges)
+      for item in nested.nodeList:
+        if item.name != "image":
+          result.extras.add(item)
 
   # Add in the gaps.
   ifdRanges.add(newRange(headerOffset, headerOffset, name = "border"))

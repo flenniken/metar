@@ -81,6 +81,12 @@ suite "Test readerJpeg.nim":
   test "keyNameJpeg exif":
     check(keyNameJpeg("exif", "700") == "XMP(700)")
 
+  test "keyNameJpeg gps":
+    check(keyNameJpeg("gps", "1") == "GPSLatitudeRef(1)")
+    check(keyNameJpeg("gps", "2") == "GPSLatitude(2)")
+    check(keyNameJpeg("gps2", "4") == "GPSLongitude(4)")
+    check(keyNameJpeg("exif", "1") == "InteropIndex(1)")
+
   test "test handleSection":
     var file = openTestFile("testfiles/image.jpg")
     defer: file.close()

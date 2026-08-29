@@ -752,6 +752,56 @@ suite "test tiff.nim":
 
     check(ranges.len > 1)
 
+  test "test GPSInfo IFD":
+    # Little-endian TIFF with IFD0 pointing at a GPS IFD.
+    # GPSVersionID 2.3.0.0, GPSLatitudeRef N, GPSLatitude 37/1 47/1 30/1.
+    var bytes = [
+      0x49'u8, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, # header, IFD0 at 8
+      0x01, 0x00,                                       # 1 entry
+      0x25, 0x88, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00,   # GPSInfo longs
+      0x1A, 0x00, 0x00, 0x00,                           # GPS IFD at 26
+      0x00, 0x00, 0x00, 0x00,                           # next = 0
+      0x03, 0x00,                                       # 3 GPS entries
+      0x00, 0x00, 0x01, 0x00, 0x04, 0x00, 0x00, 0x00,   # GPSVersionID bytes
+      0x02, 0x03, 0x00, 0x00,
+      0x01, 0x00, 0x02, 0x00, 0x02, 0x00, 0x00, 0x00,   # GPSLatitudeRef
+      0x4E, 0x00, 0x00, 0x00,                           # "N\0"
+      0x02, 0x00, 0x05, 0x00, 0x03, 0x00, 0x00, 0x00,   # GPSLatitude
+      0x44, 0x00, 0x00, 0x00,                           # rationals at 68
+      0x00, 0x00, 0x00, 0x00,                           # next = 0
+      0x25, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,   # 37/1
+      0x2F, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,   # 47/1
+      0x1E, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,   # 30/1
+    ]
+    var (file, filename) = createTestFile(bytes)
+    defer:
+      file.close()
+      removeFile(filename)
+
+    var ranges = newSeq[Range]()
+    let ifdInfo = readIFD(file, 1, 0'u32, 8'u32, littleEndian, "ifd1", ranges)
+    check(ifdInfo.nodeList.len == 1)
+    check(ifdInfo.nodeList[0].node["34853"].getStr() == "gps")
+    check(ifdInfo.nextList.len == 1)
+    check(ifdInfo.nextList[0].name == "gps")
+    check(ifdInfo.nextList[0].offset == 26'u32)
+
+    let metadata = readTiff(file)
+    check(metadata["ifd1"]["34853"].getStr() == "gps")
+    check(metadata.hasKey("gps2"))
+    check($metadata["gps2"]["0"] == "[2,3,0,0]")
+    check($metadata["gps2"]["1"] == """["N"]""")
+    check($metadata["gps2"]["2"] == "[[37,1],[47,1],[30,1]]")
+
+    file.setFilePos(0)
+    ranges = newSeq[Range]()
+    let exifInfo = readExif(file, 0'u32, (uint32)bytes.len, ranges)
+    check(exifInfo.node["34853"].getStr() == "gps")
+    check(exifInfo.extras.len == 1)
+    check(exifInfo.extras[0].name == "gps")
+    check($exifInfo.extras[0].node["1"] == """["N"]""")
+    check($exifInfo.extras[0].node["2"] == "[[37,1],[47,1],[30,1]]")
+
   test "test readBlob":
     var buffer = [
       0x00'u8, 0xFE, # tag

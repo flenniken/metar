@@ -32,6 +32,7 @@ tpubType:
       marker*: uint8
       node*: JsonNode
       known*: bool
+      extras*: seq[tuple[name: string, node: JsonNode]]
 
     Section = tuple[marker: uint8, start: int64, finish: int64]
     ## A section of a file. A section contains a byte identifier, the
@@ -750,6 +751,8 @@ proc keyNameJpeg(section: string, key: string): string {.tpub.} =
 
   if section == "exif":
     result = tagName(key)
+  elif section.startsWith("gps"):
+    result = gpsTagName(key)
   else:
     var num: uint8
     try:
@@ -839,6 +842,7 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   var node: JsonNode
   var known = true
   var rangesAdded = false
+  var extras = newSeq[tuple[name: string, node: JsonNode]]()
 
   # Read the section into memory, except for a couple.
   var buffer: seq[uint8]
@@ -879,7 +883,9 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
       # Make sure casts to uint32 are ok.
       if headerOffset > ((int64)high(uint32)) or finish > ((int64)high(uint32)):
         raise newException(NotSupportedError, "invalid large offset.")
-      node = readExif(file, (uint32)headerOffset, (uint32)finish, ranges)
+      let exifInfo = readExif(file, (uint32)headerOffset, (uint32)finish, ranges)
+      node = exifInfo.node
+      extras = exifInfo.extras
       rangesAdded = true
 
   of 0xc0, 0xc2, 0xc3, 0xc9, 0xca, 0xcb:
@@ -929,7 +935,8 @@ proc handleSection2(file: File, section: Section, imageData: var ImageData,
   if not rangesAdded:
     ranges.add(newRange(start, finish, sectionName, known, ""))
 
-  result = SectionInfo(name: sectionName, marker: marker, node: node, known: known)
+  result = SectionInfo(name: sectionName, marker: marker, node: node,
+                      known: known, extras: extras)
 
 
 proc handleSection(file: File, section: Section, imageData: var ImageData,
@@ -958,6 +965,8 @@ proc readJpeg(file: File): Metadata {.tpub.} =
     let sectionInfo = handleSection(file, section, imageData, ranges)
     if sectionInfo.node != nil:
       addSection(result, dups, sectionInfo.name, sectionInfo.node)
+    for extraName, extraNode in sectionInfo.extras.items():
+      addSection(result, dups, extraName, extraNode)
 
   let optionNode = createImageNode(imageData)
   if optionNode.isNone:
