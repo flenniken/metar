@@ -3,4 +3,4 @@
 
 ## Nimpy is not required for metar exe, just for the metar python lib.
 
-const metarVersion* = "0.1.26"
+const metarVersion* = "0.1.27"
